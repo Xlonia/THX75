@@ -989,10 +989,7 @@ func _priv_pick_entity():
 	var sel := picked_entity()
 	if sel == null:
 		return null
-	var list: Array = []
-	for e2 in entities:
-		if e2 is BattleEntity and (e2 as BattleEntity).kind == BattleEntity.Kind.PRIVATE 			and (e2 as BattleEntity).owner_ent == sel and not (e2 as BattleEntity).dead:
-			list.append(e2)
+	var list: Array = _priv_list_for(sel)
 	if list.is_empty():
 		return null
 	_priv_sel = clampi(_priv_sel, 0, list.size() - 1)
@@ -1111,6 +1108,9 @@ func _chara_formation(ent: BattleEntity) -> String:
 	return f if PrivateFormation.PRESETS.has(f) else "线列防护"
 
 func _spawn_private_for(ent: BattleEntity) -> void:
+	## 【0.0.9·预备队复用】优先消耗该角色预备计数（退下/解散的杂兵回归）
+	if int(_priv_reserve.get(ent, 0)) > 0:
+		_priv_reserve[ent] = int(_priv_reserve[ent]) - 1
 	var cnt := 0
 	for e in entities:
 		if e is BattleEntity and e.kind == BattleEntity.Kind.PRIVATE and e.owner_ent == ent and not e.dead:
@@ -1571,7 +1571,10 @@ func _physics_process(delta: float) -> void:
 			if _surr_ai_cd <= 0:
 				_surrender_accepted()
 				_toast("敌方 AI 同意了投降")
-		elif surrender_sender < 0 and phase >= 2 and time_frames % 120 == 0 and not _ai_surr_used:
+		## 【0.0.9·AI 投降策划口径（新二 245；作者 20261110 令）】"有一方在一个
+		## 角色的AP归零后投降"=破阵(3)/撤离(4)阶段、敌方已有角色被剥、且战况
+		## 劣势（存活或被剥数落后）时发起——原"存活≤2 即降"（受伤即降）撤销
+		elif surrender_sender < 0 and phase >= 3 and time_frames % 120 == 0 and not _ai_surr_used:
 			var e_alive2 := 0
 			for e8 in enemy_ents:
 				if not e8.dead:
@@ -1580,7 +1583,8 @@ func _physics_process(delta: float) -> void:
 			for e9 in player_ents:
 				if not e9.dead:
 					p_alive2 += 1
-			if e_alive2 <= 2 and e_alive2 < p_alive2:
+			var e_broken2 := _side_ap_broken(1)
+			if e_broken2 >= 1 and (e_alive2 < p_alive2 or e_broken2 >= 2):
 				_ai_surr_used = true
 				surrender_sender = 1
 				_toast("敌方发起投降请求（Shift+S 同意 / Shift+W 拒绝）")
@@ -1602,6 +1606,15 @@ func _physics_process(delta: float) -> void:
 				var bm: int = int((e3 as BattleEntity).get_meta("banzai", 0))
 				if bm > 0:
 					(e3 as BattleEntity).set_meta("banzai", bm - 1) ## 万岁冲锋 30 秒时效
+					## 【0.0.9·万岁冲锋位移（新二 138"马上与角色判定点重合"）】
+					## 向所属角色判定点合拢（2 倍慢机速=压过排布引力；4px 内=重合停）
+					var pb2: BattleEntity = e3
+					if pb2.owner_ent != null and not pb2.owner_ent.dead:
+						var to_owner: Vector2 = -pb2.local_pos
+						if to_owner.length() > 4.0:
+							pb2.local_pos = pb2.local_pos.move_toward(
+								Vector2.ZERO, pb2.normal_speed() * 3.0) ## 万岁=3 倍速压过排布引力)
+							pb2.sync_private_pos()
 		_priv_shooters_tick() ## 【20261020】杂兵自身发射（ShootCd+shoot_evs）
 		_rot_pending_tick() ## 【20261015】旋转重复延时副本释放
 	else:
@@ -2127,6 +2140,8 @@ var surrender_sender := -1    ## 【0.0.9·投降泛化】-1=无 0=我方请求 
 var surrender_phase := false  ## 投降同意：1 秒停攻倒计时
 var _surr_ai_cd := -1         ## 【敌方投降 AI】-1=未计时；我方请求时置 60
 var _ai_surr_used := false    ## 敌方 AI 每场最多发起一次
+var _phase2_at := 0           ## 短兵阶段起始帧（破阵 5 秒符卡条件用）
+var _first_spell_fired := false ## 任一角色首次发动符卡攻击（破阵判定③）
 var surrender_frames := 0
 func _update_double_tap() -> void:
 	if team_stance != "":
@@ -2794,6 +2809,7 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				_paralyze_fire(1 - ent.side, clear_sec)
 		"s":
 			if ent.spell_cards >= 1:
+				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击（新二 245）
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
 				ent.apply_clear(200.0, clear_sec)
@@ -3131,15 +3147,64 @@ func _part_of_angle(a: float) -> int:
 func _update_phase() -> void:
 	if is_preview:
 		return
-	## 【占位·④期替换】阶段推进最小版：远距(1) →20秒→ 短兵(2)
-	## ——能力/符卡装填依赖短兵阶段（策划）；完整四阶段条件判定属④期
+	## 远距压制(1) →20秒→ 短兵(2)（既有占位）
 	if phase < 2 and time_frames >= 1200:
 		phase = 2
-	if phase < 4:
-		var p_all_dead := _side_all_dead(player_ents)
-		var e_all_dead := _side_all_dead(enemy_ents)
-		if p_all_dead or e_all_dead:
+		_phase2_at = time_frames
+	## 【0.0.9·破阵判定（新二 245）20261110】短兵→破阵：某一方有一个**角色**空缺
+	## （满目疮痍或撤退）或 5 个**杂兵**空缺，或短兵 5 秒后任一角色首次符卡攻击
+	elif phase == 2:
+		if _side_chara_vacancy(0) >= 1 or _side_chara_vacancy(1) >= 1 			or _side_priv_vacancy(0) >= 5 or _side_priv_vacancy(1) >= 5 			or (time_frames - _phase2_at >= 300 and _first_spell_fired):
+			phase = 3
+	## 【0.0.9·撤离判定（新二 245）】破阵→撤离：某队两个角色 AP 归零 /
+	## 全体 4 个角色 AP 归零 / 一方在一个角色 AP 归零后**投降**（surrender_sender
+	## 置位即视为触发——见 _apply_surrender_request）
+	elif phase == 3:
+		var p_broken := _side_ap_broken(0)
+		var e_broken := _side_ap_broken(1)
+		if p_broken >= 2 or e_broken >= 2 or p_broken + e_broken >= 4 or surrender_sender >= 0:
 			phase = 4
+	## 角色全灭直接终局（_check_end 结算——原占位"全灭→phase4"撤销：phase4=撤离阶段）
+
+## 【0.0.9·杂兵预备队（新二 137"回到杂兵预备"）20261110】退下/解散的杂兵
+## 计入所属角色预备计数；增援/召唤优先消耗预备（免能力、即时）——角色键→数量
+var _priv_reserve: Dictionary = {}
+
+func _priv_reserve_total(side: int) -> int:
+	var n := 0
+	for e in (player_ents if side == 0 else enemy_ents):
+		if e is BattleEntity:
+			n += int(_priv_reserve.get(e, 0))
+	return n
+
+## 【0.0.9·阶段判定助手】角色空缺（满目疮痍或撤退）/ 杂兵空缺（未增援）/ AP 归零数
+func _side_chara_vacancy(side: int) -> int:
+	var n := 0
+	for e in (player_ents if side == 0 else enemy_ents):
+		if e is BattleEntity and e.dead:
+			n += 1
+	return n
+
+func _side_priv_vacancy(side: int) -> int:
+	var total := 0
+	var alive := 0
+	for e in entities:
+		if e is BattleEntity and e.kind == BattleEntity.Kind.PRIVATE and e.side == side:
+			total += 1
+			if not e.dead:
+				alive += 1
+	var chars := 0
+	for e in (player_ents if side == 0 else enemy_ents):
+		if e is BattleEntity and not e.dead:
+			chars += 1
+	return maxi(0, chars * GameGlobals.versus_privates_per_char - alive - _priv_reserve_total(side))
+
+func _side_ap_broken(side: int) -> int:
+	var n := 0
+	for e in (player_ents if side == 0 else enemy_ents):
+		if e is BattleEntity and not e.dead and e.barrier_broken:
+			n += 1
+	return n
 
 func _side_all_dead(ents: Array) -> bool:
 	for e in ents:
@@ -3498,6 +3563,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				team_stance = ""
 				cmd_frames = 0
 				_cmd_frames_b = 0
+	## 【0.0.9·悬停选取（新二 136）】杂兵面板内鼠标悬停=高亮该行（选取跟随）
+	if _priv_panel and picked_entity() != null:
+		var plist: Array = _priv_list_for(picked_entity())
+		var mpos2: Vector2 = get_global_mouse_position()
+		for hi in plist.size():
+			if Rect2(8, 328 + hi * 18, 170, 18).has_point(mpos2):
+				_priv_sel = hi
+				break
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _priv_panel:
 		## 【锁 tab（作者释）】面板显示中双击面板外区域→本次按住 Tab 失效
 		var mr := Rect2(8, 300, 170, 24 + 6 * 18) ## 面板矩形（与 _draw_priv_panel 同域）
@@ -3541,9 +3614,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_S:
 					var pv = _priv_pick_entity()
 					if pv != null:
-						pv.dead = true ## 退下：就地消失（预备队复用待④期）
-						print("[杂兵指令] %s 退下" % pv.chara_name())
-						_toast("杂兵退下：%s" % pv.chara_name())
+						pv.dead = true
+						_priv_reserve[pv.owner_ent] = int(_priv_reserve.get(pv.owner_ent, 0)) + 1
+						print("[杂兵指令] %s 退下（预备 %d）" % [pv.chara_name(), int(_priv_reserve.get(pv.owner_ent, 0))])
+						_toast("杂兵退下：%s（入预备队·增援优先复用）" % pv.chara_name())
 				KEY_D:
 					var pd = _priv_pick_entity()
 					if pd != null:
@@ -4801,21 +4875,28 @@ func draw_ddm_debug(onto: CanvasItem) -> void:
 	_draw_summon_wheel(onto)
 
 ## 杂兵面板（Tab 按住）：选中角色麾下杂兵列表+滚轮高亮
+## 【0.0.9·杂兵面板列表】所属角色麾下存活杂兵，**按血量从低到高**（新二 84）
+## ——绘制与选取（滚轮/悬停/S/D）共用同一排序=所见即所选
+func _priv_list_for(sel: BattleEntity) -> Array:
+	var list: Array = []
+	for e2 in entities:
+		if e2 is BattleEntity and (e2 as BattleEntity).kind == BattleEntity.Kind.PRIVATE 			and (e2 as BattleEntity).owner_ent == sel and not (e2 as BattleEntity).dead:
+			list.append(e2)
+	list.sort_custom(func(x, y): return int(x.hp[0]) < int(y.hp[0]))
+	return list
+
 func _draw_priv_panel(onto: CanvasItem) -> void:
 	if not _priv_panel or not gpu_ok:
 		return
 	var sel := picked_entity()
 	if sel == null:
 		return
-	var list: Array = []
-	for e2 in entities:
-		if e2 is BattleEntity and (e2 as BattleEntity).kind == BattleEntity.Kind.PRIVATE 			and (e2 as BattleEntity).owner_ent == sel and not (e2 as BattleEntity).dead:
-			list.append(e2)
+	var list: Array = _priv_list_for(sel)
 	if list.is_empty():
 		return
 	_priv_sel = clampi(_priv_sel, 0, list.size() - 1)
 	onto.draw_rect(Rect2(8, 300, 170, 24 + list.size() * 18), Color(0.05, 0.07, 0.12, 0.85))
-	onto.draw_string(ThemeDB.fallback_font, Vector2(14, 320), "── 杂兵(Tab) S退下 D万岁 ──",
+	onto.draw_string(ThemeDB.fallback_font, Vector2(14, 320), "── 杂兵(Tab) S退下 D万岁 ──（预备%d）" % int(_priv_reserve.get(sel, 0)),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.9, 1.0))
 	for i in list.size():
 		var pv: BattleEntity = list[i]
