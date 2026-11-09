@@ -68,6 +68,12 @@ var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→Time
 var preview_event_name := ""                    ## 试炼场要发射的事件名
 
 func _ready() -> void:
+	## 【20261003·根因复位 20261110】关闭子窗口内嵌=编辑器/弹幕浮窗为真 OS 窗口。
+	## 原行在 0.0.9 导出自检轮被卷进 _check_export_smoke 末尾——其 early-return
+	## 使数据齐全环境从不执行=编辑器 Window 被嵌进主窗口（"窗口内窗口"=作者
+	## 所报"C++化时突然变化"的根源）。复位到 _ready 无条件执行。
+	if get_tree() != null and get_tree().root != null:
+		get_tree().root.gui_embed_subwindows = false
 	load_default_archive() ## 【0.0.9】默认存档启动载入
 	_disable_dialogic_input()
 	_load_key_config()
@@ -101,10 +107,6 @@ func _check_export_smoke() -> void:
 	# 挂到场景树根（autoload 无父 UI——借 SceneRoot）
 	get_tree().root.add_child.call_deferred(warn)
 	warn.popup_centered.call_deferred()
-	## 【20261003】关闭子窗口内嵌：编辑器/弹幕显示浮窗 = 真 OS 窗口
-	## （内嵌模式下"独立窗口"画进主窗口、超出部分被裁剪——底栏按钮消失的根源）
-	if get_tree() != null and get_tree().root != null:
-		get_tree().root.gui_embed_subwindows = false
 ## 【性能·实测热点修复】作者 2026-10-02 剖面导出（debug10021025.csv）显示
 ## Dialogic 输入链路（subsystem_input::is_input_blocked 等）为全场最大耗时项，
 ## 而游戏当前无任何剧情对话——在剧情系统接入前全局关闭其输入轮询。

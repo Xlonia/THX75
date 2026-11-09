@@ -191,9 +191,7 @@ var fps_label: Label = null
 ## 【批复 2026-10-05·完全接管（策划：Ctrl+Enter）】
 var take_over := false            ## 接管状态（方向键射击操作）
 ## 【0.0.9·试炼场预览临时窗】true=本 arena 跑在编辑器弹出的临时窗口里
-## （Esc 面板=解除暂停/退出试炼场；退出回调由编辑器注入）
-var preview_windowed := false
-var preview_exit_cb := Callable()
+## （0.0.8 行为：预览替换主窗口，编辑器子窗口保持；is_preview 判定面板变体）
 var _takeover_pending := false    ## Ctrl+Enter 第一次：暂停+选框确认
 var _perf_notice: Label = null
 var _takeover_label: Label = null
@@ -3912,8 +3910,9 @@ func _on_pause_btn(p: PanelContainer, txt: String) -> void:
 		"返回标题":
 			GameGlobals.goto_scene("res://scenes/title_menu.tscn")
 		"退出试炼场":
-			if preview_exit_cb.is_valid():
-				preview_exit_cb.call()
+			## 【0.0.8 行为】回编辑器场景（编辑器 _ready 从 GameGlobals.editor_events
+			## 重载=编辑状态经全局保留）
+			GameGlobals.goto_scene("res://scenes/danmaku_editor.tscn")
 
 func _build_pause_panel() -> PanelContainer:
 	var p := PanelContainer.new()
@@ -3938,7 +3937,9 @@ Esc 取消"
 	_perf_notice.visible = false
 	_perf_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_perf_notice)
-	for txt in (["解除暂停", "退出试炼场"] if preview_windowed else ["继续", "重新开始", "返回标题"]):
+	## 【0.0.9·试炼场预览（作者 20261110 终裁=0.0.7-legacy/0.0.8 行为）】
+	## 预览=goto_scene 替换**主窗口**（编辑器子窗口保持）；面板=解除暂停/退出试炼场
+	for txt in (["解除暂停", "退出试炼场"] if is_preview else ["继续", "重新开始", "返回标题"]):
 		var btn := Button.new()
 		btn.text = txt
 		btn.pressed.connect(_on_pause_btn.bind(p, txt))
