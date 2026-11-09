@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dex0ok1rx7k35"
+path="res://.godot/imported/ha_block.glsl-30964b0f50d8af9f64be374ef21f700e.res"
+
+[deps]
+
+source_file="res://shaders/ha_block.glsl"
+dest_files=["res://.godot/imported/ha_block.glsl-30964b0f50d8af9f64be374ef21f700e.res"]
+
+[params]
+

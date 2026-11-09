@@ -1,0 +1,66 @@
+extends Control
+## =============================================================
+## title_menu —— 标题画面主菜单（游戏的完整入口）
+## 菜单项（按策划要求暂定四项）：
+##   剧情模式（占位）、EX关卡（占位）、自定义对战、弹幕编辑器
+## 新角色立绘背景（themes/images/tmainUvReimu.png）+ 灵梦横飞动画
+## 复用 themes.tscn 的 reimu_bgswf.gd 逻辑（原工程既有资产）
+## =============================================================
+
+const MENU_ITEMS := [
+	{"id": "story", "label": "剧情模式"},
+	{"id": "ex", "label": "EX关卡"},
+	{"id": "versus", "label": "自定义对战"},
+	{"id": "editor", "label": "弹幕编辑器"},
+]
+
+func _ready() -> void:
+	## 背景（原工程资产）
+	var bg := TextureRect.new()
+	bg.texture = load("res://themes/images/tmainUvReimu.png")
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	## 灵梦横飞动画层（复用既有脚本）
+	var reimu := TextureRect.new()
+	reimu.texture = load("res://themes/images/Reimu.png")
+	reimu.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	reimu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	reimu.set_script(load("res://reimu_bgswf.gd"))
+	add_child(reimu)
+	## 标题
+	var title := Label.new()
+	title.text = "东方无欲拾食纪 ~Starve Universia~"
+	title.add_theme_font_size_override("font_size", 40)
+	title.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	title.position.y += 40
+	add_child(title)
+	## 菜单按钮列
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	box.add_theme_constant_override("separation", 10)
+	add_child(box)
+	for item in MENU_ITEMS:
+		var btn := Button.new()
+		btn.text = " %s " % item["label"]
+		btn.add_theme_font_size_override("font_size", 22)
+		btn.pressed.connect(_on_menu.bind(item["id"]))
+		box.add_child(btn)
+	## 版本注记
+	var foot := Label.new()
+	foot.text = "THX075 pre-classic 0.1.0 | Story/EX为占位（剧情待实装）"
+	foot.add_theme_font_size_override("font_size", 12)
+	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	foot.position.y -= 30
+	add_child(foot)
+
+func _on_menu(id: String) -> void:
+	match id:
+		"story":
+			GameGlobals.goto_scene("res://scenes/story_placeholder.tscn")
+		"ex":
+			GameGlobals.goto_scene("res://scenes/ex_placeholder.tscn")
+		"versus":
+			GameGlobals.goto_scene("res://scenes/versus_menu.tscn")
+		"editor":
+			GameGlobals.goto_scene("res://scenes/danmaku_editor.tscn")

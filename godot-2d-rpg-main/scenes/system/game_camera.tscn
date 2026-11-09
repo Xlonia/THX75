@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://8vwu5i52l856"]
+
+[ext_resource type="Script" uid="uid://bovx6ytstgvc6" path="res://scenes/system/game_camera.gd" id="1_eihhq"]
+[ext_resource type="Script" uid="uid://c6r5xohr5314y" path="res://components/target_manager.gd" id="2_htxl8"]
+
+[node name="GameCamera2D" type="Camera2D" node_paths=PackedStringArray("target_manager")]
+process_mode = 3
+position = Vector2(320, 184.001)
+script = ExtResource("1_eihhq")
+target_manager = NodePath("TargetManager")
+
+[node name="TargetManager" type="Node2D" parent="."]
+script = ExtResource("2_htxl8")
+target_player_id = 1
+metadata/_custom_type_script = "uid://c6r5xohr5314y"

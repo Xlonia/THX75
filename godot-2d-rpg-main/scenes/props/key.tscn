@@ -1,0 +1,14 @@
+[gd_scene load_steps=5 format=3 uid="uid://dg314c7dkjyup"]
+
+[ext_resource type="PackedScene" uid="uid://cqw82ociq0p1m" path="res://scenes/props/item.tscn" id="1_4sv3i"]
+[ext_resource type="Script" uid="uid://b1smopidsigyw" path="res://items/content_item.gd" id="2_qm46u"]
+[ext_resource type="Resource" uid="uid://b5caemlltomu8" path="res://items/key.tres" id="3_0yxup"]
+
+[sub_resource type="Resource" id="Resource_7sxk4"]
+script = ExtResource("2_qm46u")
+item = ExtResource("3_0yxup")
+quantity = 1
+metadata/_custom_type_script = ExtResource("2_qm46u")
+
+[node name="Key" instance=ExtResource("1_4sv3i")]
+contents = Array[ExtResource("2_qm46u")]([SubResource("Resource_7sxk4")])

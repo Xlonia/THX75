@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bopk87fqo4kde"
+path="res://.godot/imported/fam_decay.glsl-598e8b2867e5076ef3605bd3ffb05850.res"
+
+[deps]
+
+source_file="res://shaders/fam_decay.glsl"
+dest_files=["res://.godot/imported/fam_decay.glsl-598e8b2867e5076ef3605bd3ffb05850.res"]
+
+[params]
+

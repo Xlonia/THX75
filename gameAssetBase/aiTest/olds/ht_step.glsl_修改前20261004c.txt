@@ -1,0 +1,42 @@
+#[compute]
+#version 450
+// =============================================================
+// Ht 热力图步进（每侧一张"威胁图"，10Hz，每6物理帧一次）——②期
+// 策划《决斗底层→弹幕热力图》三步（顺序照抄原文）：
+//   ①扩散：每个像素寻找附近高点，实行半径为1像素的线性衰减
+//   ②衰减：本次衰减后的热度 = 0.8h 的去尾整数值
+//   ③加热：若此像素位于弹幕图白区，该像素加上64（Ht）
+// 【每侧一张（作者批复 2026-10-02）】战场热力图双方各有：
+//   side0 的 Ht 只加热 fields[0]（能击中 side0 的弹幕=敌方全部+己方超遮罩物弹），
+//   我方法弹对本侧天然为 0（"覆写为0"语义）；实体态势十六点采样本侧图。
+// 可调参数（作者手感自调，改这里即可）：DIFFUSION / DECAY / HEAT
+// 并发写：每线程只写 ht_next 自己的像素，无需原子操作。
+// =============================================================
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(set = 0, binding = 0, r8) uniform restrict readonly image2D ht_prev;
+layout(set = 0, binding = 1, r8) uniform restrict writeonly image2D ht_next;
+layout(set = 0, binding = 2, r8) uniform restrict readonly image2D ddm;
+
+const float DIFFUSION = 0.5; // ①扩散：正交邻域高点向本像素的线性衰减系数（半径1）
+const float DECAY = 0.8;     // ②衰减：0.8h（去尾）
+const float HEAT = 64.0;     // ③加热：Ht += 64（饱和255）
+
+void main() {
+	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+	if (p.x >= 400 || p.y >= 400) { return; }
+	float own = round(imageLoad(ht_prev, p).r * 255.0);
+	// ①扩散：取正交邻域高点，按半径1线性衰减叠加（max语义=寻找附近高点）
+	float n = own;
+	if (p.x > 0)   n = max(n, round(imageLoad(ht_prev, p + ivec2(-1, 0)).r * 255.0));
+	if (p.x < 399) n = max(n, round(imageLoad(ht_prev, p + ivec2(1, 0)).r * 255.0));
+	if (p.y > 0)   n = max(n, round(imageLoad(ht_prev, p + ivec2(0, -1)).r * 255.0));
+	if (p.y < 399) n = max(n, round(imageLoad(ht_prev, p + ivec2(0, 1)).r * 255.0));
+	float h = max(own, n * DIFFUSION);
+	// ②衰减：0.8h 去尾
+	h = floor(h * DECAY);
+	// ③加热：位于弹幕图白区
+	if (imageLoad(ddm, p).r > 0.0) {
+		h = min(h + HEAT, 255.0);
+	}
+	imageStore(ht_next, p, vec4(h / 255.0));
+}

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://6e5cgsiwoyd6"]
+
+[ext_resource type="PackedScene" uid="uid://cg11jqxohxkdv" path="res://scenes/props/gate_front_up.tscn" id="1_imb12"]
+
+[node name="Gate_Front" instance=ExtResource("1_imb12")]
+
+[node name="StateMachine" parent="." index="2" node_paths=PackedStringArray("current_state")]
+current_state = NodePath("idle_down")

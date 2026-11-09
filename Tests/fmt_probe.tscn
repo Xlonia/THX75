@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2fmtprobe1"]
+
+[ext_resource type="Script" path="res://Tests/fmt_probe.gd" id="1"]
+
+[node name="FmtProbe" type="Node"]
+script = ExtResource("1")

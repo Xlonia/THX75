@@ -1,0 +1,194 @@
+[gd_scene load_steps=24 format=3 uid="uid://bfgn02yd5ftws"]
+
+[ext_resource type="Texture2D" uid="uid://61occmkqb206" path="res://scenes/props/chest.png" id="1_dsvcm"]
+[ext_resource type="Script" uid="uid://dp66ice2hhj8n" path="res://scripts/state_machine/state_machine.gd" id="2_cxsuu"]
+[ext_resource type="Script" uid="uid://6jad587efd0c" path="res://scenes/props/get_contents.gd" id="2_db0e2"]
+[ext_resource type="Script" uid="uid://cmc5vhgmy6nat" path="res://scripts/state_machine/states/state_interact.gd" id="3_xbw31"]
+[ext_resource type="Script" uid="uid://bgm8n3pwwbymt" path="res://scripts/interaction_area.gd" id="4_6rb7r"]
+[ext_resource type="Script" uid="uid://dkpvtulr5kry3" path="res://scripts/state_machine/states/state_tween.gd" id="4_8p6ij"]
+[ext_resource type="Script" uid="uid://cgcn0yomfj20s" path="res://scripts/state_machine/tween_data.gd" id="5_0n50a"]
+[ext_resource type="Script" uid="uid://dgeu5dy2dlgxo" path="res://scripts/checks/check.gd" id="6_gbvtw"]
+[ext_resource type="Script" uid="uid://btmy7sadqiuav" path="res://scripts/state_machine/states/state_animation.gd" id="6_v7cmp"]
+[ext_resource type="Script" uid="uid://cwdbt1w4qmrrg" path="res://scripts/checks/check_direction.gd" id="7_q6olh"]
+[ext_resource type="Script" uid="uid://dd2m5xedjwd4m" path="res://scripts/state_machine/states/state_callable.gd" id="10_gbvtw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_niryh"]
+size = Vector2(40, 26)
+
+[sub_resource type="Animation" id="Animation_cqrp8"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2i(0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_atw4n"]
+resource_name = "idle"
+length = 0.0333367
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2i(0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_jcv77"]
+resource_name = "open"
+length = 0.16667
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.0333333, 0.0666667, 0.1, 0.133333),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_r5a30"]
+resource_name = "opened"
+length = 0.0333367
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2i(4, 0)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_jt1pw"]
+_data = {
+&"RESET": SubResource("Animation_cqrp8"),
+&"idle": SubResource("Animation_atw4n"),
+&"open": SubResource("Animation_jcv77"),
+&"opened": SubResource("Animation_r5a30")
+}
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_db0e2"]
+radius = 32.0
+
+[sub_resource type="Resource" id="Resource_6rb7r"]
+resource_name = "direction"
+script = ExtResource("7_q6olh")
+direction = 8
+disabled = false
+metadata/_custom_type_script = ExtResource("7_q6olh")
+
+[sub_resource type="Curve" id="Curve_l0liu"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.507042, 1), 0.0, 0.0, 0, 0, Vector2(0.850704, 0), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="Resource" id="Resource_tf1rf"]
+script = ExtResource("5_0n50a")
+curve = SubResource("Curve_l0liu")
+duration = 0.2
+delay = 0.1
+property = "scale"
+end_value = "Vector2(0.1,0.2)"
+reset_value_at_end = true
+
+[sub_resource type="Curve" id="Curve_jy2bj"]
+_limits = [-1.0, 1.0, 0.0, 1.0]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.35, 0.3), 0.0, 0.0, 0, 0, Vector2(0.7, -0.3), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="Resource" id="Resource_nicjx"]
+script = ExtResource("5_0n50a")
+curve = SubResource("Curve_jy2bj")
+duration = 0.1
+delay = 0.0
+property = "position"
+end_value = "Vector2(10,0)"
+reset_value_at_end = true
+
+[node name="Chest" type="Sprite2D"]
+y_sort_enabled = true
+texture = ExtResource("1_dsvcm")
+hframes = 5
+region_enabled = true
+region_rect = Rect2(0, 0, 210, 38)
+script = ExtResource("2_db0e2")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+position = Vector2(0, 3)
+shape = SubResource("RectangleShape2D_niryh")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_jt1pw")
+}
+autoplay = "idle"
+
+[node name="InteractionArea" type="Area2D" parent="."]
+z_index = -1
+position = Vector2(0, 3)
+collision_layer = 0
+collision_mask = 8
+monitorable = false
+script = ExtResource("4_6rb7r")
+metadata/_custom_type_script = ExtResource("4_6rb7r")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("CircleShape2D_db0e2")
+debug_color = Color(0.611765, 0.529412, 0.286275, 0.419608)
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("current_state") groups=["save"]]
+script = ExtResource("2_cxsuu")
+current_state = NodePath("idle")
+
+[node name="idle" type="Node" parent="StateMachine" node_paths=PackedStringArray("interaction_area", "on_completion")]
+script = ExtResource("3_xbw31")
+interaction_area = NodePath("../../InteractionArea")
+action_trigger = "interact"
+conditions = Array[ExtResource("6_gbvtw")]([SubResource("Resource_6rb7r")])
+on_completion = [NodePath("../open")]
+
+[node name="open" type="Node" parent="StateMachine" node_paths=PackedStringArray("animation_player", "on_completion")]
+script = ExtResource("6_v7cmp")
+animation_player = NodePath("../../AnimationPlayer")
+animation = "open"
+on_completion = [NodePath("../call_get_contents")]
+
+[node name="tween" type="Node" parent="StateMachine/open" node_paths=PackedStringArray("object")]
+script = ExtResource("4_8p6ij")
+object = NodePath("../../..")
+tweens = Array[ExtResource("5_0n50a")]([SubResource("Resource_tf1rf"), SubResource("Resource_nicjx")])
+
+[node name="call_get_contents" type="Node" parent="StateMachine" node_paths=PackedStringArray("node", "on_completion")]
+script = ExtResource("10_gbvtw")
+node = NodePath("../..")
+method_name = "get_contents"
+await_signal_to_complete = "contents_got"
+on_completion = [NodePath("../opened")]
+metadata/_custom_type_script = ExtResource("10_gbvtw")
+
+[node name="opened" type="Node" parent="StateMachine" node_paths=PackedStringArray("animation_player")]
+script = ExtResource("6_v7cmp")
+animation_player = NodePath("../../AnimationPlayer")
+animation = "opened"

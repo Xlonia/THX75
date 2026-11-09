@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2cmdpointsprb"]
+
+[ext_resource type="Script" path="res://Tests/cmd_points_probe.gd" id="1"]
+
+[node name="CmdPointsProbe" type="Node"]
+script = ExtResource("1")

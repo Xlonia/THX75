@@ -1,0 +1,147 @@
+class_name DdmField
+extends RefCounted
+## =============================================================
+## DDM 伤害弹幕图场（第0期：CPU 实现；GPU 迁移接口已隔离，见 TECH_SPEC 性能章）
+## 照抄策划文档《决斗底层运行机制→弹幕(Danmaku)的实现》：
+##   · 战场逻辑画布 400×400 像素
+##   · DDM 是多张非黑即白的单通道图：所有同一伤害、同一攻击模式的火力
+##     注册为同一张图 → 图键 = "伤害|模式"（1|N、3|I、2|S……）
+##   · 弹幕图 = 所有 DDM 非0像素按亮度相加(溢出仍为1)的合成图（调试显示用）
+##   · 每张图按伤害标号：1DDM_N、2DDM_I、3DDM_S……
+##   · 非法伤害(如上白泽慧音假弹幕 -1)只进 DDMU（热力图用），不参与被弹结算
+##   · 若无同一伤害的火力，则跳过该伤害弹幕图的生成
+## 【被弹结算运算流程】（每帧、每实体）：
+##   ① 免疫期(0.5秒=30帧)内直接跳过
+##   ② 从最高伤害的 DDM 开始检验“上升沿”（判定区域上一帧未接触、本帧接触白点）
+##   ③ 检验到上升沿即命中，跳过其它图的检测 → 同帧多弹幕只结算最高伤害
+##   ④ 若同一张图的白点同时接触判定点的多个部位：
+##     优先结算侧身(僚机)，再头部(武器)，再尾部(机动)
+##   ⑤ 结算后立即赋予 30 帧免疫
+## 【注册遮罩】物弹在发射源中心遮罩半径内不参与任何弹幕图生成
+##   （文档存在 25场地像素 与 15*getChara(normal) 两种表述 → 见待确认#8，
+##    本实现取编辑器规格 15*慢机速度）
+## 性能注：弹幕图刷新为每帧增量更新（子弹清旧戳+盖新戳），
+##   热力图族(像素遍历图,10fps)属第③期，届时整体迁 RenderingDevice 计算着色器。
+## =============================================================
+
+const W := 400
+const H := 400
+const N := W * H
+
+## 一方的全部 DDM：键 "dmg|mode" → PackedByteArray(0/1)
+var maps: Dictionary = {}
+## 合成弹幕图（所有 DDM 求或；调试显示/AI 用），每次 rebuild_master 懒更新
+var master := PackedByteArray()
+var master_dirty := true
+
+func _init() -> void:
+	master.resize(N)
+	master.fill(0)
+
+## 取（或按需创建）某伤害/模式的 DDM
+func get_map(dmg: int, mode: String) -> PackedByteArray:
+	var key := "%d|%s" % [dmg, mode]
+	if not maps.has(key):
+		var a := PackedByteArray()
+		a.resize(N)
+		a.fill(0)
+		maps[key] = a
+	return maps[key]
+
+func has_map(dmg: int, mode: String) -> bool:
+	return maps.has("%d|%s" % [dmg, mode])
+
+## —— 印章式注册：写圆（val=1 盖白 / val=0 擦除）——
+## 返回被写入的包围盒 [x0,y0,x1,y1]（供下一帧增量擦除）
+func stamp_circle(buf: PackedByteArray, cx: float, cy: float, r: float, val: int) -> Array:
+	var x0 := maxi(0, int(floor(cx - r)))
+	var y0 := maxi(0, int(floor(cy - r)))
+	var x1 := mini(W - 1, int(ceil(cx + r)))
+	var y1 := mini(H - 1, int(ceil(cy + r)))
+	var r2 := r * r
+	for y in range(y0, y1 + 1):
+		var dy := float(y) + 0.5 - cy
+		var row := y * W
+		for x in range(x0, x1 + 1):
+			var dx := float(x) + 0.5 - cx
+			if dx * dx + dy * dy <= r2:
+				buf[row + x] = val
+	if val != 0:
+		master_dirty = true
+	return [x0, y0, x1, y1]
+
+## 增量擦除上一帧包围盒（矩形清除即可——重叠白点由其他子弹的重盖保证）
+func erase_bbox(buf: PackedByteArray, bbox: Array) -> void:
+	if bbox.is_empty():
+		return
+	for y in range(bbox[1], bbox[3] + 1):
+		var row := y * W
+		for x in range(bbox[0], bbox[2] + 1):
+			buf[row + x] = 0
+	master_dirty = true
+
+## —— 判定区域接触检测 ——
+## 实体判定圆(cx,cy,r) 内是否有白点；返回 [是否接触, 命中白点的角度集合]
+## 角度用于部位判定（上120°武器 / 下120°机动 / 左右60°僚机）
+func probe_disc(buf: PackedByteArray, cx: float, cy: float, r: float) -> Array:
+	var touched := false
+	var angles: Array[float] = []
+	var x0 := maxi(0, int(floor(cx - r)))
+	var y0 := maxi(0, int(floor(cy - r)))
+	var x1 := mini(W - 1, int(ceil(cx + r)))
+	var y1 := mini(H - 1, int(ceil(cy + r)))
+	var r2 := r * r
+	for y in range(y0, y1 + 1):
+		var dy := float(y) + 0.5 - cy
+		var row := y * W
+		for x in range(x0, x1 + 1):
+			var dx := float(x) + 0.5 - cx
+			if dx * dx + dy * dy <= r2 and buf[row + x] != 0:
+				touched = true
+				## 命中白点相对实体中心的角度（atan2：x右 y下；正上方=-90°）
+				angles.append(atan2(dy, dx))
+	return [touched, angles]
+
+## 点接触检测（点向类 can_destroy 用：被物弹和敌方弹幕摧毁）
+func probe_disc_any(cx: float, cy: float, r: float) -> bool:
+	for key in maps:
+		var buf: PackedByteArray = maps[key]
+		if probe_disc(buf, cx, cy, r)[0]:
+			return true
+	return false
+
+## 合成弹幕图（所有 DDM 求或；懒重建）
+func rebuild_master() -> void:
+	if not master_dirty:
+		return
+	master.fill(0)
+	for key in maps:
+		var buf: PackedByteArray = maps[key]
+		for i in N:
+			if buf[i] != 0:
+				master[i] = 1
+	master_dirty = false
+
+## 调试渲染：弹幕图 → Image(L8)
+func master_image() -> Image:
+	rebuild_master()
+	var img := Image.create(W, H, false, Image.FORMAT_L8)
+	img.set_data(W, H, false, Image.FORMAT_L8, master)
+	return img
+
+## 全部图按伤害降序的键列表（被弹检测“优先检验最高伤害”用）
+func sorted_damage_keys() -> Array:
+	var keys := maps.keys()
+	## 排除非法伤害（≤0：假弹幕/预警期，它们不参与被弹结算）
+	var valid: Array = []
+	for k in keys:
+		if int(String(k).split("|")[0]) > 0:
+			valid.append(k)
+	valid.sort_custom(func(a, b):
+		return int(String(a).split("|")[0]) > int(String(b).split("|")[0]))
+	return valid
+
+func clear_all() -> void:
+	maps.clear()
+	master.fill(0)
+	master_dirty = false

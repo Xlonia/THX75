@@ -1,0 +1,9 @@
+[configuration]
+entry_symbol = "th75_extension_init"
+compatibility_minimum = "4.3"
+
+[libraries]
+windows.debug.x86_64 = "res://project_ext/bin/th75ext.template_debug.dll"
+windows.release.x86_64 = "res://project_ext/bin/th75ext.release.dll"
+windows.template_debug.x86_64 = "res://project_ext/bin/th75ext.template_debug.dll"
+windows.template_release.x86_64 = "res://project_ext/bin/th75ext.template_release.dll"

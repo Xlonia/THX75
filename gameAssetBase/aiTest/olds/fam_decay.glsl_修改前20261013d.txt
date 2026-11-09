@@ -1,0 +1,34 @@
+#[compute]
+#version 450
+// =============================================================
+// 图族衰减+扩散（He/Hd/Hr/Hp 共用）：decay 与扩散半径由 uniform 控制
+//   decay：He/Hr=0.9（快记忆） Hp=0.98（长记忆规律） Hd=0.92
+//   blur：Hd 用半径2（策划：半径2高斯模糊）；其余半径1
+// =============================================================
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(set = 0, binding = 0, r8) uniform restrict readonly image2D m_prev;
+layout(set = 0, binding = 1, r8) uniform restrict writeonly image2D m_next;
+layout(set = 0, binding = 2) restrict readonly uniform Params {
+	float decay;
+	float blur2; // 1.0=半径2 0.0=半径1
+} prm;
+
+void main() {
+	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+	if (p.x >= 400 || p.y >= 400) { return; }
+	float h = round(imageLoad(m_prev, p).r * 255.0);
+	float n = h;
+	if (p.x > 0)   n = max(n, round(imageLoad(m_prev, p + ivec2(-1, 0)).r * 255.0));
+	if (p.x < 399) n = max(n, round(imageLoad(m_prev, p + ivec2(1, 0)).r * 255.0));
+	if (p.y > 0)   n = max(n, round(imageLoad(m_prev, p + ivec2(0, -1)).r * 255.0));
+	if (p.y < 399) n = max(n, round(imageLoad(m_prev, p + ivec2(0, 1)).r * 255.0));
+	if (prm.blur2 > 0.5) { // 半径2（对角+隔位）
+		if (p.x > 1)   n = max(n, round(imageLoad(m_prev, p + ivec2(-2, 0)).r * 255.0) * 0.9);
+		if (p.x < 398) n = max(n, round(imageLoad(m_prev, p + ivec2(2, 0)).r * 255.0) * 0.9);
+		if (p.y > 1)   n = max(n, round(imageLoad(m_prev, p + ivec2(0, -2)).r * 255.0) * 0.9);
+		if (p.y < 398) n = max(n, round(imageLoad(m_prev, p + ivec2(0, 2)).r * 255.0) * 0.9);
+	}
+	h = max(h, n * 0.85); // 扩散（线性衰减叠加）
+	h = floor(h * prm.decay);
+	imageStore(m_next, p, vec4(h / 255.0));
+}

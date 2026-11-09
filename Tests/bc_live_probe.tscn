@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2bcliveprob1"]
+
+[ext_resource type="Script" path="res://Tests/bc_live_probe.gd" id="1"]
+
+[node name="BcLiveProbe" type="Node"]
+script = ExtResource("1")

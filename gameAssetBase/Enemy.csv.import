@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dpxxxh4sgjyto"
+
+[deps]
+
+files=["res://gameAssetBase/Enemy.NameZH.translation", "res://gameAssetBase/Enemy.NameJP.translation", "res://gameAssetBase/Enemy.NameEN.translation"]
+
+source_file="res://gameAssetBase/Enemy.csv"
+dest_files=["res://gameAssetBase/Enemy.NameZH.translation", "res://gameAssetBase/Enemy.NameJP.translation", "res://gameAssetBase/Enemy.NameEN.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://d0h4c5ife4dqj"
+path="res://.godot/imported/traj_stamp.glsl-d77481365a6ca6d514b46bbb3897d3f1.res"
+
+[deps]
+
+source_file="res://shaders/traj_stamp.glsl"
+dest_files=["res://.godot/imported/traj_stamp.glsl-d77481365a6ca6d514b46bbb3897d3f1.res"]
+
+[params]
+

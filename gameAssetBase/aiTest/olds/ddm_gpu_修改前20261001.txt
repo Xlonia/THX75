@@ -1,0 +1,117 @@
+class_name DdmGpu
+extends RefCounted
+## =============================================================
+## DDM 伤害弹幕图 GPU 后端（第①期性能改造核心）
+## 【策划对齐】“弹幕是一个能够将材质渲染至弹幕图与屏幕显示的粒子效果”
+##   ——取消 0 期 CPU 逐弹像素印章/包围盒擦除/master 全量重建，
+##   改为每帧 GPU 两趟 compute：①清零 ②弹幕印章（线程=弹幕，内循环圆盘填充）。
+## 【被弹解析不回读】命中判定改由 CPU 空间哈希（BulletHash）完成——
+##   语义等价于对 DDM 的上升沿探测（键=伤害|模式，最高伤害优先），且是
+##   矢量精确（文档：矢量运算，1像素还是100像素都能精准命中部位）。
+##   GPU DDM 图用于：AI 热力图源（③期）、调试显示（F3）、预览。
+## 【降级】无 RenderingDevice（headless/兼容模式）时 ok=false，
+##   调用方跳过 GPU 路径，游戏逻辑完全不受影响（被弹走哈希）。
+## 【capacity】印章 SSBO 预分配 MAX_STAMPS，每帧 buffer_update 增量上传。
+## =============================================================
+
+const W := 400
+const H := 400
+const MAX_STAMPS := 16384 ## 单侧最大印章数（弹幕+激光细分；超出截断并计数告警）
+
+var ok := false
+var _rd: RenderingDevice = null
+var _clear_shader: RDShaderFile
+var _stamp_shader: RDShaderFile
+var _clear_pipe: RID
+var _stamp_pipe: RID
+var _sampler_set_layout: RID
+var _clear_set: RID
+var _stamp_set: RID
+var _tex: RID = RID()          ## R8 存储纹理（双方各一份实例）
+var _tex_rid_owner: RID
+var _stamp_buffer: RID
+var _stamp_uniform: RDUniform
+var _dropped := 0              ## 本帧被截断的印章数（性能诊断）
+
+func _init() -> void:
+	_rd = RenderingServer.create_local_rendering_device()
+	if _rd == null:
+		push_warning("[DdmGpu] 无本地渲染设备（headless/兼容），DDM 图走降级模式")
+		return
+	if not _setup():
+		_rd = null
+		return
+	ok = true
+
+func _setup() -> bool:
+	_clear_shader = load("res://shaders/ddm_clear.glsl")
+	_stamp_shader = load("res://shaders/ddm_stamps.glsl")
+	if _clear_shader == null or _stamp_shader == null:
+		push_warning("[DdmGpu] 计算着色器加载失败")
+		return false
+	## 纹理：R8 400×400，采样+存储（枚举为 RenderingDevice 全局枚举）
+	var fmt := RDTextureFormat.new()
+	fmt.width = W
+	fmt.height = H
+	fmt.format = RenderingDevice.DATA_FORMAT_R8_UNORM
+	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	_tex = _rd.texture_create(fmt, RDTextureView.new(), [])
+	if not _tex.is_valid():
+		return false
+	## 印章 SSBO（容量固定，帧内 buffer_update）
+	_stamp_buffer = _rd.storage_buffer_create(MAX_STAMPS * 16)
+	## 管线与描述集
+	var clear_s := _clear_shader.get_spirv()
+	_clear_pipe = _rd.compute_pipeline_create(clear_s)
+	var stamp_s := _stamp_shader.get_spirv()
+	_stamp_pipe = _rd.compute_pipeline_create(stamp_s)
+	if not _clear_pipe.is_valid() or not _stamp_pipe.is_valid():
+		return false
+	var tex_uniform := RDUniform.new()
+	tex_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	tex_uniform.binding = 0
+	tex_uniform.add_id(_tex)
+	_clear_set = _rd.uniform_set_create([tex_uniform], _clear_pipe, 0)
+	_stamp_uniform = RDUniform.new()
+	_stamp_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	_stamp_uniform.binding = 1
+	_stamp_uniform.add_id(_stamp_buffer)
+	_stamp_set = _rd.uniform_set_create([tex_uniform, _stamp_uniform], _stamp_pipe, 0)
+	return true
+
+## 每帧调用：stamps = PackedFloat32Array（每 4 float 一枚：x,y,r,0）
+## 返回是否成功提交（false=降级）
+func render(stamps: PackedFloat32Array) -> bool:
+	if not ok:
+		return false
+	var n: int = stamps.size() / 4
+	_dropped = maxi(0, n - MAX_STAMPS)
+	n = mini(n, MAX_STAMPS)
+	## ① 清零（400/8 × 400/8 组）
+	var cl := _rd.compute_list_begin()
+	_rd.compute_list_bind_compute_pipeline(cl, _clear_pipe)
+	_rd.compute_list_bind_uniform_set(cl, _clear_set, 0)
+	_rd.compute_list_dispatch(cl, 50, 50, 1)
+	## ② 印章（每线程一枚）
+	if n > 0:
+		var bytes := stamps.slice(0, n * 4).to_byte_array()
+		_rd.buffer_update(_stamp_buffer, 0, bytes.size(), bytes)
+		_rd.compute_list_bind_compute_pipeline(cl, _stamp_pipe)
+		_rd.compute_list_bind_uniform_set(cl, _stamp_set, 0)
+		_rd.compute_list_dispatch(cl, (n + 63) / 64, 1, 1)
+	_rd.compute_list_end() ## 提交（RD 自动插入存储→后续使用屏障）
+	return true
+
+## 供 Sprite/TextureRect 显示的纹理（调试叠层/AI预览用）
+func get_display_texture() -> Texture2D:
+	if not ok:
+		return null
+	var t := Texture2DRD.new()
+	t.texture_rd_override(_tex, _rd)
+	return t
+
+func get_dropped() -> int:
+	return _dropped

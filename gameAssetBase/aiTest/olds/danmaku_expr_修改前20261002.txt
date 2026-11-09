@@ -1,0 +1,134 @@
+class_name DanmakuExpr
+extends RefCounted
+## =============================================================
+## 表达式求值器 —— 策划文档《运算参数》《外界变量》《弹幕自变量》
+## 【第①期新增：常量折叠】编译期检测表达式未使用任何变量 → 只执行一次，
+##   之后 execute_dict 直接返回缓存值（静态弹幕/固定颜色零求值开销）。
+## 【^→**】文档规定 ^ 为次方，Godot Expression 的 ^ 是按位异或，编译前翻译。
+## 出错策略：解析/执行失败 → 告警一次 → 返回 fallback（坏mod不崩游戏）。
+## =============================================================
+
+var _text: String = ""
+var _vars: PackedStringArray = []
+var _expr: Expression = null
+var _err_reported := false
+var _const_val: float = 0.0
+var _is_const := false
+
+## 编译。vars 例：["t","target_x","target_y"]
+## 【文档函数翻译】Godot Expression 不支持自定义函数调用，以下在编译期翻译：
+##   n(k)→n（遍历换元：值=当前采样坐标；步长由 laser_n_step 列承载）
+##   privates_id()→privates_id　getField(t)→field_t
+##   log(底,真)→(log(真)/log(底))（Godot log 为自然对数单参）
+func compile(text: String, vars: PackedStringArray) -> bool:
+	_text = text
+	_vars = vars
+	_expr = null
+	_err_reported = false
+	_is_const = false
+	var s := _translate(text.strip_edges().replace("^", "**"))
+	if s.is_empty():
+		return false
+	var uses_var := false
+	for v in vars:
+		if _contains_word(s, v):
+			uses_var = true
+			break
+	_expr = Expression.new()
+	var err := _expr.parse(s, vars)
+	if err != OK:
+		_report("解析失败: %s" % _expr.get_error_text())
+		_expr = null
+		return false
+	if not uses_var:
+		## 常量折叠：立即求值一次（失败仅放弃折叠，不算编译错误）
+		var cv = _expr.execute([], _expr, false)
+		if not _expr.has_execute_failed() and cv != null:
+			_const_val = float(cv)
+			_is_const = true
+	return true
+
+## 文档函数 → Godot Expression 等价文本
+static func _translate(s: String) -> String:
+	if s.is_empty():
+		return s
+	var out := s
+	var re_n := RegEx.new()
+	re_n.compile("(?<![a-zA-Z0-9_])n\\(\\s*[0-9.]+\\s*\\)")
+	out = re_n.sub(out, "n", true)
+	var re_pid := RegEx.new()
+	re_pid.compile("privates_id\\(\\s*\\)")
+	out = re_pid.sub(out, "privates_id", true)
+	var re_gf := RegEx.new()
+	re_gf.compile("getField\\(\\s*t\\s*\\)")
+	out = re_gf.sub(out, "field_t", true)
+	var re_log := RegEx.new()
+	re_log.compile("log\\(\\s*([^(),]+)\\s*,\\s*([^(),]+)\\s*\\)")
+	var m := re_log.search(out)
+	while m != null:
+		## Godot RegEx.sub 不支持 \\1 反向引用插入 → 手工拼接替换
+		var rep := "(log(%s)/log(%s))" % [m.strings[2], m.strings[1]]
+		out = out.substr(0, m.get_start()) + rep + out.substr(m.get_end())
+		m = re_log.search(out)
+	return out
+
+## 词边界包含检测（防 "t" 匹配到 "target_x"）
+static func _contains_word(s: String, word: String) -> bool:
+	var from := 0
+	while true:
+		var i := s.find(word, from)
+		if i < 0:
+			return false
+		var before_ok := i == 0 or not _is_word_char(s[i - 1])
+		var after_i := i + word.length()
+		var after_ok := after_i >= s.length() or not _is_word_char(s[after_i])
+		if before_ok and after_ok:
+			return true
+		from = i + 1
+	return false
+
+static func _is_word_char(c: String) -> bool:
+	return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (c >= "0" and c <= "9") or c == "_"
+
+## 执行。values 与编译期变量名表一一对应；失败/未编译返回 fallback
+## 【Godot 4.7 Expression 陷阱】不带 self_instance 的 execute 在表达式含
+##   隐式 self 查找时报错——传表达式对象自身作实例即可（不需要真实宿主）。
+func execute(values: Array, fallback: float = 0.0) -> float:
+	if _is_const:
+		return _const_val
+	if _expr == null:
+		return fallback
+	var result = _expr.execute(values, _expr, false)
+	if _expr.has_execute_failed() or result == null:
+		_report("执行失败: %s" % _expr.get_error_text())
+		return fallback
+	return float(result)
+
+## 便捷：{变量名: 值} 字典执行
+## 【注】Expression 编译期记录的输入下标基于完整变量表，必须全量传参
+##   （只传子集会下标错位）；优化点在复用缓冲数组，避免每次分配。
+var _values_buf: Array = []
+func execute_dict(ctx: Dictionary, fallback: float = 0.0) -> float:
+	if _is_const:
+		return _const_val
+	if _expr == null:
+		return fallback
+	if _values_buf.size() != _vars.size():
+		_values_buf.resize(_vars.size())
+		_values_buf.fill(0.0)
+	for i in _vars.size():
+		if ctx.has(_vars[i]):
+			_values_buf[i] = ctx[_vars[i]]
+	return execute(_values_buf, fallback)
+
+func _report(msg: String) -> void:
+	if _err_reported:
+		return
+	_err_reported = true
+	push_warning("[DanmakuExpr] 表达式「%s」%s" % [_text, msg])
+
+func is_empty() -> bool:
+	return _text.strip_edges().is_empty()
+
+func uses_variable(v: String) -> bool:
+	return _contains_word(_text, v)

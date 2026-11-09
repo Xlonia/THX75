@@ -1,0 +1,400 @@
+2026-09-29 20:04:53,899 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.12s, 1201 chars)
+
+2026-09-29 20:04:57,379 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #142: model=glm-5.3 provider=custom in=320518 out=49 total=320567 latency=3.4s cache=318464/320518 (99%)
+
+2026-09-29 20:04:57,482 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.08s, 490 chars)
+
+2026-09-29 20:05:03,257 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #143: model=glm-5.3 provider=custom in=320733 out=63 total=320796 latency=5.7s cache=320512/320733 (100%)
+
+2026-09-29 20:05:03,303 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 2569 chars)
+
+2026-09-29 20:05:18,599 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #144: model=glm-5.3 provider=custom in=321871 out=529 total=322400 latency=15.3s cache=320704/321871 (100%)
+
+2026-09-29 20:05:18,730 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.11s, 1398 chars)
+
+2026-09-29 20:05:18,974 INFO tools.environments.local: Selected shell: powershell at C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-09-29 20:05:19,006 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.26s, 172 chars)
+
+2026-09-29 20:05:22,407 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #145: model=glm-5.3 provider=custom in=322991 out=41 total=323032 latency=3.4s cache=321856/322991 (100%)
+
+2026-09-29 20:05:22,433 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.01s, 441 chars)
+
+2026-09-29 20:05:25,815 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #146: model=glm-5.3 provider=custom in=323191 out=42 total=323233 latency=3.4s cache=322944/323191 (100%)
+
+2026-09-29 20:05:25,859 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 1167 chars)
+
+2026-09-29 20:05:40,468 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #147: model=glm-5.3 provider=custom in=323812 out=529 total=324341 latency=14.6s cache=323136/323812 (100%)
+
+2026-09-29 20:05:40,606 INFO agent.tool_executor: tool write_file completed (0.11s, 254 chars)
+
+2026-09-29 20:05:40,607 INFO agent.tool_executor: tool write_file completed (0.11s, 260 chars)
+
+2026-09-29 20:05:43,266 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:05:43,267 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:05:43,268 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:05:43,269 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:05:43,271 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:05:43,271 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:05:45,028 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #148: model=glm-5.3 provider=custom in=324504 out=134 total=324638 latency=4.4s cache=323776/324504 (100%)
+
+2026-09-29 20:05:45,281 INFO tools.environments.local: Selected shell: powershell at C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-09-29 20:05:45,322 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.28s, 171 chars)
+
+2026-09-29 20:05:48,820 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #149: model=glm-5.3 provider=custom in=324699 out=43 total=324742 latency=3.5s cache=324480/324699 (100%)
+
+2026-09-29 20:05:48,848 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.01s, 448 chars)
+
+2026-09-29 20:05:54,467 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #150: model=glm-5.3 provider=custom in=324902 out=30 total=324932 latency=5.6s cache=324672/324902 (100%)
+
+2026-09-29 20:05:54,510 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 1078 chars)
+
+2026-09-29 20:06:13,460 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #151: model=glm-5.3 provider=custom in=325323 out=977 total=326300 latency=18.9s cache=324864/325323 (100%)
+
+2026-09-29 20:06:13,649 INFO agent.tool_executor: tool patch completed (0.16s, 1219 chars)
+
+2026-09-29 20:06:13,656 INFO agent.tool_executor: tool patch completed (0.17s, 960 chars)
+
+2026-09-29 20:06:13,931 INFO tools.environments.local: Selected shell: powershell at C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-09-29 20:06:13,975 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.29s, 172 chars)
+
+2026-09-29 20:06:17,501 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #152: model=glm-5.3 provider=custom in=327330 out=44 total=327374 latency=3.5s cache=325312/327330 (99%)
+
+2026-09-29 20:06:17,699 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.01s, 441 chars)
+
+2026-09-29 20:06:19,315 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:06:21,651 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #153: model=glm-5.3 provider=custom in=327533 out=42 total=327575 latency=3.9s cache=327296/327533 (100%)
+
+2026-09-29 20:06:21,692 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 450 chars)
+
+2026-09-29 20:06:26,213 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #154: model=glm-5.3 provider=custom in=327721 out=59 total=327780 latency=4.5s cache=327488/327721 (100%)
+
+2026-09-29 20:06:26,283 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.05s, 131 chars)
+
+2026-09-29 20:06:35,554 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #155: model=glm-5.3 provider=custom in=327832 out=259 total=328091 latency=9.2s cache=327680/327832 (100%)
+
+2026-09-29 20:06:35,817 INFO tools.environments.local: Selected shell: powershell at C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-09-29 20:06:35,854 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.27s, 172 chars)
+
+2026-09-29 20:06:39,259 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #156: model=glm-5.3 provider=custom in=328150 out=44 total=328194 latency=3.4s cache=327808/328150 (100%)
+
+2026-09-29 20:06:56,347 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (17.07s, 1083 chars)
+
+2026-09-29 20:07:03,479 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #157: model=glm-5.3 provider=custom in=328552 out=52 total=328604 latency=7.1s cache=328128/328552 (100%)
+
+2026-09-29 20:07:03,556 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.06s, 17 chars)
+
+2026-09-29 20:08:17,132 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #158: model=glm-5.3 provider=custom in=328614 out=3541 total=332155 latency=73.5s cache=328512/328614 (100%)
+
+2026-09-29 20:08:17,242 INFO [20260925_194111_4c424a] agent.tool_executor: tool write_file completed (0.08s, 243 chars)
+
+2026-09-29 20:08:17,267 INFO [20260925_194111_4c424a] agent.tool_executor: tool todo completed (0.01s, 1110 chars)
+
+2026-09-29 20:08:39,499 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #159: model=glm-5.3 provider=custom in=332671 out=893 total=333564 latency=22.2s cache=328576/332671 (99%)
+
+2026-09-29 20:08:39,539 INFO [20260925_194111_4c424a] agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=glm-5.3 api_calls=159/500 budget=159/500 tool_turns=227 last_msg_role=assistant response_len=1499 session=20260925_194111_4c424a
+
+2026-09-29 20:08:39,585 INFO [20260925_194111_4c424a] tui_gateway.server: tui turn finished: ui_session=ac4f56e7 session_key=202609...424a agent_session_id=20260925_194111_4c424a status=complete error_retained=False duration=5032.7s
+
+2026-09-29 20:08:39,599 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=bg-review:36268 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.3
+
+2026-09-29 20:08:39,749 WARNING tools.registry: check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:39,891 WARNING tools.registry: check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,023 WARNING tools.registry: check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,141 WARNING tools.registry: check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,313 WARNING tools.registry: check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,377 WARNING tools.registry: check_fn is_browser_use_cli_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,502 WARNING tools.registry: check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,602 WARNING tools.registry: check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,706 WARNING tools.registry: check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,814 WARNING tools.registry: check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:40,919 WARNING tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,026 WARNING tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,055 WARNING tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,056 WARNING tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,072 WARNING tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,073 WARNING tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,075 WARNING tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,076 WARNING tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-29 20:08:41,087 INFO agent.auxiliary_client: Vision auto-detect: using main provider custom (glm-5.3)
+
+2026-09-29 20:08:41,116 INFO tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 5 deferred (~703 tokens), listing full (budget ~4000 tokens)
+
+2026-09-29 20:08:41,119 INFO tools.memory_tool: memory: loading from C:\Users\LENOVO\AppData\Roaming\cn.org.hermesagent.desktop\runtime\hermes-home\memories
+
+2026-09-29 20:08:41,312 INFO [20260925_194111_4c424a] agent.turn_context: conversation turn: session=20260925_194111_4c424a model=glm-5.3 provider=custom platform=desktop history=605 msg='Review the conversation above and update the skill library. Be ACTIVE — most ses...'
+
+2026-09-29 20:08:41,376 INFO run_agent: OpenAI client created (chat_completion_stream_request, shared=False) thread=Thread-266 (<lambda>):25916 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.3
+
+2026-09-29 20:09:21,598 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:09:30,955 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #1: model=glm-5.3 provider=custom in=335110 out=1164 total=336274 latency=49.6s cache=12928/335110 (4%)
+
+2026-09-29 20:09:31,125 INFO [20260925_194111_4c424a] agent.tool_executor: tool skills_list completed (0.16s, 22248 chars)
+
+2026-09-29 20:10:37,215 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #2: model=glm-5.3 provider=custom in=341036 out=2164 total=343200 latency=66.1s cache=335104/341036 (98%)
+
+2026-09-29 20:10:37,395 WARNING [20260925_194111_4c424a] agent.tool_executor: Tool skill_manage returned error (0.17s): {"success": false, "error": "operations[0] (create on 'godot-game-development') failed: Description is 227 chars — new skills must fit the 60-char system-prompt budget (one sentence, trigger first, en
+
+2026-09-29 20:10:43,280 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:10:43,281 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:10:43,283 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:10:43,284 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:10:43,286 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:10:43,287 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:10:55,935 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #3: model=glm-5.3 provider=custom in=342116 out=962 total=343078 latency=18.5s cache=340992/342116 (100%)
+
+2026-09-29 20:10:56,075 WARNING [20260925_194111_4c424a] agent.tool_executor: Tool skill_manage returned error (0.14s): {"success": false, "error": "operations[0] (create on 'godot-game-development') failed: Description is 112 chars — new skills must fit the 60-char system-prompt budget (one sentence, trigger first, en
+
+2026-09-29 20:11:13,631 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #4: model=glm-5.3 provider=custom in=343187 out=956 total=344143 latency=17.5s cache=342080/343187 (100%)
+
+2026-09-29 20:11:13,774 WARNING [20260925_194111_4c424a] agent.tool_executor: Tool skill_manage returned error (0.14s): {"success": false, "error": "operations[0] (create on 'godot-game-development') failed: Description is 85 chars — new skills must fit the 60-char system-prompt budget (one sentence, trigger first, end
+
+2026-09-29 20:11:32,495 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #5: model=glm-5.3 provider=custom in=344356 out=1015 total=345371 latency=18.7s cache=343168/344356 (100%)
+
+2026-09-29 20:11:32,852 INFO [20260925_194111_4c424a] agent.tool_executor: tool skill_manage completed (0.18s, 147 chars)
+
+2026-09-29 20:12:28,789 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:12:39,927 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #6: model=glm-5.3 provider=custom in=345353 out=2498 total=347851 latency=67.0s cache=344320/345353 (100%)
+
+2026-09-29 20:12:40,002 WARNING [20260925_194111_4c424a] agent.tool_executor: Tool skill_manage returned error (0.07s): {"success": false, "error": "operations[0] (write_file on 'godot-game-development') failed: file_content is required for 'write_file'. — batch aborted, all touched skills rolled back.", "failed_index"
+
+2026-09-29 20:13:16,051 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #7: model=glm-5.3 provider=custom in=347914 out=2258 total=350172 latency=36.0s cache=345344/347914 (99%)
+
+2026-09-29 20:13:16,199 INFO [20260925_194111_4c424a] agent.tool_executor: tool skill_manage completed (0.14s, 313 chars)
+
+2026-09-29 20:13:22,231 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #8: model=glm-5.3 provider=custom in=350262 out=15 total=350277 latency=6.0s cache=347904/350262 (99%)
+
+2026-09-29 20:13:22,349 INFO [20260925_194111_4c424a] agent.tool_executor: tool skill_view completed (0.11s, 4996 chars)
+
+2026-09-29 20:13:27,207 INFO tools.terminal_tool: Cleaned up inactive environment for task: session:20260925_194111_4c424a
+
+2026-09-29 20:13:43,302 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #9: model=glm-5.3 provider=custom in=351438 out=609 total=352047 latency=20.9s cache=350208/351438 (100%)
+
+2026-09-29 20:13:43,306 INFO [20260925_194111_4c424a] agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=glm-5.3 api_calls=9/16 budget=9/16 tool_turns=235 last_msg_role=assistant response_len=1060 session=20260925_194111_4c424a
+
+2026-09-29 20:13:43,339 INFO [20260925_194111_4c424a] run_agent: OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=bg-review:36268 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.3
+
+2026-09-29 20:13:43,339 INFO [20260925_194111_4c424a] run_agent: OpenAI client closed (agent_close, shared=False, tcp_force_closed=0) thread=bg-review:36268 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.3
+
+2026-09-29 20:13:43,342 INFO [20260925_194111_4c424a] agent.background_review: Background review complete: thread=bg-review calls=9 in=338724 out=11641 cache_read=2762048 result=none
+
+2026-09-29 20:15:29,938 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:15:43,294 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:15:43,294 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:15:43,296 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:15:43,297 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:15:43,299 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:15:43,300 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:18:31,169 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:20:43,311 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:20:43,311 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:20:43,313 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:20:43,313 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:20:43,315 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:20:43,316 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:21:34,631 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:24:37,373 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:25:43,326 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:25:43,327 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:25:43,328 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:25:43,329 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:25:43,330 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:25:43,331 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:27:40,914 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:30:43,197 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:30:43,340 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:30:43,341 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:30:43,342 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:30:43,343 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:30:43,345 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:30:43,346 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:33:44,263 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:35:43,347 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:35:43,348 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:35:43,349 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:35:43,350 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:35:43,352 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:35:43,353 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:36:45,549 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:39:48,500 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:40:43,362 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:40:43,363 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:40:43,365 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:40:43,366 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:40:43,367 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:40:43,368 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:42:51,174 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:45:43,373 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:45:43,373 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:45:43,375 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:45:43,376 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:45:43,377 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:45:43,378 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:45:52,658 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:48:59,718 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:50:43,386 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:50:43,386 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:50:43,388 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:50:43,389 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:50:43,390 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:50:43,391 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:52:02,265 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:55:04,716 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 20:55:43,398 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:55:43,399 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 20:55:43,401 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:55:43,402 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 20:55:43,404 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:55:43,405 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 20:58:05,889 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 21:00:43,412 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:00:43,412 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:00:43,414 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:00:43,414 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:00:43,416 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:00:43,417 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:01:30,696 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 21:04:33,055 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 21:05:43,425 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:05:43,425 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:05:43,427 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:05:43,428 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:05:43,430 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:05:43,430 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:07:34,376 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 21:10:35,540 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-29 21:10:43,438 WARNING tools.mcp_tool: MCP OAuth setup failed for 'gitlab': MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:10:43,439 WARNING tools.mcp_tool: MCP server 'gitlab' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login gitlab` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'gitlab': non-interactive environment and no cached tokens found. Run `hermes mcp login gitlab` interactively first to complete initial authorization.
+
+2026-09-29 21:10:43,440 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:10:43,441 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-29 21:10:43,443 WARNING tools.mcp_tool: MCP OAuth setup failed for 'comfy-cloud': MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:10:43,444 WARNING tools.mcp_tool: MCP server 'comfy-cloud' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login comfy-cloud` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'comfy-cloud': non-interactive environment and no cached tokens found. Run `hermes mcp login comfy-cloud` interactively first to complete initial authorization.
+
+2026-09-29 21:13:36,711 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+

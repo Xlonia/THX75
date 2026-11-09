@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3 uid="uid://ry5d5tfsku2i"]
+
+[ext_resource type="Script" uid="uid://ct3r6n5hf377k" path="res://scenes/hud/entity_hp_bar.gd" id="1_uxal8"]
+[ext_resource type="Texture2D" uid="uid://dnfkfjs86era6" path="res://scenes/hud/heart-empty.png" id="1_ypjl8"]
+[ext_resource type="Texture2D" uid="uid://ycfmtnxswo8m" path="res://scenes/hud/heart.png" id="2_qqi80"]
+
+[node name="PlayerHUD" type="CanvasLayer" node_paths=PackedStringArray("texture_under", "texture_progress")]
+script = ExtResource("1_uxal8")
+texture_under = NodePath("BarUnder")
+texture_progress = NodePath("BarProgress")
+
+[node name="BarUnder" type="TextureRect" parent="."]
+layout_direction = 2
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 21.0
+offset_bottom = 18.0
+texture = ExtResource("1_ypjl8")
+stretch_mode = 1
+
+[node name="BarProgress" type="TextureRect" parent="."]
+layout_direction = 2
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 21.0
+offset_bottom = 18.0
+texture = ExtResource("2_qqi80")
+stretch_mode = 1

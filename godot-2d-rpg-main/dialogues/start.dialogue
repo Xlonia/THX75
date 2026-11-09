@@ -1,0 +1,12 @@
+~ forest_citizen_talk
+
+Citizen: Open inventory tip [ID:HI_HELLO_YOU_CAN_OPEN_YOUR_IN_2D6CE2]
+- Sure [ID:SURE_1DB999]
+	Citizen: Great! [ID:GREAT_2A898E]
+- No [ID:NO_FC8B52]
+	Citizen: Now you know it! [ID:NOW_YOU_KNOW_IT_A89471]
+- Can you repeat, please? [ID:CAN_YOU_REPEAT_PLEASE_33C971] => forest_citizen_talk
+- Go away [ID:GO_AWAY_8B8051] => END
+Citizen: See you! [ID:SEE_YOU_7B034C]
+
+=> END

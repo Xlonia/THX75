@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bbmewj0wv3ki1"
+path="res://.godot/imported/ht_derive_ref.glsl-79011be4d1e89b7ba1df82aa308de4da.res"
+
+[deps]
+
+source_file="res://Tests/ht_derive_ref.glsl"
+dest_files=["res://.godot/imported/ht_derive_ref.glsl-79011be4d1e89b7ba1df82aa308de4da.res"]
+
+[params]
+

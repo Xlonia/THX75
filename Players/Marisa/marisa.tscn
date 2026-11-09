@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://bdhpabdkb1b37"]
+
+[ext_resource type="Texture2D" uid="uid://drkqo71awk556" path="res://Players/Marisa/Sprites/Marisa.png" id="1_d1bx5"]
+[ext_resource type="Script" uid="uid://431cds85jmb4" path="res://Players/Marisa/playerCtrller.gd" id="1_i25k4"]
+
+[node name="Marisa" type="CharacterBody2D" unique_id=669170817]
+motion_mode = 1
+script = ExtResource("1_i25k4")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1444738270]
+texture = ExtResource("1_d1bx5")
+offset = Vector2(-2.33, 0)
+hframes = 16

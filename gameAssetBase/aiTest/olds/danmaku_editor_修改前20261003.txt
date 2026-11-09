@@ -1,0 +1,1150 @@
+extends Control
+## =============================================================
+## danmaku_editor —— 第①期重构（对齐作者批复的编辑器设计案）
+## 【布局（批复）】
+##   顶栏：文件(新建/打开/导入材质/导出.thx/导出为官方数据(仅工程环境)/返回游戏标题)
+##         编辑(撤销/重做/项目信息/查找)　帮助(游戏信息/文档链接)
+##   左栏：事件列表（增/删/复制）
+##   主区：标签页——①通用参数 ②弹幕表达（按 tag 互斥只显示核心参数）
+##          ③使用者（该事件被哪些角色/火力槽引用）
+##   底栏：状态栏（编译错误/操作反馈）+ 试炼场预览按钮
+## 【功能】
+##   运算/参数引入工具浮窗：全角注释插入（log(“底数”,“真数”)）+搜索+置顶
+##   # 字符拦截（Godot 注释符会损毁文件）
+##   可行性检查：全部表达式编译 → 状态栏报告
+##   工程环境检测：res://gameAssetBase 可写时才显示“导出为官方数据”
+## =============================================================
+
+## 表单字段模式：[属性名, 标签, 控件类型, 选项?]
+const SCHEMA_COMMON := [
+	["event_name", "事件名(弹幕命名)", "str"],
+	["owner", "归属角色", "opt_chars"],
+	["slot", "火力槽", "opt", ["main", "sub", "rest", "skill", "spell"]],
+	["timeline_frame", "时间轴帧(-1=火控循环)", "int"],
+	["texture", "材质名", "opt_tex"],
+	["dmg", "伤害(碎甲类=瘫痪秒)", "int"],
+	["dmg_mode", "攻击模式", "opt", ["N", "I", "S"]],
+	["dmg_allow_moderate", "允许伤害调整", "check"],
+	["repeat_time", "重复时间(帧)", "int"],
+	["repeat_freq", "重复频率(0=禁用)", "int"],
+	["range_frames", "航程/存活时间(帧)", "int"],
+	["is_abs_coord", "坐标定值(绝对坐标)", "check"],
+	["x_offset", "x偏差(遮罩起点)", "float"],
+	["y_offset", "y偏差(遮罩起点)", "float"],
+	["rate", "概率rate(空=无门)", "gate"],
+	["pattern", "规律pattern(空=无门)", "gate"],
+	["danmaku_size_muti", "规格参数", "float"],
+	["is_phy", "物弹(友伤)", "check"],
+	["is_cannon", "火炮类", "check"],
+	["alpha", "不透明度表达式(256=全)", "expr"],
+	["pass_cond", "隐藏条件(命题)", "expr"],
+]
+## 弹幕表达（按 tag 互斥；tag 在通用区切换，此处只显示对应核心参数）
+const SCHEMA_BY_TAG := {
+	"IsDanmakuRegular": [
+		["speed", "速度(像素/帧)", "expr"],
+		["x", "x权重(方向向量)", "expr"],
+		["y", "y权重(方向向量)", "expr"],
+	],
+	"IsDanmakuPhysical": [
+		["speed", "速度乘数(常数)", "expr"],
+		["x", "x速度表达式", "expr"],
+		["y", "y速度表达式", "expr"],
+	],
+	"IsDanmakuFuncted": [
+		["speed", "函数运行速度(x行进)", "expr"],
+		["x", "坐标系x轴向x", "expr"],
+		["y", "坐标系x轴向y", "expr"],
+		["func_expr", "函数表达式(垂直偏移)", "expr"],
+	],
+	"IsDanmakuLaser": [
+		["x", "x坐标表达式 n()遍历", "expr"],
+		["y", "y坐标表达式 n()遍历", "expr"],
+		["laser_n_step", "n()采样频率(像素)", "int"],
+		["laser_render_scale", "渲染规模(1px材质缩放)", "float"],
+		["alarm", "预警时长(帧)", "int"],
+		["alarm_shader_alpha", "预警期不透明度比值", "float"],
+	],
+	"Nodes": [
+		["speed", "初速度", "expr"],
+		["targe", "目标", "opt", ["", "enemy", "self"]],
+		["targe_offsetx", "目标x偏移", "float"],
+		["targe_offsety", "目标y偏移", "float"],
+		["acc", "追踪加速度", "float"],
+		["turn_arg", "最大转向角(弧度/帧)", "float"],
+		["speed_max", "速度上限(0=无限)", "float"],
+		["lost_max", "远失锁(0=永不)", "float"],
+		["lost_min", "近失锁(0=永不)", "float"],
+		["lost_if", "锁定条件(命题)", "expr"],
+		["explode_condit", "引爆条件(命题)", "expr"],
+		["explode", "引爆事件名", "str"],
+		["release_condit", "中途条件(命题)", "expr"],
+		["release", "中途事件名", "str"],
+		["can_destroy", "可摧毁", "check"],
+	],
+}
+## HSL 颜色区
+const SCHEMA_COLOR := [
+	["hue", "色相H(0~1, 可表达式)", "expr_num"],
+	["saturation", "饱和度S(0~1, 可表达式)", "expr_num"],
+]
+
+## 运算引入工具目录（全角注释；插入格式：运算(“注释”,“注释”)）
+## 【批复 2026-10-02：提供所有所属功能支持的运算】文档运算 + Godot 原生常用
+const OP_TOOLS := [
+	{"sig": "abs(“数值”)", "desc": "【文档】绝对值：abs(-3)=3"},
+	{"sig": "min(“数字1”,“数字2”)", "desc": "【文档】最小值，可连写多个参数"},
+	{"sig": "max(“数字1”,“数字2”)", "desc": "【文档】最大值，可连写多个参数"},
+	{"sig": "log(“底数”,“真数”)", "desc": "【文档】以底数为底的对数"},
+	{"sig": "cos(“弧度”)", "desc": "【文档/原生】余弦（配 r0 相位做环形）"},
+	{"sig": "sin(“弧度”)", "desc": "【文档/原生】正弦"},
+	{"sig": "atan2(“y”,“x”)", "desc": "【原生】反正切（方向角）"},
+	{"sig": "sqrt(“数值”)", "desc": "【原生】平方根"},
+	{"sig": "floor(“数值”)", "desc": "【原生】去尾整数（[[x]]）"},
+	{"sig": "ceil(“数值”)", "desc": "【原生】进位整数"},
+	{"sig": "round(“数值”)", "desc": "【原生】四舍五入"},
+	{"sig": "pow(“底”,“指数”)", "desc": "【原生】次方（同 ^）"},
+	{"sig": "clampf(“值”,“最小”,“最大”)", "desc": "【原生】区间钳制"},
+	{"sig": "lerp(“自”,“到”,“比例”)", "desc": "【原生】线性插值"},
+	{"sig": "stepify(“值”,“步长”)", "desc": "【原生】按步长取整"},
+	{"sig": "wrapf(“值”,“下界”,“上界”)", "desc": "【原生】区间回绕（角度归一常用）"},
+	{"sig": "posmod(“被除”,“除”)", "desc": "【原生】正模（循环相位）"},
+	{"sig": "fmod(“被除”,“除”)", "desc": "【原生】浮点取余"},
+]
+## 参数引入工具目录（【批复：所有所属功能支持的变量】按所属分组）
+const VAR_TOOLS := [
+	{"name": "t", "desc": "【弹幕】时间：从开始到现在的帧数"},
+	{"name": "t_r", "desc": "【弹幕·瞬时】预警期进度 t/alarm"},
+	{"name": "r0", "desc": "【弹幕】独立随机相位0~2π"},
+	{"name": "r1", "desc": "【弹幕】独立随机相位0~2π"},
+	{"name": "rate_roll", "desc": "【弹幕】概率骰子结果（rate 命题用）"},
+	{"name": "pattern_roll", "desc": "【弹幕】规律时序结果（pattern 命题用）"},
+	{"name": "n", "desc": "【弹幕·瞬时】遍历换元：当前采样坐标值"},
+	{"name": "wpcs", "desc": "【弹幕/排布】火力点在侧面从里到外的序号"},
+	{"name": "to_c", "desc": "【弹幕/排布】快机系数：开=1 否=0"},
+	{"name": "main_lr", "desc": "【弹幕/排布】火力点在角色左-1/右1/中0"},
+	{"name": "sub_lr", "desc": "【弹幕/排布】火力点在所属僚机左-1/右1"},
+	{"name": "self_x", "desc": "【弹幕】发射者x坐标"},
+	{"name": "self_y", "desc": "【弹幕】发射者y坐标"},
+	{"name": "self_ap", "desc": "【弹幕】发射者AP（结界）"},
+	{"name": "self_pp", "desc": "【弹幕】发射者P点"},
+	{"name": "self_normal", "desc": "【弹幕】发射者慢机速度"},
+	{"name": "target_x", "desc": "【弹幕】目标相对弹幕起点x（is_abs_coord=绝对）"},
+	{"name": "target_y", "desc": "【弹幕】目标相对弹幕起点y（is_abs_coord=绝对）"},
+	{"name": "target_ap", "desc": "【弹幕】目标AP"},
+	{"name": "target_pp", "desc": "【弹幕】目标P点"},
+	{"name": "target_normal", "desc": "【弹幕】目标慢机速度"},
+	{"name": "target_hpweapon", "desc": "【弹幕】目标头部HP"},
+	{"name": "target_hpbody", "desc": "【弹幕】目标侧身HP"},
+	{"name": "target_hpmove", "desc": "【弹幕】目标下半身HP"},
+	{"name": "field_t", "desc": "【战场】决斗经过帧数（getField(t)）"},
+	{"name": "field_phase", "desc": "【战场】阶段 1远距 2短兵 3破阵 4撤离"},
+	{"name": "privates_id", "desc": "【杂兵排布】目标ID（1~5，privates_id()遍历）"},
+	{"name": "custom_a", "desc": "【杂兵排布】玩家自定义量a"},
+	{"name": "custom_b", "desc": "【杂兵排布】玩家自定义量b"},
+	{"name": "custom_c", "desc": "【杂兵排布】玩家自定义量c"},
+]
+
+var events: Array[DanmakuEventData] = []
+var selected_idx := -1
+var _widgets: Dictionary = {}
+var _list: ItemList
+var _tabs: TabContainer
+var _assets: ItemList
+var _pages: Dictionary = {}
+var _status: Label
+var _file_dialog: FileDialog
+var _pending_action := ""
+var _expr_insert_target: LineEdit = null
+var _tool_popup: PopupPanel = null
+var _preview_popup: PopupPanel = null
+var _preview_zoomed := false
+
+func _ready() -> void:
+	_build_ui()
+	if GameGlobals.editor_events.is_empty():
+		_load_official_csv()
+	else:
+		events = GameGlobals.editor_events
+	_refresh_list()
+	if not events.is_empty():
+		_select(0)
+
+## =============================================================
+## UI 构建：顶栏 / 左侧主页面签+素材栏 / 主区 / 底栏
+## 【布局对齐 scheme/图片示意（作者批复 2026-10-02）】
+##   左侧竖排主页面签：角色 / 弹幕 / 时间轴；其下为素材栏（媒体库式）
+##   弹幕页 = 事件列表 + 三标签（通用参数[含颜色HSL]/弹幕表达/使用者）
+##   角色页 = 元数据/表现/性格/角色弹幕 四节（BoardBasic）
+##   弹幕显示浮窗：[Z] 或按钮唤出，2x 缩放，全屏=窗口最大化（BoardBasic/2）
+##   表达式输入框旁挂"参/运"小按钮（BoardBasic2：变量用按钮点选代替键盘输入）
+## =============================================================
+func _build_ui() -> void:
+	var bg := ColorRect.new()
+	bg.color = Color(0.06, 0.07, 0.1)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var root := VBoxContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 4)
+	add_child(root)
+	root.add_child(_build_menubar())
+	var body := HSplitContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+	## 左：主页面签 + 素材栏
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(240, 0)
+	body.add_child(left)
+	var pagerow := HBoxContainer.new()
+	left.add_child(pagerow)
+	var group := ButtonGroup.new()
+	for p in [["danmaku", "弹幕"], ["chara", "角色"], ["timeline", "时间轴"]]:
+		var b := Button.new()
+		b.text = p[1]
+		b.toggle_mode = true
+		b.button_group = group
+		b.pressed.connect(_show_main_page.bind(p[0]))
+		if p[0] == "danmaku":
+			b.button_pressed = true
+		pagerow.add_child(b)
+	var asset_l := Label.new()
+	asset_l.text = "素材（材质库）"
+	left.add_child(asset_l)
+	_assets = ItemList.new()
+	_assets.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_assets.item_selected.connect(_on_asset_selected)
+	left.add_child(_assets)
+	_refresh_assets()
+	## 右：三个主页面
+	_pages = { "danmaku": _build_danmaku_page(), "chara": ScrollContainer.new(), "timeline": ScrollContainer.new() }
+	for k in _pages:
+		_pages[k].size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_pages[k].size_flags_vertical = Control.SIZE_EXPAND_FILL
+		body.add_child(_pages[k])
+	_pages["chara"].name = "CharaPage"
+	_pages["timeline"].name = "TimelinePage"
+	_show_main_page("danmaku")
+	## 底栏
+	var bottom := HBoxContainer.new()
+	root.add_child(bottom)
+	_status = Label.new()
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.add_theme_font_size_override("font_size", 12)
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_minimum_size = Vector2(0, 44)
+	bottom.add_child(_status)
+	var preview_b := Button.new()
+	preview_b.text = "▶ 试炼场预览"
+	preview_b.pressed.connect(_on_preview)
+	bottom.add_child(preview_b)
+	var show_b := Button.new()
+	show_b.text = "参数速览"
+	show_b.pressed.connect(_show_danmaku_preview)
+	bottom.add_child(show_b)
+	var op_b := Button.new()
+	op_b.text = "运算工具"
+	op_b.pressed.connect(_show_tool_popup.bind(true, null))
+	bottom.add_child(op_b)
+	var var_b := Button.new()
+	var_b.text = "参数工具"
+	var_b.pressed.connect(_show_tool_popup.bind(false, null))
+	bottom.add_child(var_b)
+	## 文件对话框
+	_file_dialog = FileDialog.new()
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.use_native_dialog = true
+	_file_dialog.file_selected.connect(_on_file_selected)
+	add_child(_file_dialog)
+
+## —— 主页面切换（懒建角色/时间轴页）——
+func _show_main_page(key: String) -> void:
+	for k in _pages:
+		_pages[k].visible = (k == key)
+	if key == "chara" and _pages["chara"].get_child_count() == 0:
+		_pages["chara"].add_child(_build_chara_page())
+	if key == "timeline" and _pages["timeline"].get_child_count() == 0:
+		_pages["timeline"].add_child(_build_timeline_page())
+
+## —— 弹幕页（原主体：事件列表 + 标签页）——
+func _build_danmaku_page() -> HSplitContainer:
+	var split := HSplitContainer.new()
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(250, 0)
+	split.add_child(left)
+	_list = ItemList.new()
+	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list.item_selected.connect(func(i): _select(i))
+	left.add_child(_list)
+	var lbtns := HBoxContainer.new()
+	left.add_child(lbtns)
+	for t in ["新增", "复制", "删除", "检查"]:
+		var b := Button.new()
+		b.text = t
+		b.pressed.connect(_on_list_btn.bind(t))
+		lbtns.add_child(b)
+	_tabs = TabContainer.new()
+	split.add_child(_tabs)
+	return split
+
+## —— 素材栏（媒体库式：官方库 + 导入材质）——
+func _refresh_assets() -> void:
+	_assets.clear()
+	var names: Array[String] = []
+	var dir := DirAccess.open("res://gameAssetBase/shooting/danmaku16pxs")
+	if dir != null:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if f.ends_with(".png") or f.ends_with(".PNG"):
+				names.append(f.get_basename())
+			f = dir.get_next()
+		dir.list_dir_end()
+	for k in GameGlobals.editor_textures:
+		if not names.has(k):
+			names.append(k)
+	names.sort()
+	for n in names:
+		_assets.add_item(n)
+
+func _on_asset_selected(i: int) -> void:
+	var tex := DanmakuTex.resolve(_assets.get_item_text(i))
+	if tex != null:
+		_set_status("素材 %s（%d×%d；粒子=2的次方、方向朝右；激光=单像素线条）" % [
+			_assets.get_item_text(i), tex.get_size().x, tex.get_size().y])
+
+## 顶栏菜单
+func _build_menubar() -> MenuBar:
+	var mb := MenuBar.new()
+	var file_menu := PopupMenu.new()
+	file_menu.name = "文件"
+	var items := ["新建", "打开(.thx)", "导入材质", "保存(.thx)", "导出为官方数据", "返回游戏标题"]
+	if not _is_project_env():
+		items = ["新建", "打开(.thx)", "导入材质", "保存(.thx)", "打包并导出(.thx)", "返回游戏标题"]
+	for i in items.size():
+		file_menu.add_item(items[i], i)
+	file_menu.id_pressed.connect(func(id): _on_menu_file(items[id]))
+	mb.add_child(file_menu)
+	var edit_menu := PopupMenu.new()
+	edit_menu.name = "编辑"
+	var edit_items := ["撤销", "重做", "项目信息", "查找"]
+	for i in edit_items.size():
+		edit_menu.add_item(edit_items[i], i)
+	edit_menu.id_pressed.connect(_on_menu_edit.bind(edit_items))
+	mb.add_child(edit_menu)
+	var help_menu := PopupMenu.new()
+	help_menu.name = "帮助"
+	help_menu.add_item("游戏信息", 0)
+	help_menu.add_item("Godot文档", 1)
+	help_menu.id_pressed.connect(func(id):
+		if id == 0:
+			_set_status("THX075 东方无欲拾食纪 ~Starve Universia~ 弹幕编辑器 第①期")
+		else:
+			OS.shell_open("https://docs.godotengine.org/zh-cn/4.5/tutorials/scripting/evaluating_expressions.html"))
+	mb.add_child(help_menu)
+	return mb
+
+## 编辑菜单回调（lambda内match的解析器歧义 → 命名函数）
+func _on_menu_edit(_id: int, items: Array) -> void:
+	match items[_id]:
+		"撤销":
+			_undo()
+		"重做":
+			_redo()
+		"项目信息":
+			_set_status("事件数 %d｜材质 %d" % [events.size(), GameGlobals.editor_textures.size()])
+		"查找":
+			_set_status("查找功能属②期（列表顶部可滚动浏览）")
+
+## 工程环境检测：res://gameAssetBase 可写（导出包内只读）
+func _is_project_env() -> bool:
+	var f := FileAccess.open("res://gameAssetBase/.write_test", FileAccess.WRITE)
+	if f != null:
+		f.close()
+		DirAccess.remove_absolute("res://gameAssetBase/.write_test")
+		return true
+	return false
+
+func _on_menu_file(item: String) -> void:
+	_collect_form()
+	match item:
+		"新建":
+			events = DanmakuEventData.parse_csv_text("")
+			events.append(DanmakuEventData.new())
+			_refresh_list()
+			_select(0)
+			_set_status("已新建")
+		"打开(.thx)":
+			_pending_action = "load_thx"
+			_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+			_file_dialog.filters = PackedStringArray(["*.thx ; THX弹幕包"])
+			_file_dialog.popup_centered(Vector2i(900, 600))
+		"导入材质":
+			_pending_action = "import_tex"
+			_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+			_file_dialog.filters = PackedStringArray(["*.png ; PNG图片"])
+			_file_dialog.popup_centered(Vector2i(900, 600))
+		"保存(.thx)", "打包并导出(.thx)":
+			_pending_action = "save_thx"
+			_file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+			_file_dialog.filters = PackedStringArray(["*.thx ; THX弹幕包"])
+			_file_dialog.popup_centered(Vector2i(900, 600))
+		"导出为官方数据":
+			_on_export_official()
+		"返回游戏标题":
+			GameGlobals.goto_scene("res://scenes/title_menu.tscn")
+
+## =============================================================
+## 标签页表单：通用参数 / 弹幕表达(tag互斥) / 使用者
+## =============================================================
+func _select(i: int) -> void:
+	if i < 0 or i >= events.size():
+		return
+	selected_idx = i
+	_build_tabs(events[i])
+
+func _build_tabs(ev: DanmakuEventData) -> void:
+	for c in _tabs.get_children():
+		c.queue_free()
+	_widgets.clear()
+	## Tab1 通用（含颜色HSL——设计图 BoardBasic2：三个标签）
+	_tabs.add_child(_make_form_page("通用参数", SCHEMA_COMMON + SCHEMA_COLOR, ev))
+	## Tab2 弹幕表达（互斥）
+	var tag_schema: Array = SCHEMA_BY_TAG.get(ev.tag, [])
+	var page2 := _make_form_page("弹幕表达[%s]" % ev.tag, tag_schema, ev)
+	## tag 切换器（批复：运行方式在通用参数处切换）
+	var tagrow := HBoxContainer.new()
+	tagrow.name = "_TAGROW"
+	page2.add_child(tagrow, true)
+	page2.move_child(tagrow, 0)
+	var tl := Label.new()
+	tl.text = "  行进类型："
+	tagrow.add_child(tl)
+	var tagpick := OptionButton.new()
+	for t in DanmakuEventData.TAGS:
+		tagpick.add_item(t)
+	tagpick.select(DanmakuEventData.TAGS.find(ev.tag))
+	tagpick.item_selected.connect(func(idx):
+		_collect_form()
+		var ev2 := events[selected_idx]
+		ev2.tag = DanmakuEventData.TAGS[idx]
+		_build_tabs(ev2))
+	tagrow.add_child(tagpick)
+	_tabs.add_child(page2)
+	## Tab3 使用者
+	var page3 := ScrollContainer.new()
+	page3.name = "使用者"
+	var vbox3 := VBoxContainer.new()
+	vbox3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page3.add_child(vbox3)
+	var users := _find_users(ev.event_name)
+	if users.is_empty():
+		var l := Label.new()
+		l.text = "未被任何角色/火力槽引用（通用 * 事件默认全员可用）"
+		vbox3.add_child(l)
+	else:
+		for u in users:
+			var l := Label.new()
+			l.text = u
+			vbox3.add_child(l)
+	_tabs.add_child(page3)
+
+func _make_form_page(tab_name: String, schema: Array, ev: DanmakuEventData) -> ScrollContainer:
+	var page := ScrollContainer.new()
+	page.name = tab_name
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_child(grid)
+	for row in schema:
+		var key: String = row[0]
+		var label := Label.new()
+		label.text = row[1]
+		grid.add_child(label)
+		var w: Control = _make_widget(row, ev)
+		## 表达式输入框旁挂"参/运"小按钮（BoardBasic2：工具紧邻输入框，
+		## 变量用按钮点选代替键盘输入）
+		if row[2] == "expr" or row[2] == "expr_num":
+			var box := HBoxContainer.new()
+			box.add_child(w)
+			var vb := Button.new()
+			vb.text = "参"
+			vb.tooltip_text = "参数引入工具"
+			vb.pressed.connect(_show_tool_popup.bind(false, w))
+			box.add_child(vb)
+			var ob := Button.new()
+			ob.text = "运"
+			ob.tooltip_text = "运算引入工具"
+			ob.pressed.connect(_show_tool_popup.bind(true, w))
+			box.add_child(ob)
+			w = box
+		_widgets[key] = w if not (row[2] == "expr" or row[2] == "expr_num") else w.get_child(0)
+		grid.add_child(w)
+	return page
+
+func _find_users(event_name: String) -> Array:
+	var out: Array = []
+	var all: Array = []
+	all.append_array(CharaDB.load_all())
+	for d in all:
+		for slot in ["main", "sub", "rest"]:
+			for ev in GameGlobals.get_slot_events(String(d["Name"]), slot):
+				if ev.event_name == event_name:
+					out.append("%s → %s 槽" % [d["NameZH"], slot])
+	return out
+
+## =============================================================
+## 控件生成（含 # 拦截）
+## =============================================================
+func _make_widget(row: Array, ev: DanmakuEventData) -> Control:
+	var key: String = row[0]
+	var t: String = row[2]
+	match t:
+		"str":
+			return _line(str(ev.get(key)), false)
+		"expr":
+			return _line(str(ev.get(key)), true)
+		"expr_num": ## 数值或表达式（hue/saturation）
+			return _line(_num_or_expr(ev.get(key)), true)
+		"int":
+			var s := SpinBox.new()
+			s.min_value = -1
+			s.max_value = 100000
+			s.value = float(ev.get(key))
+			return s
+		"float":
+			var s := SpinBox.new()
+			s.min_value = -10000
+			s.max_value = 10000
+			s.step = 0.01
+			s.value = float(ev.get(key))
+			return s
+		"check":
+			var c := CheckBox.new()
+			c.button_pressed = bool(ev.get(key))
+			return c
+		"gate":
+			var spec: bool = ev.get(key + "_specified")
+			return _line(str(ev.get(key)) if spec else "", false)
+		"opt":
+			var o := OptionButton.new()
+			for opt in row[3]:
+				o.add_item(str(opt) if opt != "" else "（空）")
+			var cur: String = str(ev.get(key))
+			for i in o.item_count:
+				if o.get_item_text(i) == (cur if cur != "" else "（空）"):
+					o.select(i)
+			return o
+		"opt_chars":
+			var o := OptionButton.new()
+			o.add_item("*(任何角色)")
+			o.set_item_metadata(0, "*")
+			for d in CharaDB.load_all():
+				o.add_item("%s %s" % [d["Name"], d["NameZH"]])
+				o.set_item_metadata(o.item_count - 1, d["Name"])
+			var cur_owner: String = str(ev.get(key))
+			var found := false
+			for i in o.item_count:
+				if String(o.get_item_metadata(i)) == cur_owner:
+					o.select(i)
+					found = true
+					break
+			if not found:
+				o.select(0)
+			return o
+		"opt_tex":
+			var o := OptionButton.new()
+			var names: Array[String] = []
+			var dir := DirAccess.open("res://gameAssetBase/shooting/danmaku16pxs")
+			if dir != null:
+				dir.list_dir_begin()
+				var f := dir.get_next()
+				while f != "":
+					if f.ends_with(".png") or f.ends_with(".PNG"):
+						names.append(f.get_basename())
+					f = dir.get_next()
+				dir.list_dir_end()
+			for k in GameGlobals.editor_textures:
+				if not names.has(k):
+					names.append(k)
+			names.sort()
+			for n in names:
+				o.add_item(n)
+			var cur_tex: String = str(ev.get(key))
+			var tfound := false
+			for i in o.item_count:
+				if o.get_item_text(i) == cur_tex:
+					o.select(i)
+					tfound = true
+					break
+			if not tfound and o.item_count > 0:
+				o.select(0)
+			return o
+	return Label.new()
+
+## LineEdit 工厂：拦截 #（Godot 注释符，会损毁导出的 .gd 文件）
+func _line(text: String, is_expr: bool) -> LineEdit:
+	var e := LineEdit.new()
+	e.text = text.replace("#", "")
+	e.custom_minimum_size = Vector2(320, 0)
+	e.text_changed.connect(func(s: String):
+		if s.contains("#"):
+			e.text = s.replace("#", "")
+			e.caret_column = e.text.length()
+			_set_status("禁止输入 # —— 它是Godot注释符，会损毁文件！"))
+	if is_expr:
+		e.focus_entered.connect(func(): _expr_insert_target = e)
+	return e
+
+func _num_or_expr(v) -> String:
+	var s := str(v)
+	return s
+
+## =============================================================
+## 表单⇄数据
+## =============================================================
+func _collect_form() -> void:
+	if selected_idx < 0 or selected_idx >= events.size():
+		return
+	var ev := events[selected_idx]
+	for row in SCHEMA_COMMON + SCHEMA_COLOR + (SCHEMA_BY_TAG.get(ev.tag, []) as Array):
+		var key: String = row[0]
+		if not _widgets.has(key):
+			continue
+		var w: Control = _widgets[key]
+		match row[2]:
+			"str", "expr":
+				ev.set(key, str((w as LineEdit).text).strip_edges())
+			"expr_num":
+				var txt := str((w as LineEdit).text).strip_edges()
+				ev.set(key, txt.to_float() if txt.is_valid_float() else txt)
+			"int":
+				ev.set(key, int((w as SpinBox).value))
+			"float":
+				ev.set(key, (w as SpinBox).value)
+			"check":
+				ev.set(key, (w as CheckBox).button_pressed)
+			"gate":
+				var text := str((w as LineEdit).text).strip_edges()
+				if key == "rate":
+					ev.rate_specified = text != ""
+					if text != "":
+						ev.rate = text.to_float()
+				else:
+					ev.pattern_specified = text != ""
+					if text != "":
+						ev.pattern = text.to_float()
+			"opt":
+				var o := w as OptionButton
+				if o.selected < 0:
+					continue
+				var v := o.get_item_text(o.selected)
+				ev.set(key, "" if v == "（空）" else v)
+			"opt_chars":
+				var o := w as OptionButton
+				ev.set(key, o.get_item_metadata(o.selected))
+			"opt_tex":
+				var o := w as OptionButton
+				if o.selected >= 0:
+					ev.set(key, o.get_item_text(o.selected))
+
+## =============================================================
+## 列表操作
+## =============================================================
+func _refresh_list() -> void:
+	_list.clear()
+	for ev in events:
+		_list.add_item(ev.display_label())
+
+func _on_list_btn(t: String) -> void:
+	_collect_form()
+	match t:
+		"新增":
+			events.append(DanmakuEventData.new())
+			_refresh_list()
+			_select(events.size() - 1)
+		"复制":
+			if selected_idx >= 0:
+				var ev := DanmakuEventData.new()
+				ev.from_csv_row(DanmakuEventData.split_csv_line(events[selected_idx].to_csv_row()))
+				ev.event_name = events[selected_idx].event_name + "_copy"
+				events.append(ev)
+				_refresh_list()
+				_select(events.size() - 1)
+		"删除":
+			if selected_idx >= 0:
+				events.remove_at(selected_idx)
+				selected_idx = -1
+				_refresh_list()
+				if not events.is_empty():
+					_select(0)
+		"检查":
+			_check_feasibility()
+
+## 可行性检查：全部事件全部表达式编译报告
+func _check_feasibility() -> void:
+	_collect_form()
+	var total := 0
+	var bad: Array[String] = []
+	for ev in events:
+		var errs := ev.compile()
+		total += 1
+		for e in errs:
+			bad.append(e)
+	if bad.is_empty():
+		_set_status("可行性检查通过：%d 个事件全部合法 ✓（试炼场可直接预览）" % total)
+	else:
+		_set_status("可行性检查发现 %d 处问题：\n%s" % [bad.size(), "\n".join(bad)])
+
+## =============================================================
+## 文件操作
+## =============================================================
+func _on_file_selected(path: String) -> void:
+	match _pending_action:
+		"save_thx":
+			_save_thx(path)
+		"load_thx":
+			_load_thx(path)
+		"import_tex":
+			_import_texture(path)
+
+func _save_thx(path: String) -> void:
+	_collect_form()
+	if not path.ends_with(".thx"):
+		path += ".thx"
+	var zp := ZIPPacker.new()
+	if zp.open(path) != OK:
+		_set_status("保存失败：%s" % path)
+		return
+	zp.start_file("danmaku_event.csv")
+	zp.write_file(DanmakuEventData.build_csv(events).to_utf8_buffer())
+	zp.close_file()
+	for ev in events:
+		zp.start_file("danmaku/%s.gd" % ev.event_name)
+		zp.write_file(_gen_event_gd(ev).to_utf8_buffer())
+		zp.close_file()
+	## 时间轴（作者批复：每0.1秒tick安排一个或多个事件，.gd 后缀文件）
+	for tl in GameGlobals.editor_timelines:
+		zp.start_file("danmaku/%s.gd" % tl.tl_name)
+		zp.write_file(tl.to_gd().to_utf8_buffer())
+		zp.close_file()
+	for tex_name in GameGlobals.editor_textures:
+		zp.start_file("texture/%s.png" % tex_name)
+		zp.write_file(GameGlobals.editor_textures[tex_name])
+		zp.close_file()
+	zp.close()
+	_set_status("已保存 .thx：%s（%d事件 %d材质）" % [path, events.size(), GameGlobals.editor_textures.size()])
+
+func _load_thx(path: String) -> void:
+	var zr := ZIPReader.new()
+	if zr.open(path) != OK:
+		_set_status("读取失败：%s" % path)
+		return
+	events = DanmakuEventData.parse_csv_text("")
+	var imported := 0
+	GameGlobals.editor_timelines = [] ## 打开新包 → 时间轴以包内容为准
+	for f in zr.get_files():
+		if f == "danmaku_event.csv":
+			events = DanmakuEventData.parse_csv_text(zr.read_file(f).get_string_from_utf8())
+		elif f.begins_with("texture/"):
+			var tex_name := f.get_file().get_basename()
+			if DanmakuTex.load_from_bytes(tex_name, zr.read_file(f)):
+				GameGlobals.editor_textures[tex_name] = zr.read_file(f)
+				imported += 1
+		elif f.begins_with("danmaku/") and f.ends_with(".gd"):
+			var text := zr.read_file(f).get_string_from_utf8()
+			if TimelineData.is_timeline_gd(text):
+				GameGlobals.editor_timelines.append(TimelineData.parse_gd(text))
+	zr.close()
+	for ev in events:
+		ev.compile()
+	_refresh_list()
+	if not events.is_empty():
+		_select(0)
+	_set_status("已读取：%d事件 %d材质" % [events.size(), imported])
+
+func _import_texture(path: String) -> void:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty():
+		_set_status("材质导入失败")
+		return
+	var tex_name := path.get_file().get_basename()
+	if DanmakuTex.load_from_bytes(tex_name, bytes):
+		GameGlobals.editor_textures[tex_name] = bytes
+		_set_status("已导入材质 %s（粒子=2的次方；激光=单像素线条）" % tex_name)
+		if selected_idx >= 0:
+			_build_tabs(events[selected_idx])
+	else:
+		_set_status("不是有效PNG")
+
+func _load_official_csv() -> void:
+	events = DanmakuEventData.parse_csv_text("")
+	if FileAccess.file_exists(GameGlobals.OFFICIAL_EVENT_CSV):
+		events = DanmakuEventData.parse_csv_text(FileAccess.get_file_as_string(GameGlobals.OFFICIAL_EVENT_CSV))
+	for ev in events:
+		ev.compile()
+
+func _on_export_official() -> void:
+	_collect_form()
+	var f := FileAccess.open(GameGlobals.OFFICIAL_EVENT_CSV, FileAccess.WRITE)
+	if f == null:
+		_set_status("导出失败：当前环境 res:// 只读（仅工程源码环境可导出官方数据）")
+		return
+	f.store_string(DanmakuEventData.build_csv(events))
+	f.close()
+	var copied := 0
+	for tex_name in GameGlobals.editor_textures:
+		var src := _texture_cache_path(tex_name)
+		var dst := "res://gameAssetBase/shooting/danmaku16pxs/%s.png" % tex_name
+		if FileAccess.file_exists(src) and DirAccess.copy_absolute(ProjectSettings.globalize_path(src), ProjectSettings.globalize_path(dst)) == OK:
+			copied += 1
+	GameGlobals.reload_official()
+	_set_status("已导出为官方数据：%d事件 + %d材质（运行时官方池已刷新）" % [events.size(), copied])
+
+func _texture_cache_path(tex_name: String) -> String:
+	var p := "user://editor_textures/%s.png" % tex_name
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://editor_textures"))
+	var f := FileAccess.open(p, FileAccess.WRITE)
+	if f != null:
+		f.store_buffer(GameGlobals.editor_textures[tex_name])
+		f.close()
+	return p
+
+## 生成 danmaku/(事件名).gd 描述文件
+func _gen_event_gd(ev: DanmakuEventData) -> String:
+	var lines: Array[String] = []
+	lines.append("## %s —— 弹幕编辑器自动生成（THX075）" % ev.event_name)
+	lines.append("## 数值数据源：danmaku_event.csv 同名行；本文件为参数描述。")
+	lines.append("extends RefCounted")
+	var all_keys := ["event_name","owner","slot","tag","texture","dmg","dmg_mode","range_frames",
+		"repeat_time","repeat_freq","rate","pattern","x_offset","y_offset","speed","x","y",
+		"func_expr","alarm","laser_n_step","targe","acc","turn_arg","speed_max","lost_max","lost_min",
+		"lost_if","explode_condit","release_condit","explode","release","can_destroy"]
+	for k in all_keys:
+		var v = ev.get(k)
+		if k in ["rate", "pattern"]:
+			v = v if ev.get(k + "_specified") else "(未启用)"
+		lines.append("# %s = %s" % [k, str(v)])
+	return "\n".join(lines) + "\n"
+
+## =============================================================
+## 试炼场 / 工具浮窗
+## =============================================================
+func _on_preview() -> void:
+	_collect_form()
+	var errs_all: Array[String] = []
+	for ev in events:
+		errs_all.append_array(ev.compile())
+	GameGlobals.editor_events = events
+	GameGlobals.preview_event_name = events[selected_idx].event_name if selected_idx >= 0 and selected_idx < events.size() else "demo_aimed"
+	GameGlobals.arena_mode = "preview"
+	GameGlobals.goto_scene("res://scenes/battle_arena.tscn")
+
+## 运算/参数引入工具浮窗（批复：全角注释插入+搜索+置顶；变量用按钮点选）
+## 【修复 20261002】旧版浮窗从未 add_child 进场景树 → 永远唤不出（作者截图）。
+## target：从哪个表达式框唤出（输入框旁"参/运"按钮传入自身）。
+func _show_tool_popup(is_ops: bool, target: LineEdit = null) -> void:
+	if target != null:
+		_expr_insert_target = target
+	if _tool_popup != null:
+		_tool_popup.queue_free()
+	_tool_popup = PopupPanel.new()
+	add_child(_tool_popup) ## 【修复】必须入树才能 popup
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(420, 300)
+	_tool_popup.add_child(box)
+	var title := Label.new()
+	title.text = "运算引入工具（插入后请替换全角注释）" if is_ops else "参数引入工具（点选插入）"
+	box.add_child(title)
+	var search := LineEdit.new()
+	search.placeholder_text = "搜索…"
+	box.add_child(search)
+	var list := ItemList.new()
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(list)
+	var refresh := func(q: String):
+		list.clear()
+		var src: Array = OP_TOOLS if is_ops else VAR_TOOLS
+		for item in src:
+			var sig: String = item.get("sig", item.get("name", ""))
+			if q.is_empty() or sig.contains(q) or String(item["desc"]).contains(q):
+				var idx := list.add_item("%s —— %s" % [sig, item["desc"]])
+				list.set_item_metadata(idx, item.get("insert", sig))
+	refresh.call("")
+	search.text_changed.connect(func(q): refresh.call(q))
+	list.item_activated.connect(func(idx):
+		var ins: String = list.get_item_metadata(idx)
+		if _expr_insert_target != null:
+			_expr_insert_target.text += ins
+			_set_status("已插入：%s（请替换全角注释为实际数值）" % ins)
+		else:
+			_set_status("请先点击一个表达式输入框（或其旁的 参/运 按钮），再从工具插入"))
+	var close := Button.new()
+	close.text = "关闭"
+	close.pressed.connect(func(): _tool_popup.hide())
+	box.add_child(close)
+	_tool_popup.popup_centered(Vector2i(440, 320))
+
+## 撤销/重做（①期简化：快照栈）
+var _undo_stack: Array[String] = []
+var _redo_stack: Array[String] = []
+func _snapshot() -> void:
+	_undo_stack.append(DanmakuEventData.build_csv(events))
+	if _undo_stack.size() > 64:
+		_undo_stack.pop_front()
+	_redo_stack.clear()
+func _undo() -> void:
+	if _undo_stack.is_empty():
+		_set_status("没有可撤销的操作")
+		return
+	_redo_stack.append(DanmakuEventData.build_csv(events))
+	events = DanmakuEventData.parse_csv_text(_undo_stack.pop_back())
+	_refresh_list()
+	_set_status("已撤销")
+func _redo() -> void:
+	if _redo_stack.is_empty():
+		_set_status("没有可重做的操作")
+		return
+	_undo_stack.append(DanmakuEventData.build_csv(events))
+	events = DanmakuEventData.parse_csv_text(_redo_stack.pop_back())
+	_refresh_list()
+	_set_status("已重做")
+
+func _set_status(t: String) -> void:
+	_status.text = t
+
+## =============================================================
+## 角色页（设计 BoardBasic：元数据/表现/性格/角色弹幕 四节；本轮只读浏览）
+## =============================================================
+func _build_chara_page() -> Control:
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var pick := OptionButton.new()
+	var chars := CharaDB.load_all()
+	for d in chars:
+		pick.add_item("%s　%s" % [d["Name"], d["NameZH"]])
+		pick.set_item_metadata(pick.item_count - 1, d["Name"])
+	box.add_child(pick)
+	var detail := VBoxContainer.new()
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(detail)
+	var render := func():
+		for c in detail.get_children():
+			c.queue_free()
+		var name: String = pick.get_item_metadata(pick.selected)
+		var d := CharaDB.get_by_name(name)
+		if d.is_empty():
+			return
+		var sections := [
+			["角色元数据", "ID=%s 队伍=%s 判定=%s 结界=%s 魔弹=%s 物弹=%s\n中:%s 日:%s 英:%s" % [d["ID"], d["Team"], d["Determine"], d["Defend"], d["Mag"], d["Phy"], d["NameZH"], d["NameJP"], d["NameEN"]]],
+			["角色表现", "快机=%s/帧 慢机=%s/帧 主冷却=%s×0.1s 僚机冷却=%s×0.1s 乘数=%s\n排布修改值 main_y=%s sub_x=%s sub_y=%s\npoi向量 main_poi=(%s, %s) sub_poi=(%s, %s)（变量 wpcs/to_c）" % [d["Cruise"], d["Normal"], d["Main_Cd"], d["Sub_Cd"], d["Weapon_Muti"], d["main_y"], d["sub_x"], d["sub_y"], d["main_poi_x"], d["main_poi_y"], d["sub_poi_x"], d["sub_poi_y"]]],
+			["角色性格（战术卡偏好）", "奇袭=%s 火力覆盖=%s 闪击=%s 协同=%s 弹性防御=%s 迟滞=%s 佯攻=%s" % [d["Char_Raid"], d["Char_Allfire"], d["Char_Blitz"], d["Char_Cover"], d["Char_Elast"], d["Char_Delay"], d["Char_Feint"]]],
+		]
+		for sec in sections:
+			var l := Label.new()
+			l.text = "【%s】" % sec[0]
+			l.add_theme_font_size_override("font_size", 16)
+			detail.add_child(l)
+			var v := Label.new()
+			v.text = sec[1]
+			detail.add_child(v)
+		## 角色弹幕（火力点分组；比重列 main_para_rat 等 CSV 未实装 → 显示 —）
+		var dl := Label.new()
+		dl.text = "【角色弹幕（火力点挂载）】"
+		dl.add_theme_font_size_override("font_size", 16)
+		detail.add_child(dl)
+		for slot in ["main", "sub", "rest"]:
+			var evs := GameGlobals.get_slot_events(name, slot)
+			var names: Array[String] = []
+			for e in evs:
+				names.append(e.event_name)
+			var sl := Label.new()
+			sl.text = "  %s 槽（%d 项）：%s　比重：—（首要/次要占比属②期）" % [slot, evs.size(), "、".join(names) if not names.is_empty() else "（无）"]
+			detail.add_child(sl)
+	pick.item_selected.connect(func(_i): render.call())
+	if pick.item_count > 0:
+		pick.select(0)
+		render.call()
+	return box
+
+## =============================================================
+## 时间轴编辑器（作者批复 2026-10-02）：每个 0.1秒 tick 安排一个或多个
+## 弹幕事件；随 .thx 保存为 danmaku/<名>.gd（格式见 TimelineData）。
+## 运行时释放（能力/符卡）属②期接线。
+## =============================================================
+var _tl_list: ItemList
+var _tl_detail: VBoxContainer
+var _tl_selected := -1
+
+func _build_timeline_page() -> Control:
+	var split := HSplitContainer.new()
+	split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	## 左：时间轴列表
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(240, 0)
+	split.add_child(left)
+	_tl_list = ItemList.new()
+	_tl_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tl_list.item_selected.connect(func(i): _tl_selected = i; _refresh_tl_detail())
+	left.add_child(_tl_list)
+	var lbtns := HBoxContainer.new()
+	left.add_child(lbtns)
+	for t in ["新建", "删除"]:
+		var b := Button.new()
+		b.text = t
+		b.pressed.connect(_on_tl_btn.bind(t))
+		lbtns.add_child(b)
+	## 右：详情
+	_tl_detail = VBoxContainer.new()
+	_tl_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	split.add_child(_tl_detail)
+	_refresh_tl_list()
+	return split
+
+func _refresh_tl_list() -> void:
+	if GameGlobals.editor_timelines.is_empty():
+		GameGlobals.editor_timelines.append(TimelineData.new()) ## 默认示例
+	_tl_list.clear()
+	for tl in GameGlobals.editor_timelines:
+		_tl_list.add_item("%s [%s·%s] %d帧" % [tl.tl_name, tl.owner, tl.slot, tl.ticks.size()])
+	if _tl_selected < 0 or _tl_selected >= GameGlobals.editor_timelines.size():
+		_tl_selected = 0
+	_tl_list.select(_tl_selected)
+	_refresh_tl_detail()
+
+func _on_tl_btn(t: String) -> void:
+	match t:
+		"新建":
+			var tl := TimelineData.new()
+			tl.tl_name = "timeline_%d" % (GameGlobals.editor_timelines.size() + 1)
+			GameGlobals.editor_timelines.append(tl)
+			_tl_selected = GameGlobals.editor_timelines.size() - 1
+			_refresh_tl_list()
+		"删除":
+			if _tl_selected >= 0:
+				GameGlobals.editor_timelines.remove_at(_tl_selected)
+				_tl_selected = -1
+				_refresh_tl_list()
+
+func _refresh_tl_detail() -> void:
+	for c in _tl_detail.get_children():
+		c.queue_free()
+	if _tl_selected < 0 or _tl_selected >= GameGlobals.editor_timelines.size():
+		return
+	var tl: TimelineData = GameGlobals.editor_timelines[_tl_selected]
+	## 元数据行
+	var meta := HBoxContainer.new()
+	_tl_detail.add_child(meta)
+	var name_e := LineEdit.new()
+	name_e.text = tl.tl_name
+	name_e.custom_minimum_size = Vector2(160, 0)
+	name_e.text_changed.connect(func(s): tl.tl_name = s.replace("#", ""))
+	meta.add_child(name_e)
+	var owner_e := LineEdit.new()
+	owner_e.text = tl.owner
+	owner_e.custom_minimum_size = Vector2(110, 0)
+	owner_e.text_changed.connect(func(s): tl.owner = s.replace("#", ""))
+	meta.add_child(owner_e)
+	var slot_o := OptionButton.new()
+	for s in ["skill", "spell"]:
+		slot_o.add_item(s)
+	slot_o.select(0 if tl.slot == "skill" else 1)
+	slot_o.item_selected.connect(func(i): tl.slot = "skill" if i == 0 else "spell")
+	meta.add_child(slot_o)
+	## 安排列表
+	var keys := tl.ticks.keys()
+	keys.sort()
+	for k in keys:
+		var row := HBoxContainer.new()
+		_tl_detail.add_child(row)
+		var l := Label.new()
+		l.text = "第 %d tick（%.1f秒）：%s" % [k, float(k) / 10.0, "、".join(tl.ticks[k])]
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		var del := Button.new()
+		del.text = "删"
+		del.pressed.connect(func():
+			tl.remove_tick(k)
+			_refresh_tl_detail())
+		row.add_child(del)
+	## 添加行：tick + 事件 + 按钮
+	var add := HBoxContainer.new()
+	_tl_detail.add_child(add)
+	var spin := SpinBox.new()
+	spin.min_value = 0
+	spin.max_value = 600
+	spin.prefix = "tick(0.1s) "
+	add.add_child(spin)
+	var ev_o := OptionButton.new()
+	for ev in events:
+		ev_o.add_item(ev.event_name)
+		ev_o.set_item_metadata(ev_o.item_count - 1, ev.event_name)
+	add.add_child(ev_o)
+	var addb := Button.new()
+	addb.text = "安排到该帧"
+	addb.pressed.connect(func():
+		if ev_o.selected >= 0:
+			tl.add_event(int(spin.value), String(ev_o.get_item_metadata(ev_o.selected)))
+			_refresh_tl_detail())
+	add.add_child(addb)
+	var tip := Label.new()
+	tip.text = "保存 .thx 时写入 danmaku/%s.gd；运行时释放（能力/符卡）属②期接线。" % tl.tl_name
+	_tl_detail.add_child(tip)
+
+## =============================================================
+## 弹幕显示浮窗（设计：[Z]或按钮唤出，默认1:1可2x，全屏=窗口最大化）
+## 展示：选中事件的材质×HS颜色渲染预览 + 参数摘要
+## =============================================================
+func _show_danmaku_preview() -> void:
+	if _preview_popup != null:
+		_preview_popup.queue_free()
+	_preview_popup = PopupPanel.new()
+	add_child(_preview_popup)
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(360, 320)
+	_preview_popup.add_child(box)
+	var ev := events[selected_idx] if selected_idx >= 0 and selected_idx < events.size() else null
+	if ev == null:
+		var none := Label.new()
+		none.text = "未选中任何弹幕事件"
+		box.add_child(none)
+	else:
+		var tex := DanmakuTex.resolve(ev.texture)
+		var holder := CenterContainer.new()
+		box.add_child(holder)
+		var tr := TextureRect.new()
+		tr.texture = tex
+		## 与战场一致的 HS 上色着色器预览（色定 H/S，亮度=纹理像素）
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/bullet_tint.gdshader")
+		tr.material = mat
+		tr.modulate = Color.from_hsv(fposmod(float(ev.hue), 1.0), clampf(float(ev.saturation), 0.0, 1.0), 1.0)
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(64, 64) * (2.0 if _preview_zoomed else 1.0)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		holder.add_child(tr)
+		var info := Label.new()
+		info.text = "%s\n类型:%s 伤害:%s(%s) 航程:%d帧 材质:%s %d×%d\nspeed=%s x=%s y=%s\n不透明度=%s 饱和=%s 色相=%s" % [
+			ev.display_label(), ev.tag, ev.dmg, ev.dmg_mode, ev.range_frames, ev.texture,
+			tex.get_size().x if tex else 0, tex.get_size().y if tex else 0,
+			ev.speed, ev.x, ev.y, ev.alpha, ev.saturation, ev.hue]
+		box.add_child(info)
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var zoom := Button.new()
+		zoom.text = "2x" if not _preview_zoomed else "1x"
+		zoom.pressed.connect(func():
+			_preview_zoomed = not _preview_zoomed
+			_show_danmaku_preview())
+		row.add_child(zoom)
+		var full := Button.new()
+		full.text = "全屏"
+		full.pressed.connect(func():
+			var vs := DisplayServer.window_get_size()
+			_preview_popup.size = vs)
+		row.add_child(full)
+		_preview_popup.popup_centered(Vector2i(380, 360))
+	## 【批复 2026-10-02】[Z] 的定义已改为"试炼场中让角色发射该弹幕"
+	## （battle_arena 预览模式 KEY_Z），本浮窗只是参数速览，不再绑定 Z。

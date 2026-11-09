@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bx0crqnj1dnmg"
+
+[deps]
+
+files=["res://gameAssetBase/charas_elements_arrays.para.translation", "res://gameAssetBase/charas_elements_arrays.sub.translation"]
+
+source_file="res://gameAssetBase/charas_elements_arrays.csv"
+dest_files=["res://gameAssetBase/charas_elements_arrays.para.translation", "res://gameAssetBase/charas_elements_arrays.sub.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

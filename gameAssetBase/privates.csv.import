@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cocsc0xsr3hjl"
+
+[deps]
+
+files=["res://gameAssetBase/privates.Normal.translation", "res://gameAssetBase/privates.Determine.translation", "res://gameAssetBase/privates.Defend.translation", "res://gameAssetBase/privates.ShootCd.translation", "res://gameAssetBase/privates.NameZH.translation", "res://gameAssetBase/privates.NameJP.translation", "res://gameAssetBase/privates.NameEN.translation"]
+
+source_file="res://gameAssetBase/privates.csv"
+dest_files=["res://gameAssetBase/privates.Normal.translation", "res://gameAssetBase/privates.Determine.translation", "res://gameAssetBase/privates.Defend.translation", "res://gameAssetBase/privates.ShootCd.translation", "res://gameAssetBase/privates.NameZH.translation", "res://gameAssetBase/privates.NameJP.translation", "res://gameAssetBase/privates.NameEN.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

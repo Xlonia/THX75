@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://clmyjc8fmy2db"
+path="res://.godot/imported/contour_down.glsl-8088d51fab45a3222d3767ab3158e0f6.res"
+
+[deps]
+
+source_file="res://shaders/contour_down.glsl"
+dest_files=["res://.godot/imported/contour_down.glsl-8088d51fab45a3222d3767ab3158e0f6.res"]
+
+[params]
+

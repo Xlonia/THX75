@@ -1,0 +1,714 @@
+extends Node2D
+## =============================================================
+## battle_arena —— 第①期重写（GPU DDM + 哈希被弹 + 队伍战 + MultiMesh）
+## 【性能架构（批复#14 核心修正）】
+##   0 期 CPU 逐弹像素印章/包围盒擦除/master重建 → 已全部移除。
+##   现架构：
+##     ① 弹幕 update（运动学，常量折叠表达式）
+##     ② BulletHash 重建（每弹 O(1) 入格）→ 被弹解析（圆碰撞，矢量精确）
+##     ③ DdmGpu.render（印章 → compute shader 弹幕图；AI/调试/预览用）
+##     ④ MultiMesh 批量渲染弹幕（数千发 1 draw call/材质）
+## 【队伍战（demo 目标）】每侧 5~6 角色 + 5×5 杂兵（privates.csv）
+##   杂兵：相对角色坐标 + 目标点系绳 + 0.3/0.35秒距引力（PrivateFormation）
+## 【被弹解析（哈希版，语义=DDM上升沿）】
+##   每实体查 fields[side]（=可击中该方的弹幕）→ 与上一帧键集比对 →
+##   上升沿键按伤害降序 → 最高伤害优先结算 → 0.5s 免疫
+## =============================================================
+
+const LOGICAL := 400
+const HUD_RESERVE := 110
+const MAX_BULLETS := 6000 ## 性能护栏（超出移除最旧）
+
+var SCALE := 2.0
+var time_frames := 0
+var phase := 1
+var bullets: Array = []
+var entities: Array = []
+var fire_controls: Array = []
+var formations: Array = []      ## Array[PrivateFormation]
+var finished := false
+var is_preview := false
+
+## 弹幕图（GPU 可用则启用；双方各一份——键=可击中该方的弹幕集合）
+var ddm_gpu0: DdmGpu = null
+var ddm_gpu1: DdmGpu = null
+var gpu_ok := false
+var bullet_hash := BulletHash.new()
+var _stamp_buf0 := PackedFloat32Array()
+var _stamp_buf1 := PackedFloat32Array()
+
+var player_side_chars: Array = []   ## Array[Dictionary] 我方角色行
+var enemy_side_chars: Array = []    ## 敌方角色行（Enemy.csv 池或 Characters 池）
+var player_ents: Array = []         ## Array[BattleEntity]
+var enemy_ents: Array = []
+var player_leader: BattleEntity = null
+var enemy_leader: BattleEntity = null
+var emitter_ent: BattleEntity = null
+var _emitter_acc := 0.0
+var _stamp_texture_sprites: Array = [] ## GPU DDM 调试显示（F3）
+
+## —— 节点 ——
+var world: Node2D
+var entity_layer: Node2D
+var bullet_layer: Node2D
+var ddm_debug_layer: Node2D
+var hud: CanvasLayer
+var info_label: Label
+var banner: Label
+var pause_panel: PanelContainer
+## MultiMesh 批量渲染（每材质一个 MM；粒子弹幕全部 16px 材质高度共享）
+var _mm: MultiMesh = null
+var _mm_tex: Texture2D = null
+var _mm_count := 0
+
+func _ready() -> void:
+	is_preview = (GameGlobals.arena_mode == "preview")
+	var usable := float(DisplayServer.window_get_size().y) - float(HUD_RESERVE)
+	SCALE = maxf(1.0, floor(usable / float(LOGICAL)))
+	_init_gpu()
+	_build_world()
+	_build_hud()
+	if is_preview:
+		_setup_preview()
+	else:
+		_setup_versus()
+
+func _init_gpu() -> void:
+	ddm_gpu0 = DdmGpu.new()
+	ddm_gpu1 = DdmGpu.new()
+	gpu_ok = ddm_gpu0.ok and ddm_gpu1.ok
+	if not gpu_ok:
+		push_warning("[Arena] GPU DDM 不可用（headless/兼容），弹幕图降级关闭；被弹走哈希（逻辑不受影响）")
+
+func _build_world() -> void:
+	world = Node2D.new()
+	world.name = "World"
+	world.scale = Vector2(SCALE, SCALE)
+	add_child(world)
+	entity_layer = _make_painter("EntityLayer", "entities")
+	bullet_layer = _make_painter("BulletLayer", "bullets")
+	ddm_debug_layer = _make_painter("DDMDebug", "ddm")
+	ddm_debug_layer.visible = false
+
+func _make_painter(node_name: String, kind: String) -> Node2D:
+	var n := Node2D.new()
+	n.name = node_name
+	n.set_script(load("res://scripts/versus/arena_painters.gd"))
+	n.host = self
+	n.draw_kind = kind
+	world.add_child(n)
+	return n
+
+## =============================================================
+## 队伍构建（demo：每侧 5 角色 + 5×5 杂兵）
+## =============================================================
+func _setup_versus() -> void:
+	## 我方：配置的角色名列表（versus_menu 设置；默认队伍）
+	var p_names: Array = GameGlobals.versus_player_team if not GameGlobals.versus_player_team.is_empty() else ["MarisaA", "ReimuA", "ReisenA", "Alice", "Nitori"]
+	var e_names: Array = GameGlobals.versus_enemy_team if not GameGlobals.versus_enemy_team.is_empty() else ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"]
+	player_side_chars = _rows_for(p_names, false)
+	enemy_side_chars = _rows_for(e_names, true)
+	_spawn_side(player_side_chars, 0, true)
+	_spawn_side(enemy_side_chars, 1, false)
+	player_leader = player_ents[0] if not player_ents.is_empty() else null
+	enemy_leader = enemy_ents[0] if not enemy_ents.is_empty() else null
+
+func _rows_for(names: Array, from_enemy_csv: bool) -> Array:
+	var rows: Array = []
+	for n in names:
+		var row := {}
+		if from_enemy_csv:
+			row = CharaDB.get_enemy_by_name(n)
+			if row.is_empty():
+				row = CharaDB.get_by_name(n) ## 敌方池缺数据时回退角色表
+		else:
+			row = CharaDB.get_by_name(n)
+		if not row.is_empty():
+			rows.append(row)
+	return rows
+
+func _spawn_side(rows: Array, side: int, as_player_side: bool) -> void:
+	var base_x := 60.0 if side == 0 else 340.0
+	for i in rows.size():
+		var ent := BattleEntity.new()
+		var is_lead := i == 0
+		ent.setup(rows[i], side, BattleEntity.Kind.MEMBER if not is_lead else BattleEntity.Kind.PLAYER, is_lead and as_player_side)
+		ent.position = Vector2(base_x, 60.0 + i * 70.0)
+		world.add_child(ent)
+		entities.append(ent)
+		if side == 0:
+			player_ents.append(ent)
+		else:
+			enemy_ents.append(ent)
+		var fc := FireControl.new()
+		fc.setup(ent)
+		fc.fired.connect(_on_fire)
+		fire_controls.append(fc)
+		## 每角色 5 杂兵（demo 5×5；私兵表循环取）
+		var priv_rows := CharaDB.load_privates()
+		for j in GameGlobals.versus_privates_per_char:
+			var prow: Dictionary = priv_rows[(i * 5 + j) % priv_rows.size()]
+			var priv := BattleEntity.new()
+			priv.setup_private(prow, side, ent, j + 1, false)
+			priv.local_pos = Vector2((j - 2) * 6.0, 15.0)
+			priv.sync_private_pos()
+			world.add_child(priv)
+			entities.append(priv)
+			var fm := PrivateFormation.new()
+			fm.setup(ent, priv, "线列防护", {"custom_a": 12.0, "custom_b": 6.0})
+			formations.append(fm)
+
+## 试炼场发射器：每 0.5s 从顶部随机 x 发射当前编辑事件
+func _preview_emitter(delta: float) -> void:
+	_emitter_acc += delta
+	if _emitter_acc >= 0.5:
+		_emitter_acc = 0.0
+		var ev := _find_event(GameGlobals.preview_event_name)
+		if ev != null and emitter_ent != null:
+			emitter_ent.position = Vector2(40.0 + randf() * 320.0, 20.0)
+			_spawn_bullet(ev, emitter_ent.position, 0, emitter_ent, null)
+
+func _setup_preview() -> void:
+	var row := CharaDB.get_by_name("MarisaA")
+	var ent := BattleEntity.new()
+	ent.setup(row, 0, BattleEntity.Kind.PLAYER, true)
+	ent.position = Vector2(200, 340)
+	world.add_child(ent)
+	entities.append(ent)
+	player_leader = ent
+	ent.pp = 100
+	var erow := CharaDB.get_by_name("ReimuA")
+	emitter_ent = BattleEntity.new()
+	emitter_ent.setup(erow, 1, BattleEntity.Kind.ENEMY)
+	emitter_ent.position = Vector2(200, 20)
+	world.add_child(emitter_ent)
+	entities.append(emitter_ent)
+
+func _on_fire(point, ev: DanmakuEventData) -> void:
+	## 发射原点 = 火力点当前位置 + 事件 x/y_offset（批复：offset 也是遮罩起点）
+	var src: BattleEntity = point_source(point)
+	var origin: Vector2 = src.position + point.offset
+	if ev.is_abs_coord:
+		origin = Vector2(ev.x_offset, ev.y_offset)
+	else:
+		origin += Vector2(ev.x_offset, ev.y_offset)
+	_spawn_bullet(ev, origin, 0, src, point)
+
+func point_source(point) -> BattleEntity:
+	for fc in fire_controls:
+		if fc.entity == null:
+			continue
+		for p in fc.weapon_points + fc.sub_points:
+			if p == point:
+				return fc.entity
+	return player_leader
+
+## =============================================================
+## 主循环
+## =============================================================
+func _physics_process(delta: float) -> void:
+	if pause_panel != null and pause_panel.visible:
+		return
+	var dt := delta * 60.0
+	time_frames += 1
+	if not finished:
+		_player_input()
+		if time_frames % 2 == 0: ## 【嫌疑4】AI 每2帧一次（能跳则跳）
+			_ai_sides()
+		if is_preview:
+			_preview_emitter(delta)
+	_entity_ticks(dt)
+	_fire_ticks(delta)
+	_bullet_updates(dt)
+	_resolve_hits()
+	_update_phase()
+	_check_end()
+	_refresh_hud()
+	## 【性能休整·嫌疑3】GPU DDM 移至 _process（渲染线程），不阻塞物理线程
+	## _render_ddm() 改在 _process 中调用
+
+func _process(_delta: float) -> void:
+	_render_ddm() ## GPU 弹幕图提交（渲染线程，异步不阻塞 physics）
+
+func _player_input() -> void:
+	var dir := Vector2.ZERO
+	if Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_A):
+		dir.x -= 1
+	if Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_D):
+		dir.x += 1
+	if Input.is_physical_key_pressed(KEY_UP) or Input.is_physical_key_pressed(KEY_W):
+		dir.y -= 1
+	if Input.is_physical_key_pressed(KEY_DOWN) or Input.is_physical_key_pressed(KEY_S):
+		dir.y += 1
+	if player_leader != null and not player_leader.dead:
+		player_leader.move(dir)
+	## Shift=快机（demo）：整队 cruise_active 切换（正式为态势卡驱动）
+	var want_cruise := Input.is_physical_key_pressed(KEY_SHIFT)
+	for fc in fire_controls:
+		if fc.entity.side == 0:
+			fc.entity.cruise_active = want_cruise
+
+func _ai_sides() -> void:
+	## 敌方 AI（①期简化：各实体围绕敌领队保持距离 + 正弦环绕）
+	for ent in enemy_ents:
+		if ent.dead or ent.kind == BattleEntity.Kind.PRIVATE:
+			continue
+		if player_leader == null or player_leader.dead:
+			continue
+		var to_t: Vector2 = player_leader.position - ent.position
+		var radial: float = to_t.length() - 180.0
+		var d: Vector2 = to_t.normalized() * (signf(radial) * 0.4 if absf(radial) > 12.0 else 0.0)
+		d += Vector2(-to_t.normalized().y, to_t.normalized().x) * sin(float(time_frames) / 60.0 + ent.position.y * 0.01) * 0.5
+		ent.move(d)
+	## 我方 AI 成员（跟随队形：围绕领队纵向分布）
+	var idx := 0
+	for ent in player_ents:
+		if ent == player_leader or ent.dead:
+			continue
+		var want := Vector2(player_leader.position.x - 30.0, 60.0 + idx * 70.0)
+		var d: Vector2 = (want - ent.position) * 0.02
+		ent.move(d)
+		idx += 1
+
+func _entity_ticks(dt: float) -> void:
+	for ent in entities:
+		ent.tick()
+	## 【嫌疑4】杂兵排布每3帧一次（formation 步进+sync_private_pos 降频）
+	if time_frames % 3 == 0:
+		for fm in formations:
+			fm.step(dt * 3.0) ## 补偿步长
+		for ent in entities:
+			if ent.kind == BattleEntity.Kind.PRIVATE:
+				ent.sync_private_pos()
+
+func _fire_ticks(delta: float) -> void:
+	var t_sec := float(time_frames) / 60.0
+	for fc in fire_controls:
+		if not fc.entity.dead:
+			fc.process(delta, t_sec, phase)
+	if time_frames % 300 == 0:
+		for fc in fire_controls:
+			if not fc.entity.dead:
+				fc.rebuild_points()
+
+func _bullet_updates(dt: float) -> void:
+	## 【性能休整】共享上下文极简化：只含 field_t/field_phase（全局不变）
+	## self_*/target_* 不进共享——绝大多数弹幕表达式不依赖它们
+	bullet_hash.clear()
+	var gctx := {"field_t": float(time_frames), "field_phase": phase}
+	for i in range(bullets.size() - 1, -1, -1):
+		var b: Bullet = bullets[i]
+		b.sync_shared(gctx)
+		if not b.update(dt):
+			bullets.remove_at(i)
+			continue
+		if b.repeat_tick():
+			_spawn_bullet(b.ev, b.repeat_origin(), b.depth + 1, b.source, null)
+		bullet_hash.insert(b)
+	while bullets.size() > MAX_BULLETS:
+		bullets.pop_front()
+
+## =============================================================
+## ⑥ 被弹解析（性能休整·嫌疑2修复）
+## 【作者指示】不要附加判定，不要跟踪路径，快速弹幕穿过不伤害可接受。
+##   0.5秒减免=角色不参与所有DDM持续0.5秒（不只是被弹的那个弹幕）。
+## 【极简化】不排序、不维护 touch_state 上升沿——直接首个命中即结算。
+##   免疫期内角色完全跳过被弹（不查哈希）。
+## =============================================================
+func _resolve_hits() -> void:
+	for ent in entities:
+		if ent.dead or ent == emitter_ent:
+			continue
+		if ent.immune_frames > 0:
+			continue ## 0.5秒减免：角色不参与所有DDM（作者批复）
+		var r: float = ent.barrier_radius() if ent.ap > 0 else ent.judge_radius()
+		var keys := bullet_hash.query_keys(ent.position.x, ent.position.y, r, 1 - ent.side, ent)
+		if keys.is_empty():
+			continue
+		## 首个命中即结算——不排序（作者：能跳则跳）
+		for key in keys:
+			var parts: PackedStringArray = String(key).split("|")
+			var dmg := int(parts[0])
+			var mode: String = parts[1]
+			var angles: Array = keys[key]
+			var ang: float = angles[0] if not angles.is_empty() else 0.0
+			var mode_idx := 1 if mode == "i" else (2 if mode == "s" else 0)
+			ent.take_hit(dmg, mode_idx, ang)
+			break ## 只结算一次
+
+func _choose_part(angles: Array) -> Array:
+	var first_angle := {}
+	for a in angles:
+		var ang: float = a
+		var p := _part_of_angle(ang)
+		if not first_angle.has(p):
+			first_angle[p] = ang
+	for part in [BattleEntity.PART_BODY, BattleEntity.PART_WEAPON, BattleEntity.PART_MOVE]:
+		if first_angle.has(part):
+			return [part, first_angle[part]]
+	return [BattleEntity.PART_BODY, angles[0] if not angles.is_empty() else 0.0]
+
+func _part_of_angle(a: float) -> int:
+	if absf(angle_difference(a, -PI / 2.0)) <= deg_to_rad(60.0):
+		return BattleEntity.PART_WEAPON
+	if absf(angle_difference(a, PI / 2.0)) <= deg_to_rad(60.0):
+		return BattleEntity.PART_MOVE
+	return BattleEntity.PART_BODY
+
+## =============================================================
+## 阶段与胜负（①期仍简化；四阶段完整判定属②期）
+## =============================================================
+func _update_phase() -> void:
+	if is_preview:
+		return
+	if phase < 4:
+		var p_all_dead := _side_all_dead(player_ents)
+		var e_all_dead := _side_all_dead(enemy_ents)
+		if p_all_dead or e_all_dead:
+			phase = 4
+
+func _side_all_dead(ents: Array) -> bool:
+	for e in ents:
+		if not e.dead:
+			return false
+	return not ents.is_empty()
+
+func _check_end() -> void:
+	if is_preview or finished:
+		return
+	if _side_all_dead(enemy_ents) and not _side_all_dead(player_ents):
+		_finish("胜  利 —— 敌方全灭")
+	elif _side_all_dead(player_ents):
+		_finish("败  北 —— 我方全灭")
+
+func _finish(text: String) -> void:
+	finished = true
+	banner.text = text + "\nR 重试 / Esc 回标题"
+	banner.visible = true
+
+## =============================================================
+## 事件发射（世界接口）
+## =============================================================
+func _find_event(event_name: String) -> DanmakuEventData:
+	if event_name == "":
+		event_name = "demo_aimed"
+	for ev in GameGlobals.editor_events:
+		if ev.event_name == event_name:
+			return ev
+	return GameGlobals.get_event(event_name)
+
+func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: BattleEntity, point = null) -> void:
+	if ev == null or depth > Bullet.MAX_DEPTH:
+		return
+	if bullets.size() >= MAX_BULLETS:
+		return
+	var b := Bullet.new()
+	var ctx := {}
+	if point != null:
+		ctx = fire_controls[0].point_ctx(point) if not fire_controls.is_empty() else {}
+		for fc in fire_controls:
+			for p in fc.weapon_points + fc.sub_points:
+				if p == point:
+					ctx = fc.point_ctx(p)
+					break
+	b.setup(ev, origin, src.side, src, self, depth, ctx)
+	bullets.append(b)
+
+func spawn_event_by_name(event_name: String, at: Vector2, side: int, depth: int) -> void:
+	var ev := _find_event(event_name)
+	if ev == null:
+		return
+	var src := emitter_ent if is_preview else (player_leader if side == 0 else enemy_leader)
+	if src == null:
+		src = player_leader if side == 0 else enemy_leader
+	if src == null:
+		return
+	var b := Bullet.new()
+	b.setup(ev, at, side, src, self, depth)
+	bullets.append(b)
+
+## —— Bullet 依赖的世界接口 ——
+func bullet_field(_side: int) -> DdmField:
+	return null ## ①期哈希架构下无 CPU DDM；保留接口兼容
+
+func bullet_hit_query(cx: float, cy: float, r: float, hit_side: int, _skip: BattleEntity) -> Dictionary:
+	## 点向类 can_destroy 用：查询可击中 hit_side 的弹幕是否触及点
+	return bullet_hash.query_keys(cx, cy, r, 1 - hit_side, null)
+
+func bullet_nearest_enemy(side: int, from: Vector2) -> BattleEntity:
+	return bullet_nearest_enemy_from(side, from)
+
+func bullet_nearest_enemy_from(side: int, from: Vector2) -> BattleEntity:
+	var best: BattleEntity = null
+	var best_d := INF
+	for ent in entities:
+		if ent is not BattleEntity or ent.dead or ent.side == side or ent == emitter_ent:
+			continue
+		var d: float = ent.position.distance_squared_to(from)
+		if d < best_d:
+			best_d = d
+			best = ent
+	return best
+
+func bullet_nearest_enemy_pos(side: int, from: Vector2) -> Vector2:
+	var e := bullet_nearest_enemy_from(side, from)
+	if e != null:
+		return e.position
+	return from + (Vector2.RIGHT if side == 0 else Vector2.LEFT)
+
+func bullet_time_frames() -> float:
+	return float(time_frames)
+
+func bullet_phase() -> int:
+	return phase
+
+## =============================================================
+## GPU DDM 渲染（每帧：导出印章 → compute）
+## =============================================================
+func _render_ddm() -> void:
+	if not gpu_ok:
+		return
+	_stamp_buf0.clear()
+	_stamp_buf1.clear()
+	for b in bullets:
+		var bl: Bullet = b
+		if bl.hidden_now:
+			continue
+		## fields[side]语义：敌方法弹+物弹 → 击中对方；物弹超遮罩 → 也入己方图
+		if bl.source_side == 0:
+			_stamp_buf1 = _export(bl, _stamp_buf1)
+			if bl.ev.is_phy and bl.beyond_mask():
+				_stamp_buf0 = _export(bl, _stamp_buf0)
+		else:
+			_stamp_buf0 = _export(bl, _stamp_buf0)
+			if bl.ev.is_phy and bl.beyond_mask():
+				_stamp_buf1 = _export(bl, _stamp_buf1)
+	ddm_gpu0.render(_stamp_buf0)
+	ddm_gpu1.render(_stamp_buf1)
+
+func _export(bl: Bullet, buf: PackedFloat32Array) -> PackedFloat32Array:
+	bl.export_stamps(buf)
+	return buf
+
+## =============================================================
+## HUD / 输入
+## =============================================================
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_ESCAPE:
+				if finished:
+					GameGlobals.goto_scene("res://scenes/title_menu.tscn")
+				else:
+					_toggle_pause()
+			KEY_V:
+				GameGlobals.versus_volley = "salvo" if GameGlobals.versus_volley == "rotate" else "rotate"
+				for fc in fire_controls:
+					fc.set_mode(GameGlobals.versus_volley)
+			KEY_F3:
+				ddm_debug_layer.visible = not ddm_debug_layer.visible
+			KEY_R:
+				if finished:
+					get_tree().reload_current_scene()
+
+func _build_hud() -> void:
+	hud = CanvasLayer.new()
+	add_child(hud)
+	info_label = Label.new()
+	info_label.position = Vector2(8, 4)
+	info_label.add_theme_font_size_override("font_size", 13)
+	hud.add_child(info_label)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud.add_child(center)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 12)
+	center.add_child(stack)
+	banner = Label.new()
+	banner.visible = false
+	banner.add_theme_font_size_override("font_size", 28)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(banner)
+	pause_panel = _build_pause_panel()
+	stack.add_child(pause_panel)
+
+func _toggle_pause() -> void:
+	pause_panel.visible = not pause_panel.visible
+
+func _on_pause_btn(p: PanelContainer, txt: String) -> void:
+	match txt:
+		"继续":
+			p.visible = false
+		"重新开始":
+			get_tree().reload_current_scene()
+		"返回标题":
+			GameGlobals.goto_scene("res://scenes/title_menu.tscn")
+
+func _build_pause_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.visible = false
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	p.add_child(box)
+	var title := Label.new()
+	title.text = "暂停（界面暂停 = 双方冻结）"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	for txt in ["继续", "重新开始", "返回标题"]:
+		var btn := Button.new()
+		btn.text = txt
+		btn.pressed.connect(_on_pause_btn.bind(p, txt))
+		box.add_child(btn)
+	var hint := Label.new()
+	hint.text = "移动:WASD　Shift:快机(演示)　V:轮射↔齐射　F3:DDM图　Esc:暂停"
+	hint.add_theme_font_size_override("font_size", 12)
+	box.add_child(hint)
+	return p
+
+func _refresh_hud() -> void:
+	var volley := "轮射" if GameGlobals.versus_volley == "rotate" else "齐射"
+	var phase_name: String = {1: "远距压制", 2: "短兵", 3: "破阵", 4: "撤离"}.get(phase, "?")
+	var p_alive := 0
+	var p_priv := 0
+	for e in player_ents:
+		if not e.dead:
+			p_alive += 1
+	for e in entities:
+		if e is BattleEntity and e.side == 0 and e.kind == BattleEntity.Kind.PRIVATE and not e.dead:
+			p_priv += 1
+	var e_alive := 0
+	var e_priv := 0
+	for e in enemy_ents:
+		if not e.dead:
+			e_alive += 1
+	for e in entities:
+		if e is BattleEntity and e.side == 1 and e.kind == BattleEntity.Kind.PRIVATE and not e.dead:
+			e_priv += 1
+	var gpu_txt := "GPU-DDM✓" if gpu_ok else "哈希降级"
+	var mode_txt := ("试炼场:%s" % GameGlobals.preview_event_name) if is_preview else "自定义对战"
+	info_label.text = "%s | %s | %s | t=%.1fs 弹幕=%d %s\n我方 角色%d+杂兵%d  敌方 角色%d+杂兵%d" % [
+		mode_txt, volley, phase_name, float(time_frames) / 60.0, bullets.size(), gpu_txt,
+		p_alive, p_priv, e_alive, e_priv]
+	if player_leader != null:
+		info_label.text += "\n领队 %s AP%d HP 武%d/僚%d/机%d" % [
+			player_leader.chara_name(), player_leader.ap,
+			player_leader.hp[0], player_leader.hp[1], player_leader.hp[2]]
+
+## =============================================================
+## 绘制（painters 回调）
+## =============================================================
+func draw_entities(onto: CanvasItem) -> void:
+	for ent in entities:
+		if ent is not BattleEntity or ent == emitter_ent:
+			continue
+		var col := Color(0.35, 0.65, 1.0) if ent.side == 0 else Color(1.0, 0.35, 0.3)
+		if ent.kind == BattleEntity.Kind.PRIVATE:
+			col = col.lerp(Color(0.7, 0.7, 0.7), 0.5) ## 杂兵淡化
+			if ent.is_elite_private:
+				col = Color(1.0, 0.85, 0.2) ## 较强杂兵金色
+		if ent.dead:
+			col = Color(0.4, 0.4, 0.4)
+		var r: float = ent.judge_radius()
+		onto.draw_arc(ent.position, r, 0, TAU, 16, col, 1.0)
+		if ent.ap > 0 and ent.kind != BattleEntity.Kind.PRIVATE:
+			onto.draw_arc(ent.position, ent.barrier_radius(), 0, TAU, 24, col.darkened(0.4), 1.0)
+		if ent.is_player:
+			onto.draw_arc(ent.position, 6.0, 0, TAU, 16, Color.WHITE, 0.5)
+
+## 弹幕绘制：MultiMesh 批量（1 draw call/材质组）+ 激光线段
+## 【性能】MM 容量预分配为 MAX_BULLETS，每帧只设 instance_count，
+##   不重建/重分配 mesh——避免每帧 ArrayMesh 创建开销
+func draw_bullets(onto: CanvasItem) -> void:
+	## 激光（线段集合，数量少直接 draw_line）
+	for b in bullets:
+		var bl: Bullet = b
+		if bl.hidden_now or bl.ev.tag != DanmakuEventData.TAG_LASER:
+			continue
+		var c := bl.modulate_color()
+		c.a = bl.current_alpha_01()
+		var w := bl.laser_width() * 2.0
+		if bl.t <= float(bl.ev.alarm):
+			w *= 0.3
+			c.a *= bl.ev.alarm_shader_alpha
+		for i in bl.laser_samples.size() - 1:
+			onto.draw_line(bl.laser_samples[i], bl.laser_samples[i + 1], c, w)
+	## 粒子弹幕：按材质分组，每组用一个 MultiMesh
+	var by_tex: Dictionary = {}
+	for b in bullets:
+		var bl: Bullet = b
+		if bl.hidden_now or bl.ev.tag == DanmakuEventData.TAG_LASER:
+			continue
+		if not by_tex.has(bl.tex):
+			by_tex[bl.tex] = []
+		by_tex[bl.tex].append(bl)
+	for tex in by_tex:
+		var list: Array = by_tex[tex]
+		var mm := _get_mm(tex)
+		if mm == null:
+			continue
+		var cnt := list.size()
+		if cnt > mm.instance_count:
+			mm.instance_count = cnt ## 仅在数量增长时扩容
+		for i in cnt:
+			var bl: Bullet = list[i]
+			var xf := Transform2D(bl.draw_rotation(), bl.pos)
+			xf = xf.scaled_local(Vector2(bl.ev.danmaku_size_muti, bl.ev.danmaku_size_muti))
+			mm.set_instance_transform_2d(i, xf)
+			mm.set_instance_color(i, Color(bl.modulate_color().r, bl.modulate_color().g, bl.modulate_color().b, bl.current_alpha_01()))
+		## 超出实际数量的实例移到屏外（实例数=最大值，但只画 cnt 个）
+		if cnt < mm.instance_count:
+			for i in range(cnt, mm.instance_count):
+				mm.set_instance_transform_2d(i, Transform2D(0, Vector2(-9999, -9999)))
+		onto.draw_multimesh(mm, tex)
+
+## MultiMesh 缓存（材质 → MM 实例池）
+var _mm_cache: Dictionary = {}
+func _get_mm(tex: Texture2D) -> MultiMesh:
+	if _mm_cache.has(tex):
+		return _mm_cache[tex]
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_2D
+	mm.use_colors = true
+	mm.instance_count = 0
+	mm.mesh = _quad_mesh(tex)
+	_mm_cache[tex] = mm
+	return mm
+
+func _quad_mesh(tex: Texture2D) -> Mesh:
+	## 单位四边形（中心原点；实例变换含尺寸/旋转/位置）
+	var sz: Vector2 = tex.get_size() if tex != null else Vector2(16, 16)
+	var vs := PackedVector2Array([
+		Vector2(-sz.x / 2, -sz.y / 2), Vector2(sz.x / 2, -sz.y / 2),
+		Vector2(sz.x / 2, sz.y / 2), Vector2(-sz.x / 2, sz.y / 2)])
+	var uvs := PackedVector2Array([
+		Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
+	for k in idx.size():
+		var vi := idx[k]
+		st.set_uv(uvs[vi])
+		st.add_vertex(Vector3(vs[vi].x, vs[vi].y, 0.0))
+	var mesh := st.commit()
+	return mesh
+
+## DDM 调试图（F3）：GPU 纹理直接显示（哈希降级时画哈希点）
+func draw_ddm_debug(onto: CanvasItem) -> void:
+	if gpu_ok:
+		## GPU 纹理经 Texture2DRD 显示（每帧重建代价高，调试限 6fps）
+		if time_frames % 10 == 0:
+			for s in _stamp_texture_sprites:
+				s.queue_free()
+			_stamp_texture_sprites.clear()
+			var spr := Sprite2D.new()
+			spr.texture = ddm_gpu1.get_display_texture() ## 敌方弹幕图（击中我方的）
+			spr.position = Vector2(200, 200)
+			spr.modulate = Color(1, 0, 1, 0.3)
+			world.add_child(spr)
+			_stamp_texture_sprites.append(spr)
+	else:
+		for b in bullets:
+			var bl: Bullet = b
+			if bl.hidden_now:
+				continue
+			onto.draw_circle(bl.pos, bl.draw_radius, Color(1, 0, 1, 0.15))

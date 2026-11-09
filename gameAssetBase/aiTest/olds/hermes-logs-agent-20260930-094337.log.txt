@@ -1,0 +1,1000 @@
+2026-09-30 14:20:40,862 WARNING tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,545 WARNING tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,581 WARNING tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,582 WARNING tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,596 WARNING tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,597 WARNING tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,598 WARNING tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,600 WARNING tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:20:41,606 INFO agent.auxiliary_client: Vision auto-detect: using main provider zai-coding-cn (glm-5.2)
+
+2026-09-30 14:20:41,634 INFO tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 12 deferred (~1260 tokens), listing full (budget ~4000 tokens)
+
+2026-09-30 14:20:41,637 INFO tools.memory_tool: memory: loading from C:\Users\LENOVO\AppData\Roaming\cn.org.hermesagent.desktop\runtime\hermes-home\memories
+
+2026-09-30 14:21:21,802 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:21:28,085 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:23:17,730 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:23:17,731 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:24:22,933 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:24:29,623 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:25:44,382 INFO hermes_state: Repaired 6 message-alternation violation(s) while restoring session 20260925_194111_4c424a — durable transcript kept them, see repair_message_sequence
+
+2026-09-30 14:25:44,548 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=Thread-196 (_build):32576 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:25:45,335 WARNING tools.registry: check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:46,027 WARNING tools.registry: check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:46,700 WARNING tools.registry: check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:47,365 WARNING tools.registry: check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:48,031 WARNING tools.registry: check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:48,104 WARNING tools.registry: check_fn is_browser_use_cli_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:48,778 WARNING tools.registry: check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:49,457 WARNING tools.registry: check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:50,138 WARNING tools.registry: check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:50,813 WARNING tools.registry: check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:51,509 WARNING tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,191 WARNING tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,228 WARNING tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,229 WARNING tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,242 WARNING tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,243 WARNING tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,244 WARNING tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,247 WARNING tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:25:52,253 INFO agent.auxiliary_client: Vision auto-detect: using main provider zai-coding-cn (glm-5.2)
+
+2026-09-30 14:25:52,282 INFO tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 12 deferred (~1260 tokens), listing full (budget ~4000 tokens)
+
+2026-09-30 14:25:52,285 INFO tools.memory_tool: memory: loading from C:\Users\LENOVO\AppData\Roaming\cn.org.hermesagent.desktop\runtime\hermes-home\memories
+
+2026-09-30 14:27:23,651 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:27:31,511 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:28:17,735 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:28:17,736 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:29:11,877 INFO hermes_cli.active_sessions: Pruned 1 stale active session lease(s)
+
+2026-09-30 14:29:11,894 INFO tui_gateway.server: tui prompt accepted: ui_session=84008faf session_key=202609...424a agent_session_id=20260925_194111_4c424a kind=user chars=2742 images=0
+
+2026-09-30 14:29:12,723 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:13,395 WARNING [20260925_194111_4c424a] tools.registry: check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:14,091 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:14,768 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:15,453 WARNING [20260925_194111_4c424a] tools.registry: check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:15,527 WARNING [20260925_194111_4c424a] tools.registry: check_fn is_browser_use_cli_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:16,208 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:16,901 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:17,577 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:18,267 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:18,954 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,630 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,666 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,667 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,679 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,680 WARNING [20260925_194111_4c424a] tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,682 WARNING [20260925_194111_4c424a] tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,683 WARNING [20260925_194111_4c424a] tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:29:19,689 INFO [20260925_194111_4c424a] agent.auxiliary_client: Vision auto-detect: using main provider custom (glm-5.2)
+
+2026-09-30 14:29:19,718 INFO [20260925_194111_4c424a] tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 12 deferred (~1260 tokens), listing full (budget ~4000 tokens)
+
+2026-09-30 14:29:19,720 INFO [20260925_194111_4c424a] agent.turn_context: conversation turn: session=20260925_194111_4c424a model=glm-5.2 provider=custom platform=desktop history=606 msg='[Hermes UI Workspace] workspace=D:\\Hyomumoene\\game\\th75 instruction=Treat this a...'
+
+2026-09-30 14:29:19,723 INFO [20260925_194111_4c424a] agent.conversation_loop: Stored system prompt for session 20260925_194111_4c424a has stale runtime identity; rebuilding for model=glm-5.2 provider=custom.
+
+2026-09-30 14:29:20,144 INFO [20260925_194111_4c424a] agent.conversation_loop: Repaired 1 message-alternation violations before request (session=20260925_194111_4c424a)
+
+2026-09-30 14:29:20,226 INFO run_agent: OpenAI client created (chat_completion_stream_request, shared=False) thread=Thread-262 (<lambda>):27392 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:30:24,806 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:30:30,683 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #1: model=glm-5.2 provider=custom in=335341 out=2993 total=338334 latency=70.5s
+
+2026-09-30 14:30:30,909 INFO tools.file_tools: Creating new local environment for task session:...
+
+2026-09-30 14:30:31,182 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:30:32,867 INFO tools.environments.base: Session snapshot created (session=64ad36900367, cwd=D:\Hyomumoene\game\th75)
+
+2026-09-30 14:30:32,869 INFO tools.file_tools: local environment ready for task session:
+
+2026-09-30 14:30:32,885 INFO agent.tool_executor: tool read_file completed (1.99s, 2822 chars)
+
+2026-09-30 14:30:32,926 INFO agent.tool_executor: tool search_files completed (2.03s, 161 chars)
+
+2026-09-30 14:30:47,254 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #2: model=glm-5.2 provider=custom in=337027 out=39 total=337066 latency=14.3s cache=335232/337027 (99%)
+
+2026-09-30 14:30:47,293 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 4102 chars)
+
+2026-09-30 14:30:50,263 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:31:00,609 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #3: model=glm-5.2 provider=custom in=339433 out=45 total=339478 latency=13.3s
+
+2026-09-30 14:31:00,650 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 2284 chars)
+
+2026-09-30 14:31:03,860 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #4: model=glm-5.2 provider=custom in=340778 out=39 total=340817 latency=3.2s cache=339392/340778 (100%)
+
+2026-09-30 14:31:04,537 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.66s, 2549 chars)
+
+2026-09-30 14:31:12,202 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #5: model=glm-5.2 provider=custom in=341652 out=27 total=341679 latency=7.6s cache=337024/341652 (99%)
+
+2026-09-30 14:31:12,240 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 395 chars)
+
+2026-09-30 14:31:15,506 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #6: model=glm-5.2 provider=custom in=341803 out=44 total=341847 latency=3.2s cache=340736/341803 (100%)
+
+2026-09-30 14:31:15,549 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 2446 chars)
+
+2026-09-30 14:31:21,461 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #7: model=glm-5.2 provider=custom in=342841 out=44 total=342885 latency=5.9s cache=341632/342841 (100%)
+
+2026-09-30 14:31:21,511 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.03s, 2394 chars)
+
+2026-09-30 14:31:25,987 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #8: model=glm-5.2 provider=custom in=343771 out=44 total=343815 latency=4.4s cache=341760/343771 (99%)
+
+2026-09-30 14:31:26,032 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 2532 chars)
+
+2026-09-30 14:31:35,333 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #9: model=glm-5.2 provider=custom in=344715 out=509 total=345224 latency=9.3s cache=343744/344715 (100%)
+
+2026-09-30 14:31:35,372 INFO [20260925_194111_4c424a] agent.tool_executor: tool todo completed (0.01s, 844 chars)
+
+2026-09-30 14:31:52,293 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #10: model=glm-5.2 provider=custom in=345545 out=1163 total=346708 latency=16.9s cache=344704/345545 (100%)
+
+2026-09-30 14:31:52,437 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.12s, 3730 chars)
+
+2026-09-30 14:31:58,910 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #11: model=glm-5.2 provider=custom in=348111 out=186 total=348297 latency=6.4s cache=345536/348111 (99%)
+
+2026-09-30 14:31:59,062 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.12s, 1041 chars)
+
+2026-09-30 14:32:07,423 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #12: model=glm-5.2 provider=custom in=348672 out=182 total=348854 latency=8.3s cache=348096/348672 (100%)
+
+2026-09-30 14:32:07,569 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.12s, 900 chars)
+
+2026-09-30 14:32:23,303 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #13: model=glm-5.2 provider=custom in=349178 out=1103 total=350281 latency=15.7s cache=348672/349178 (100%)
+
+2026-09-30 14:32:23,437 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 2571 chars)
+
+2026-09-30 14:32:40,141 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #14: model=glm-5.2 provider=custom in=351350 out=1293 total=352643 latency=16.7s cache=349120/351350 (99%)
+
+2026-09-30 14:32:40,287 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.12s, 2672 chars)
+
+2026-09-30 14:32:47,950 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #15: model=glm-5.2 provider=custom in=353740 out=303 total=354043 latency=7.6s cache=351296/353740 (99%)
+
+2026-09-30 14:32:47,998 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 3080 chars)
+
+2026-09-30 14:32:51,697 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #16: model=glm-5.2 provider=custom in=355173 out=45 total=355218 latency=3.7s cache=353728/355173 (100%)
+
+2026-09-30 14:32:51,732 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 1980 chars)
+
+2026-09-30 14:33:06,474 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #17: model=glm-5.2 provider=custom in=355935 out=1566 total=357501 latency=14.7s cache=355136/355935 (100%)
+
+2026-09-30 14:33:06,620 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.11s, 2768 chars)
+
+2026-09-30 14:33:06,743 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.11s, 2370 chars)
+
+2026-09-30 14:33:10,886 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #18: model=glm-5.2 provider=custom in=359391 out=73 total=359464 latency=4.1s cache=355904/359391 (99%)
+
+2026-09-30 14:33:10,928 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 981 chars)
+
+2026-09-30 14:33:17,751 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:33:17,752 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:33:20,241 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #19: model=glm-5.2 provider=custom in=359822 out=119 total=359941 latency=9.3s cache=342784/359822 (95%)
+
+2026-09-30 14:33:20,284 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 650 chars)
+
+2026-09-30 14:33:24,037 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #20: model=glm-5.2 provider=custom in=360138 out=44 total=360182 latency=3.7s cache=359360/360138 (100%)
+
+2026-09-30 14:33:24,070 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 810 chars)
+
+2026-09-30 14:33:26,143 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:33:28,466 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #21: model=glm-5.2 provider=custom in=360451 out=178 total=360629 latency=4.4s cache=359360/360451 (100%)
+
+2026-09-30 14:33:28,588 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 958 chars)
+
+2026-09-30 14:33:34,811 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #22: model=glm-5.2 provider=custom in=360978 out=387 total=361365 latency=6.2s cache=360128/360978 (100%)
+
+2026-09-30 14:33:34,937 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 639 chars)
+
+2026-09-30 14:33:35,054 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 1015 chars)
+
+2026-09-30 14:33:48,953 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #23: model=glm-5.2 provider=custom in=361979 out=694 total=362673 latency=13.9s cache=359808/361979 (99%)
+
+2026-09-30 14:33:49,047 INFO [20260925_194111_4c424a] agent.tool_executor: tool write_file completed (0.07s, 251 chars)
+
+2026-09-30 14:33:51,859 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:33:53,520 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #24: model=glm-5.2 provider=custom in=362754 out=26 total=362780 latency=4.4s cache=361856/362754 (100%)
+
+2026-09-30 14:33:53,554 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 2961 chars)
+
+2026-09-30 14:34:00,390 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #25: model=glm-5.2 provider=custom in=363639 out=159 total=363798 latency=6.8s cache=362752/363639 (100%)
+
+2026-09-30 14:34:00,507 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.09s, 533 chars)
+
+2026-09-30 14:34:13,292 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #26: model=glm-5.2 provider=custom in=363991 out=1331 total=365322 latency=12.8s cache=360960/363991 (99%)
+
+2026-09-30 14:34:13,392 INFO [20260925_194111_4c424a] agent.tool_executor: tool write_file completed (0.07s, 249 chars)
+
+2026-09-30 14:34:20,278 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #27: model=glm-5.2 provider=custom in=365403 out=239 total=365642 latency=6.9s cache=363520/365403 (99%)
+
+2026-09-30 14:34:20,613 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:34:20,636 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.33s, 172 chars)
+
+2026-09-30 14:34:24,437 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #28: model=glm-5.2 provider=custom in=365703 out=40 total=365743 latency=3.8s cache=363968/365703 (100%)
+
+2026-09-30 14:34:24,458 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.01s, 1087 chars)
+
+2026-09-30 14:34:29,432 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #29: model=glm-5.2 provider=custom in=366130 out=211 total=366341 latency=4.9s cache=365696/366130 (100%)
+
+2026-09-30 14:34:29,754 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:34:29,775 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.31s, 172 chars)
+
+2026-09-30 14:34:41,951 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #30: model=glm-5.2 provider=custom in=366403 out=41 total=366444 latency=12.1s cache=365312/366403 (100%)
+
+2026-09-30 14:34:50,055 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (8.09s, 695 chars)
+
+2026-09-30 14:34:53,867 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #31: model=glm-5.2 provider=custom in=366693 out=56 total=366749 latency=3.8s cache=366080/366693 (100%)
+
+2026-09-30 14:34:54,228 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.34s, 3240 chars)
+
+2026-09-30 14:35:00,899 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #32: model=glm-5.2 provider=custom in=367777 out=176 total=367953 latency=6.6s cache=366336/367777 (100%)
+
+2026-09-30 14:35:01,027 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 831 chars)
+
+2026-09-30 14:35:05,458 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #33: model=glm-5.2 provider=custom in=368221 out=44 total=368265 latency=4.4s cache=366656/368221 (100%)
+
+2026-09-30 14:35:05,501 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 948 chars)
+
+2026-09-30 14:35:09,517 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #34: model=glm-5.2 provider=custom in=368704 out=57 total=368761 latency=4.0s cache=368192/368704 (100%)
+
+2026-09-30 14:35:09,621 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.08s, 17 chars)
+
+2026-09-30 14:35:14,104 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #35: model=glm-5.2 provider=custom in=368772 out=134 total=368906 latency=4.5s cache=367424/368772 (100%)
+
+2026-09-30 14:35:14,423 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:35:14,448 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.32s, 172 chars)
+
+2026-09-30 14:35:17,736 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #36: model=glm-5.2 provider=custom in=368969 out=41 total=369010 latency=3.3s cache=368704/368969 (100%)
+
+2026-09-30 14:36:17,770 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (60.02s, 617 chars)
+
+2026-09-30 14:36:27,955 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:36:29,615 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #37: model=glm-5.2 provider=custom in=369208 out=98 total=369306 latency=11.8s cache=367616/369208 (100%)
+
+2026-09-30 14:36:30,407 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.54s, 153 chars)
+
+2026-09-30 14:36:30,709 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.29s, 2892 chars)
+
+2026-09-30 14:36:36,912 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #38: model=glm-5.2 provider=custom in=370336 out=354 total=370690 latency=6.2s cache=368960/370336 (100%)
+
+2026-09-30 14:36:37,039 INFO agent.tool_executor: tool write_file completed (0.10s, 260 chars)
+
+2026-09-30 14:36:37,040 INFO agent.tool_executor: tool write_file completed (0.10s, 266 chars)
+
+2026-09-30 14:36:37,356 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:36:37,381 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.31s, 172 chars)
+
+2026-09-30 14:36:41,095 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #39: model=glm-5.2 provider=custom in=370911 out=40 total=370951 latency=3.7s cache=370304/370911 (100%)
+
+2026-09-30 14:36:53,896 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:37:41,129 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (60.02s, 590 chars)
+
+2026-09-30 14:37:52,584 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #40: model=glm-5.2 provider=custom in=371146 out=34 total=371180 latency=11.3s cache=369152/371146 (99%)
+
+2026-09-30 14:37:52,627 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 1003 chars)
+
+2026-09-30 14:37:57,148 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #41: model=glm-5.2 provider=custom in=371518 out=101 total=371619 latency=4.5s cache=370880/371518 (100%)
+
+2026-09-30 14:37:57,651 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.47s, 153 chars)
+
+2026-09-30 14:37:57,740 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.08s, 399 chars)
+
+2026-09-30 14:38:01,161 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #42: model=glm-5.2 provider=custom in=371795 out=45 total=371840 latency=3.4s cache=371456/371795 (100%)
+
+2026-09-30 14:38:01,197 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 593 chars)
+
+2026-09-30 14:38:06,257 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #43: model=glm-5.2 provider=custom in=372079 out=310 total=372389 latency=5.0s cache=371776/372079 (100%)
+
+2026-09-30 14:38:06,378 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 889 chars)
+
+2026-09-30 14:38:06,688 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:38:06,715 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.32s, 172 chars)
+
+2026-09-30 14:38:10,620 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #44: model=glm-5.2 provider=custom in=372751 out=40 total=372791 latency=3.9s cache=372032/372751 (100%)
+
+2026-09-30 14:38:10,641 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (0.01s, 431 chars)
+
+2026-09-30 14:38:17,278 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #45: model=glm-5.2 provider=custom in=372953 out=58 total=373011 latency=6.6s cache=372736/372953 (100%)
+
+2026-09-30 14:38:17,352 INFO [20260925_194111_4c424a] agent.tool_executor: tool search_files completed (0.06s, 131 chars)
+
+2026-09-30 14:38:17,756 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:38:17,757 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:38:23,159 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #46: model=glm-5.2 provider=custom in=373064 out=159 total=373223 latency=5.8s cache=372928/373064 (100%)
+
+2026-09-30 14:38:23,475 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:38:23,500 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.31s, 171 chars)
+
+2026-09-30 14:38:27,109 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #47: model=glm-5.2 provider=custom in=373283 out=39 total=373322 latency=3.5s cache=373056/373283 (100%)
+
+2026-09-30 14:39:12,690 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (45.56s, 545 chars)
+
+2026-09-30 14:39:21,366 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #48: model=glm-5.2 provider=custom in=373513 out=28 total=373541 latency=8.6s cache=373248/373513 (100%)
+
+2026-09-30 14:39:21,402 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 851 chars)
+
+2026-09-30 14:39:26,981 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #49: model=glm-5.2 provider=custom in=373938 out=40 total=373978 latency=5.5s cache=373504/373938 (100%)
+
+2026-09-30 14:39:27,024 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 580 chars)
+
+2026-09-30 14:39:28,581 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:39:34,296 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #50: model=glm-5.2 provider=custom in=374256 out=374 total=374630 latency=7.2s cache=373888/374256 (100%)
+
+2026-09-30 14:39:34,970 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.66s, 785 chars)
+
+2026-09-30 14:39:41,414 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #51: model=glm-5.2 provider=custom in=374971 out=196 total=375167 latency=6.4s cache=374208/374971 (100%)
+
+2026-09-30 14:39:42,054 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.62s, 890 chars)
+
+2026-09-30 14:39:57,502 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:40:13,192 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #52: model=glm-5.2 provider=custom in=375553 out=1306 total=376859 latency=31.1s cache=371072/375553 (99%)
+
+2026-09-30 14:40:13,324 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 2020 chars)
+
+2026-09-30 14:40:19,005 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #53: model=glm-5.2 provider=custom in=377679 out=209 total=377888 latency=5.6s cache=374912/377679 (99%)
+
+2026-09-30 14:40:19,123 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.09s, 693 chars)
+
+2026-09-30 14:40:23,487 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #54: model=glm-5.2 provider=custom in=378131 out=142 total=378273 latency=4.3s cache=377664/378131 (100%)
+
+2026-09-30 14:40:23,791 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:40:23,817 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.31s, 172 chars)
+
+2026-09-30 14:40:31,145 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #55: model=glm-5.2 provider=custom in=378334 out=41 total=378375 latency=7.3s cache=375552/378334 (99%)
+
+2026-09-30 14:41:13,242 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (42.08s, 545 chars)
+
+2026-09-30 14:41:17,434 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #56: model=glm-5.2 provider=custom in=378566 out=28 total=378594 latency=4.2s cache=378112/378566 (100%)
+
+2026-09-30 14:41:17,478 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 850 chars)
+
+2026-09-30 14:41:25,160 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #57: model=glm-5.2 provider=custom in=378991 out=505 total=379496 latency=7.7s cache=378560/378991 (100%)
+
+2026-09-30 14:41:25,292 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 1534 chars)
+
+2026-09-30 14:41:39,797 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #58: model=glm-5.2 provider=custom in=380061 out=142 total=380203 latency=14.5s cache=378944/380061 (100%)
+
+2026-09-30 14:41:40,239 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:41:40,262 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.30s, 172 chars)
+
+2026-09-30 14:41:43,757 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #59: model=glm-5.2 provider=custom in=380263 out=40 total=380303 latency=3.5s cache=380032/380263 (100%)
+
+2026-09-30 14:42:29,045 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (45.27s, 545 chars)
+
+2026-09-30 14:42:29,268 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:42:52,669 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #60: model=glm-5.2 provider=custom in=380494 out=34 total=380528 latency=23.6s cache=378112/380494 (99%)
+
+2026-09-30 14:42:52,716 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 850 chars)
+
+2026-09-30 14:42:58,685 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:43:03,647 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #61: model=glm-5.2 provider=custom in=380925 out=721 total=381646 latency=10.9s cache=380224/380925 (100%)
+
+2026-09-30 14:43:03,774 INFO [20260925_194111_4c424a] agent.tool_executor: tool patch completed (0.10s, 583 chars)
+
+2026-09-30 14:43:04,072 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:43:04,094 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.31s, 172 chars)
+
+2026-09-30 14:43:08,362 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #62: model=glm-5.2 provider=custom in=381940 out=39 total=381979 latency=4.2s cache=380864/381940 (100%)
+
+2026-09-30 14:43:17,774 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:43:17,774 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:43:52,825 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (44.44s, 545 chars)
+
+2026-09-30 14:44:00,760 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #63: model=glm-5.2 provider=custom in=382170 out=34 total=382204 latency=7.9s cache=380416/382170 (100%)
+
+2026-09-30 14:44:00,793 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 850 chars)
+
+2026-09-30 14:44:05,861 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #64: model=glm-5.2 provider=custom in=382601 out=40 total=382641 latency=5.0s cache=382080/382601 (100%)
+
+2026-09-30 14:44:05,908 INFO [20260925_194111_4c424a] agent.tool_executor: tool read_file completed (0.02s, 513 chars)
+
+2026-09-30 14:44:17,284 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #65: model=glm-5.2 provider=custom in=382884 out=462 total=383346 latency=11.3s cache=381888/382884 (100%)
+
+2026-09-30 14:44:17,607 INFO tools.environments.local: Selected shell: bash at C:\Program Files\Git\bin\bash.exe
+
+2026-09-30 14:44:17,632 INFO [20260925_194111_4c424a] agent.tool_executor: tool terminal completed (0.32s, 172 chars)
+
+2026-09-30 14:44:21,803 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #66: model=glm-5.2 provider=custom in=383408 out=41 total=383449 latency=4.1s cache=382848/383408 (100%)
+
+2026-09-30 14:44:25,219 INFO [20260925_194111_4c424a] agent.tool_executor: tool process completed (3.40s, 632 chars)
+
+2026-09-30 14:45:30,331 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:45:34,164 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #67: model=glm-5.2 provider=custom in=383690 out=108 total=383798 latency=68.9s cache=382464/383690 (100%)
+
+2026-09-30 14:45:34,251 INFO agent.tool_executor: tool search_files completed (0.07s, 131 chars)
+
+2026-09-30 14:45:34,278 INFO agent.tool_executor: tool search_files completed (0.10s, 17 chars)
+
+2026-09-30 14:45:42,995 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #68: model=glm-5.2 provider=custom in=383859 out=286 total=384145 latency=8.7s cache=383360/383859 (100%)
+
+2026-09-30 14:45:43,025 INFO [20260925_194111_4c424a] agent.tool_executor: tool todo completed (0.01s, 1053 chars)
+
+2026-09-30 14:45:59,466 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #69: model=glm-5.2 provider=custom in=384562 out=837 total=385399 latency=16.4s cache=383616/384562 (100%)
+
+2026-09-30 14:45:59,491 INFO [20260925_194111_4c424a] agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=glm-5.2 api_calls=69/500 budget=69/500 tool_turns=295 last_msg_role=assistant response_len=1510 session=20260925_194111_4c424a
+
+2026-09-30 14:45:59,529 INFO [20260925_194111_4c424a] tui_gateway.server: tui turn finished: ui_session=84008faf session_key=202609...424a agent_session_id=20260925_194111_4c424a status=complete error_retained=False duration=1007.6s
+
+2026-09-30 14:45:59,542 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=bg-review:31892 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:45:59,941 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:46:00,376 WARNING tools.registry: check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:01,085 WARNING tools.registry: check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:01,772 WARNING tools.registry: check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:02,448 WARNING tools.registry: check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:03,120 WARNING tools.registry: check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:03,194 WARNING tools.registry: check_fn is_browser_use_cli_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:03,873 WARNING tools.registry: check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:04,552 WARNING tools.registry: check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:05,237 WARNING tools.registry: check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:05,914 WARNING tools.registry: check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:06,587 WARNING tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,264 WARNING tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,300 WARNING tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,301 WARNING tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,314 WARNING tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,315 WARNING tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,317 WARNING tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,318 WARNING tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 14:46:07,323 INFO agent.auxiliary_client: Vision auto-detect: using main provider custom (glm-5.2)
+
+2026-09-30 14:46:07,350 INFO tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 12 deferred (~1260 tokens), listing full (budget ~4000 tokens)
+
+2026-09-30 14:46:07,353 INFO tools.memory_tool: memory: loading from C:\Users\LENOVO\AppData\Roaming\cn.org.hermesagent.desktop\runtime\hermes-home\memories
+
+2026-09-30 14:46:07,533 INFO [20260925_194111_4c424a] agent.turn_context: conversation turn: session=20260925_194111_4c424a model=glm-5.2 provider=custom platform=desktop history=753 msg='Review the conversation above and update the skill library. Be ACTIVE — most ses...'
+
+2026-09-30 14:46:07,590 INFO run_agent: OpenAI client created (chat_completion_stream_request, shared=False) thread=Thread-414 (<lambda>):41960 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:46:32,182 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #1: model=glm-5.2 provider=custom in=386946 out=760 total=387706 latency=24.6s cache=13120/386946 (3%)
+
+2026-09-30 14:46:32,273 INFO [20260925_194111_4c424a] agent.tool_executor: tool skills_list completed (0.09s, 22717 chars)
+
+2026-09-30 14:47:01,317 INFO [20260925_194111_4c424a] agent.conversation_loop: API call #2: model=glm-5.2 provider=custom in=392988 out=14 total=393002 latency=29.0s cache=13056/392988 (3%)
+
+2026-09-30 14:47:01,602 INFO [20260925_194111_4c424a] agent.tool_executor: tool skill_view completed (0.11s, 5595 chars)
+
+2026-09-30 14:47:01,605 WARNING [20260925_194111_4c424a] agent.conversation_loop: Turn ended with pending tool result (agent may appear stuck). Turn ended: reason=review_input_budget_exhausted model=glm-5.2 api_calls=2/16 budget=2/16 tool_turns=297 last_msg_role=tool response_len=0 session=20260925_194111_4c424a last_tool=skill_view
+
+2026-09-30 14:47:01,635 INFO [20260925_194111_4c424a] run_agent: OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=bg-review:31892 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:47:01,635 INFO [20260925_194111_4c424a] run_agent: OpenAI client closed (agent_close, shared=False, tcp_force_closed=0) thread=bg-review:31892 provider=custom base_url=https://open.bigmodel.cn/api/paas/v4 model=glm-5.2
+
+2026-09-30 14:47:01,638 INFO [20260925_194111_4c424a] agent.background_review: Background review complete: thread=bg-review calls=2 in=753758 out=774 cache_read=26176 result=none
+
+2026-09-30 14:48:17,783 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:48:17,783 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:48:30,997 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:49:01,058 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:51:32,709 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:51:33,293 INFO tools.terminal_tool: Cleaned up inactive environment for task: session:20260925_194111_4c424a
+
+2026-09-30 14:52:02,948 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:53:17,794 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:53:17,794 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:54:33,609 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:55:04,176 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:57:34,761 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:58:05,276 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 14:58:17,811 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 14:58:17,812 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:00:35,472 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:01:06,504 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:03:17,826 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:03:17,827 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:03:36,099 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:04:07,678 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:06:37,944 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:07:10,098 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:08:17,841 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:08:17,841 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:09:38,579 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:10:11,361 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:12:39,312 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:13:12,736 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:13:17,850 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:13:17,851 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:15:39,998 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:16:14,005 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:18:17,864 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:18:17,865 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:18:40,664 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:19:15,269 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:21:41,376 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:22:16,629 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:23:17,871 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:23:17,871 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:24:42,113 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:25:18,184 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:27:42,813 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:28:17,881 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:28:17,882 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:28:20,008 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:30:43,499 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:31:21,009 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:33:17,893 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:33:17,894 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:33:44,129 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:34:22,090 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:36:44,966 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:37:23,620 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:38:17,905 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:38:17,905 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:39:45,606 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:40:24,669 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:42:48,768 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:43:17,917 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:43:17,917 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:43:26,789 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:45:52,346 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:46:27,823 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:48:17,924 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:48:17,925 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:48:54,540 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:49:29,101 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:51:55,360 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:52:31,151 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:53:17,929 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:53:17,929 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:54:55,992 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:55:33,263 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:57:58,030 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 15:58:17,933 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:58:17,934 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 15:58:36,045 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:00:58,908 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:01:37,131 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:03:17,939 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:03:17,940 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:03:59,604 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:04:39,097 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:07:00,517 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:07:46,590 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:08:17,956 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:08:17,956 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:10:01,519 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:10:47,697 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:13:02,174 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:13:17,971 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:13:17,971 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:13:48,748 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:16:02,800 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:16:54,762 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:18:17,988 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:18:17,989 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:19:03,525 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:19:56,881 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:22:04,236 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:22:57,974 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:23:17,997 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:23:17,998 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:25:05,453 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:25:59,063 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:28:06,114 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:28:18,004 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:28:18,004 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:29:00,149 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:31:06,779 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:32:02,204 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:33:18,015 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:33:18,016 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:34:08,404 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:35:03,252 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:37:09,051 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:38:04,622 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:38:18,019 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:38:18,020 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:40:09,730 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:41:05,705 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:43:10,833 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:43:18,028 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:43:18,029 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:44:07,109 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:46:11,505 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:47:08,153 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:48:18,031 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:48:18,032 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:49:12,168 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:50:09,658 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:52:13,081 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:53:12,376 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:53:18,036 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:53:18,037 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:55:13,775 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:56:15,508 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:58:14,408 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 16:58:18,048 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:58:18,049 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 16:59:16,556 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:01:15,077 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:02:19,359 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:03:18,059 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:03:18,060 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:04:16,144 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:05:20,425 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:07:17,065 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:08:18,070 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:08:18,071 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:08:21,832 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:10:17,951 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:11:23,017 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:13:18,083 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:13:18,084 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:13:18,608 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:14:24,145 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:16:19,249 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:17:25,315 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:18:18,094 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:18:18,094 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:19:19,928 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:20:26,456 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:22:20,528 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:23:18,105 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:23:18,106 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:23:27,492 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:25:21,483 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:26:28,908 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:28:18,115 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:28:18,116 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:28:22,207 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:29:29,909 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:31:22,856 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:32:30,995 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:33:18,126 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:33:18,126 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:34:23,521 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:35:32,175 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:37:24,243 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:38:18,134 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:38:18,135 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:38:33,340 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:40:25,789 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:41:34,493 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:42:56,318 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=Thread-431 (_build):14460 provider=custom base_url=https://open.bigmodel.cn/api/coding/paas/v4 model=glm-5.2
+
+2026-09-30 17:42:57,190 WARNING tools.registry: check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:42:57,862 WARNING tools.registry: check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:42:58,525 WARNING tools.registry: check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:42:59,190 WARNING tools.registry: check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:42:59,854 WARNING tools.registry: check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:42:59,927 WARNING tools.registry: check_fn is_browser_use_cli_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:00,596 WARNING tools.registry: check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:01,268 WARNING tools.registry: check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:02,000 WARNING tools.registry: check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:02,713 WARNING tools.registry: check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:03,465 WARNING tools.registry: check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,155 WARNING tools.registry: check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,192 WARNING tools.registry: check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,194 WARNING tools.registry: check_fn check_sandbox_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,206 WARNING tools.registry: check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,207 WARNING tools.registry: check_fn _check_kanban_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,208 WARNING tools.registry: check_fn _check_kanban_orchestrator_mode returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,210 WARNING tools.registry: check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+
+2026-09-30 17:43:04,217 INFO agent.auxiliary_client: Vision auto-detect: using main provider zai-coding-cn (glm-5.2)
+
+2026-09-30 17:43:04,245 INFO tools.tool_search: tool_search activated (tier 1): 31 core/visible tools kept, 12 deferred (~1260 tokens), listing full (budget ~4000 tokens)
+
+2026-09-30 17:43:04,247 INFO tools.memory_tool: memory: loading from C:\Users\LENOVO\AppData\Roaming\cn.org.hermesagent.desktop\runtime\hermes-home\memories
+
+2026-09-30 17:43:18,151 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:43:18,151 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:43:26,436 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:44:35,657 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:46:27,096 INFO httpx2: HTTP Request: POST https://mcp.deepwiki.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:47:37,378 INFO httpx2: HTTP Request: POST https://agenttools.wolfram.com/mcp "HTTP/1.1 200 OK"
+
+2026-09-30 17:48:18,161 WARNING tools.mcp_tool: MCP OAuth setup failed for 'canva': MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+
+2026-09-30 17:48:18,162 WARNING tools.mcp_tool: MCP server 'canva' failed initial authentication, parking until credentials change; re-authenticate with `hermes mcp login canva` (state: connecting → parked): OAuthNonInteractiveError: MCP OAuth for 'canva': non-interactive environment and no cached tokens found. Run `hermes mcp login canva` interactively first to complete initial authorization.
+

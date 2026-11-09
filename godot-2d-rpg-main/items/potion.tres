@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DataItem" load_steps=4 format=3 uid="uid://mf5aad3itbvr"]
+
+[ext_resource type="Script" uid="uid://c4bqaul5q71nh" path="res://items/data_item.gd" id="1_ej3gy"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_70df6"]
+load_path = "res://.godot/imported/objs1.png-dd27e92433d4f79b9dcdc097e5e7a7d1.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8h85v"]
+atlas = SubResource("CompressedTexture2D_70df6")
+region = Rect2(36, 36, 36, 36)
+
+[resource]
+resource_name = "potion"
+script = ExtResource("1_ej3gy")
+icon = SubResource("AtlasTexture_8h85v")
+hide_from_inventory = false

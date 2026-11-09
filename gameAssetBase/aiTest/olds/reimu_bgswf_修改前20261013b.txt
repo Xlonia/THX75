@@ -1,0 +1,42 @@
+extends TextureRect
+var bg_reimu_spd #bg是背景的意思，spd以后就是去矢量化的速率的含义
+var bg_reimu_startmove=false
+var bg_reimu_clickmove=false
+var geclickmovet =false
+var bg_reimu_spd_var
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	$".".position.x = 720.0 #开局让灵梦飙屏幕外
+	bg_reimu_startmove = true #确定开头灵梦从右飘来的这个动画启用
+	bg_reimu_spd_var = 0.01
+	#pass  Replace with function body.
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo && geclickmovet==false:
+		bg_reimu_clickmove=true
+		bg_reimu_startmove=false
+		$".".position.x = -200.0
+		bg_reimu_spd_var = 0.01
+		geclickmovet=true
+
+func _process(delta: float) -> void:
+	if bg_reimu_startmove==true: #开头灵梦从右飘来的这个动画
+		bg_reimu_spd = bg_reimu_spd_var * abs($".".position.x+200)
+		$".".position.x-=bg_reimu_spd
+		bg_reimu_spd_var += 0.001
+		if $".".position.x < -200: #动画结束
+			bg_reimu_startmove= false
+			$".".position.x=-200
+			bg_reimu_spd_var = 0.01
+			print("1")
+	if bg_reimu_clickmove==true: #灵梦往右飘的这个动画
+		bg_reimu_spd = bg_reimu_spd_var *3* abs($".".position.x)
+		$".".position.x+=bg_reimu_spd
+		bg_reimu_spd_var += 0.001
+		if $".".position.x > -1: #动画结束
+			bg_reimu_clickmove= false
+			$".".position.x=0
+			bg_reimu_spd_var = 0.01
+			print("１")
+	

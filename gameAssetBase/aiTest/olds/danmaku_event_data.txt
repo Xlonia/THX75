@@ -1,0 +1,345 @@
+class_name DanmakuEventData
+extends RefCounted
+## =============================================================
+## 弹幕事件数据（第①期扩充，对齐作者批复与新版编辑器文档）
+## 新增列（相对0期）：x_offset y_offset saturation hue lost_if laser_n_step
+## 变更（批复确认）：
+##   rate 语义：rate_roll<=rate 释放（randf()<rate 即释放）
+##   pattern：pattern_roll+=pattern；命题为真时 减一；rate 与 pattern 均为真才释放
+##   color_render 更名 saturation（HSL之S）；新增 hue（HSL之H）；亮度=隐藏 lightness
+##   槽位：wing → sub（僚机=次要武器，作者：wing可以不用了）
+##   激光：x/y 表达式 + n(k) 遍历换元；range=xy渲染像素规模；材质=单像素线条
+## 【damage_arr 消歧义（作者批复）】所有弹幕父类提交 damage_arr=[dmg,nis]，
+##   nis∈{n,i,s}小写单字符；不同容器注册不同伤害弹幕图。
+## =============================================================
+
+const TAG_REGULAR := "IsDanmakuRegular"
+const TAG_PHYSICAL := "IsDanmakuPhysical"
+const TAG_FUNCTED := "IsDanmakuFuncted"
+const TAG_LASER := "IsDanmakuLaser"
+const TAG_NODES := "Nodes"
+const TAGS: Array[String] = [TAG_REGULAR, TAG_PHYSICAL, TAG_FUNCTED, TAG_LASER, TAG_NODES]
+
+const MODE_NORMAL := "N"
+const MODE_IMPALE := "I"
+const MODE_SPALLING := "S"
+const MODES: Array[String] = [MODE_NORMAL, MODE_IMPALE, MODE_SPALLING]
+
+## 火力槽（第①期：sub 取代 wing）
+const SLOT_MAIN := "main"
+const SLOT_SUB := "sub"
+const SLOT_REST := "rest"
+const SLOT_SKILL := "skill"
+const SLOT_SPELL := "spell"
+const SLOTS: Array[String] = [SLOT_MAIN, SLOT_SUB, SLOT_REST, SLOT_SKILL, SLOT_SPELL]
+
+## 表达式变量表（第①期：+wpcs/to_c/main_lr/sub_lr/n(激光)/r0/r1）
+const EXPR_VARS: PackedStringArray = [
+	"t", "t_r", "rate_roll", "pattern_roll", "r0", "r1", "n",
+	"wpcs", "to_c", "main_lr", "sub_lr",
+	"self_x", "self_y", "self_ap", "self_pp", "self_normal",
+	"target_x", "target_y", "target_ap", "target_pp", "target_normal",
+	"target_hpweapon", "target_hpbody", "target_hpmove",
+	"field_t", "field_phase",
+]
+
+## CSV 表头（45列）
+const CSV_HEADER: PackedStringArray = [
+	"event_name", "owner", "slot", "timeline_frame", "tag",
+	"texture", "color", "saturation", "hue", "alpha", "pass",
+	"repeat_time", "repeat_freq", "range", "is_abs_coord",
+	"dmg", "dmg_mode", "dmg_allow_moderate", "rate", "pattern", "danmaku_size_muti",
+	"is_phy", "is_cannon", "x_offset", "y_offset",
+	"speed", "x", "y", "func",
+	"alarm", "alarm_shader_alpha", "laser_n_step",
+	"targe", "targe_offsetx", "targe_offsety",
+	"acc", "turn_arg", "speed_max", "lost_max", "lost_min", "lost_if",
+	"explode_condit", "release_condit", "explode", "release", "can_destroy",
+]
+
+## —— 元数据 ——
+var event_name := "demodanmaku1"
+var owner := "*"
+var slot := SLOT_REST
+var timeline_frame := -1
+var tag := TAG_REGULAR
+
+## —— 通用参数 ——
+var texture := "tama0"
+var color := "#ffffff"         ## 兼容列：HSL 十六进制（编辑器主用 hue/saturation）
+var saturation := 1.0          ## HSL 之 S（原 color_render）
+var hue := 0.0                 ## HSL 之 H（0~1）
+var alpha := "256"
+var pass_cond := ""
+var repeat_time := 0
+var repeat_freq := 0
+var range_frames := 300
+var is_abs_coord := false
+var dmg := 1
+var dmg_mode := MODE_NORMAL
+var dmg_allow_moderate := true
+var rate := 0.0                ## 语义（批复#11）：rate_roll<=rate 释放
+var rate_specified := false
+var pattern := 0.0             ## 命题为真时 减一（批复#11）
+var pattern_specified := false
+var danmaku_size_muti := 1.0
+var is_phy := false
+var is_cannon := false
+var x_offset := 0.0            ## 弹幕相对火力点起始x（物弹遮罩起点；批复新增）
+var y_offset := 0.0            ## 弹幕相对火力点起始y（同上）
+
+## —— 分类型参数 ——
+var speed := ""
+var x := ""
+var y := ""
+var func_expr := ""
+var alarm := 0
+var alarm_shader_alpha := 1.0
+var laser_n_step := 1          ## n(数值)：激光遍历采样频率（每几像素采样）
+var targe := ""
+var targe_offsetx := 0.0
+var targe_offsety := 0.0
+var acc := 0.0
+var turn_arg := 0.0
+var speed_max := 0.0
+var lost_max := 0.0
+var lost_min := 0.0
+var lost_if := ""              ## 命题：真=暂时失锁（批复新增）
+var explode_condit := ""
+var release_condit := ""
+var explode := ""
+var release := ""
+var can_destroy := false
+
+## —— 编译后的表达式 ——
+var ex_alpha: DanmakuExpr = null
+var ex_pass: DanmakuExpr = null
+var ex_speed: DanmakuExpr = null
+var ex_x: DanmakuExpr = null
+var ex_y: DanmakuExpr = null
+var ex_func: DanmakuExpr = null
+var ex_hue: DanmakuExpr = null
+var ex_sat: DanmakuExpr = null
+var ex_lost_if: DanmakuExpr = null
+var ex_explode: DanmakuExpr = null
+var ex_release: DanmakuExpr = null
+
+## =============================================================
+## CSV ⇄ 对象
+## =============================================================
+
+static func split_csv_line(line: String) -> PackedStringArray:
+	var cells: PackedStringArray = []
+	var cur := ""
+	var in_quotes := false
+	var i := 0
+	while i < line.length():
+		var c := line[i]
+		if in_quotes:
+			if c == "\"":
+				if i + 1 < line.length() and line[i + 1] == "\"":
+					cur += "\""
+					i += 1
+				else:
+					in_quotes = false
+			else:
+				cur += c
+		else:
+			if c == "\"":
+				in_quotes = true
+			elif c == ",":
+				cells.append(cur)
+				cur = ""
+			else:
+				cur += c
+		i += 1
+	cells.append(cur)
+	return cells
+
+static func csv_escape(v) -> String:
+	var s := str(v)
+	if s.contains(",") or s.contains("\"") or s.contains("\n"):
+		return "\"" + s.replace("\"", "\"\"") + "\""
+	return s
+
+static func parse_csv_text(text: String) -> Array[DanmakuEventData]:
+	var out: Array[DanmakuEventData] = []
+	var lines := text.split("\n", false)
+	for li in lines.size():
+		var line: String = lines[li].strip_edges()
+		if line.is_empty() or line.begins_with("#"):
+			continue
+		if line.begins_with("event_name"):
+			continue
+		var cells := split_csv_line(line)
+		var ev := DanmakuEventData.new()
+		if ev.from_csv_row(cells) == OK:
+			out.append(ev)
+		else:
+			push_warning("[DanmakuEventData] 第 %d 行解析失败，已跳过" % (li + 1))
+	return out
+
+func from_csv_row(cells: PackedStringArray) -> Error:
+	if cells.is_empty() or cells[0].strip_edges().is_empty():
+		return FAILED
+	var idx := {}
+	for i in CSV_HEADER.size():
+		idx[CSV_HEADER[i]] = i
+	event_name = _s(cells, idx, "event_name", "demodanmaku1")
+	owner = _s(cells, idx, "owner", "*")
+	var sl := _s(cells, idx, "slot", SLOT_REST)
+	if sl == "wing":
+		sl = SLOT_SUB ## 旧数据兼容：wing→sub
+	slot = sl
+	timeline_frame = _i(cells, idx, "timeline_frame", -1)
+	var tg := _s(cells, idx, "tag", TAG_REGULAR)
+	if TAGS.has(tg):
+		tag = tg
+	texture = _s(cells, idx, "texture", "tama0")
+	color = _s(cells, idx, "color", "#ffffff")
+	saturation = _f(cells, idx, "saturation", 1.0)
+	hue = _f(cells, idx, "hue", 0.0)
+	alpha = _s(cells, idx, "alpha", "256")
+	pass_cond = _s(cells, idx, "pass", "")
+	repeat_time = _i(cells, idx, "repeat_time", 0)
+	repeat_freq = _i(cells, idx, "repeat_freq", 0)
+	range_frames = _i(cells, idx, "range", 300)
+	is_abs_coord = _b(cells, idx, "is_abs_coord", false)
+	dmg = _i(cells, idx, "dmg", 1)
+	var dm := _s(cells, idx, "dmg_mode", MODE_NORMAL)
+	if MODES.has(dm):
+		dmg_mode = dm
+	dmg_allow_moderate = _b(cells, idx, "dmg_allow_moderate", true)
+	rate_specified = _has(cells, idx, "rate") and _s(cells, idx, "rate", "") != ""
+	rate = _f(cells, idx, "rate", 0.0)
+	pattern_specified = _has(cells, idx, "pattern") and _s(cells, idx, "pattern", "") != ""
+	pattern = _f(cells, idx, "pattern", 0.0)
+	danmaku_size_muti = _f(cells, idx, "danmaku_size_muti", 1.0)
+	is_phy = _b(cells, idx, "is_phy", false)
+	is_cannon = _b(cells, idx, "is_cannon", false)
+	x_offset = _f(cells, idx, "x_offset", 0.0)
+	y_offset = _f(cells, idx, "y_offset", 0.0)
+	speed = _s(cells, idx, "speed", "")
+	x = _s(cells, idx, "x", "")
+	y = _s(cells, idx, "y", "")
+	func_expr = _s(cells, idx, "func", "")
+	alarm = _i(cells, idx, "alarm", 0)
+	alarm_shader_alpha = _f(cells, idx, "alarm_shader_alpha", 1.0)
+	laser_n_step = maxi(1, _i(cells, idx, "laser_n_step", 1))
+	targe = _s(cells, idx, "targe", "")
+	targe_offsetx = _f(cells, idx, "targe_offsetx", 0.0)
+	targe_offsety = _f(cells, idx, "targe_offsety", 0.0)
+	acc = _f(cells, idx, "acc", 0.0)
+	turn_arg = _f(cells, idx, "turn_arg", 0.0)
+	speed_max = _f(cells, idx, "speed_max", 0.0)
+	lost_max = _f(cells, idx, "lost_max", 0.0)
+	lost_min = _f(cells, idx, "lost_min", 0.0)
+	lost_if = _s(cells, idx, "lost_if", "")
+	explode_condit = _s(cells, idx, "explode_condit", "")
+	release_condit = _s(cells, idx, "release_condit", "")
+	explode = _s(cells, idx, "explode", "")
+	release = _s(cells, idx, "release", "")
+	can_destroy = _b(cells, idx, "can_destroy", false)
+	return OK
+
+func to_csv_row() -> String:
+	var vals := [
+		event_name, owner, slot, timeline_frame, tag,
+		texture, color, saturation, hue, alpha, pass_cond,
+		repeat_time, repeat_freq, range_frames, int(is_abs_coord),
+		dmg, dmg_mode, int(dmg_allow_moderate),
+		(_num(rate) if rate_specified else ""), (_num(pattern) if pattern_specified else ""),
+		danmaku_size_muti, int(is_phy), int(is_cannon), x_offset, y_offset,
+		speed, x, y, func_expr,
+		alarm, alarm_shader_alpha, laser_n_step,
+		targe, targe_offsetx, targe_offsety,
+		acc, turn_arg, speed_max, lost_max, lost_min, lost_if,
+		explode_condit, release_condit, explode, release, int(can_destroy),
+	]
+	var parts: Array[String] = []
+	for v in vals:
+		parts.append(csv_escape(v))
+	return ",".join(parts)
+
+static func build_csv(events: Array[DanmakuEventData]) -> String:
+	var lines: Array[String] = []
+	lines.append(",".join(CSV_HEADER))
+	for e in events:
+		lines.append(e.to_csv_row())
+	return "\n".join(lines) + "\n"
+
+## =============================================================
+## 表达式编译
+## =============================================================
+func compile() -> Array[String]:
+	var errs: Array[String] = []
+	ex_alpha = _compile_one(alpha, errs, "alpha")
+	ex_pass = _compile_one(pass_cond, errs, "pass")
+	ex_speed = _compile_one(speed, errs, "speed")
+	ex_x = _compile_one(x, errs, "x")
+	ex_y = _compile_one(y, errs, "y")
+	ex_func = _compile_one(func_expr, errs, "func")
+	ex_hue = _compile_one(_expr_str(hue), errs, "hue") if _is_expr_str(hue) else null
+	ex_sat = _compile_one(_expr_str(saturation), errs, "saturation") if _is_expr_str(saturation) else null
+	ex_lost_if = _compile_one(lost_if, errs, "lost_if")
+	ex_explode = _compile_one(explode_condit, errs, "explode_condit")
+	ex_release = _compile_one(release_condit, errs, "release_condit")
+	return errs
+
+## hue/saturation 支持表达式（作者：这两个都是可变数值）
+func _expr_str(v) -> String:
+	return str(v)
+func _is_expr_str(v) -> bool:
+	var s := str(v).strip_edges()
+	if s.is_empty():
+		return false
+	return not s.is_valid_float()
+
+func _compile_one(text: String, errs: Array[String], field: String) -> DanmakuExpr:
+	if text.strip_edges().is_empty():
+		return null
+	var e := DanmakuExpr.new()
+	if not e.compile(text, EXPR_VARS):
+		errs.append("%s「%s」表达式解析失败" % [event_name, field])
+		return null
+	return e
+
+## =============================================================
+## 取值辅助
+## =============================================================
+## 瞬时类当前伤害（照抄文档）：t∈[0,alarm] → -1；否则 min(16,dmg)
+func laser_damage(t_now: int) -> int:
+	if t_now <= alarm:
+		return -1
+	return mini(16, dmg)
+
+## damage_arr 消歧义容器（作者批复）：[dmg, nis小写字符]
+func damage_arr() -> Array:
+	return [dmg, dmg_mode.to_lower()]
+
+func display_label() -> String:
+	return "%s [%s·%s·%s]" % [event_name, owner, slot, tag]
+
+## —— CSV 单元格取值小工具 ——
+static func _has(cells: PackedStringArray, idx: Dictionary, col: String) -> bool:
+	return idx.has(col) and idx[col] < cells.size()
+static func _s(cells: PackedStringArray, idx: Dictionary, col: String, d: String) -> String:
+	if _has(cells, idx, col) and cells[idx[col]].strip_edges() != "":
+		return cells[idx[col]].strip_edges()
+	return d
+static func _i(cells: PackedStringArray, idx: Dictionary, col: String, d: int) -> int:
+	if _has(cells, idx, col) and cells[idx[col]].strip_edges() != "":
+		return int(cells[idx[col]].to_float())
+	return d
+static func _f(cells: PackedStringArray, idx: Dictionary, col: String, d: float) -> float:
+	if _has(cells, idx, col) and cells[idx[col]].strip_edges() != "":
+		return cells[idx[col]].to_float()
+	return d
+static func _b(cells: PackedStringArray, idx: Dictionary, col: String, d: bool) -> bool:
+	if _has(cells, idx, col) and cells[idx[col]].strip_edges() != "":
+		return cells[idx[col]].strip_edges() in ["1", "true", "TRUE", "True"]
+	return d
+static func _num(v: float) -> String:
+	if is_equal_approx(v, roundf(v)):
+		return str(int(roundf(v)))
+	return str(v)

@@ -1,0 +1,18 @@
+# Godot 缓存
+.godot/
+
+# C++ 扩展构建依赖（可 clone：github.com/godotengine/godot-cpp，api_version=4.7）
+godot-cpp/
+extension/godot-cpp/
+extension/project/bin/*.lib
+extension/project/bin/*.exp
+extension/*.obj
+extension/src/*.obj
+
+# Godot 引擎本体（自行下载 4.7.2）
+Godot_v4.7.2-stable_win64.exe
+Godot_v4.7.2-stable_win64_console.exe
+
+# 会话产物
+aiTest_patch_*.py
+*.tmp

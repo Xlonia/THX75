@@ -1,0 +1,49 @@
+{
+    "activeFile": "map/komakann_library_north.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "1blocks.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "item.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "map/komakann_library_north.tmx": {
+            "scale": 0.33,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 2433.3333333333335,
+                "y": 1375.7575757575758
+            }
+        }
+    },
+    "last.imagePath": "D:/Hyomumoene/Kaash/Touhou/075/map",
+    "map.height": 32,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 64,
+    "map.tileWidth": 64,
+    "map.width": 32,
+    "openFiles": [
+        "map/komakann_library_north.tmx",
+        "1blocks.tsx",
+        "item.tsx"
+    ],
+    "project": "TH75_0.tiled-project",
+    "recentFiles": [
+        "item.tsx",
+        "1blocks.tsx",
+        "map/komakann_library_north.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 64,
+        "width": 64
+    },
+    "tileset.type": 1
+}

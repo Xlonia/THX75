@@ -1,0 +1,56 @@
+extends Node
+## =============================================================
+## ProfilerSaver —— F5 运行调试时逐帧导出 Performance 监控到 CSV
+## autoload（project.godot 注册）；每帧采样 physics/process/script 时间，
+## 当任一超 10ms 时标记异常帧。
+## CSV 输出：user://perf_log.csv
+## =============================================================
+
+const CSV_PATH := "user://perf_log.csv"
+const THRESHOLD_MS := 10.0
+
+var _f: FileAccess = null
+var _frame := 0
+var _abnormal := 0
+
+func _ready() -> void:
+	## 【0.0.9·作者令 20261107】不在 F5 等默认调试下启用任何探针——
+	## 默认关闭；需采集时设环境变量 TH75_PROFILER=1 启动
+	if OS.get_environment("TH75_PROFILER") != "1":
+		set_process(false)
+		return
+	_f = FileAccess.open(CSV_PATH, FileAccess.WRITE)
+	if _f != null:
+		_f.store_line("frame,fps,physics_ms,process_ms,script_ms,navigation_ms,objects,nodes,orphan_nodes,bullets_drawn,abnormal")
+
+func _process(_delta: float) -> void:
+	if _f == null:
+		return
+	_frame += 1
+	if _frame % 6 != 0: ## 每6帧采样一次（降低 ProfilerSaver 自身开销）
+		return
+	var phys := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	var proc := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	## Script Functions：Godot 4 无直接 "script_ms" monitor，用 navigation 近似
+	## （实际靠 process + physics 的总和覆盖；作者提到的 Script Functions 计数
+	## 可能指 GDScript 虚拟机执行时间——它被包含在 process/physics 内）
+	var fps := Performance.get_monitor(Performance.TIME_FPS)
+	var objs := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var orphans := int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
+	var abn := phys > THRESHOLD_MS or proc > THRESHOLD_MS
+	if abn:
+		_abnormal += 1
+	_f.store_line("%d,%.1f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%s" % [
+		_frame, fps, phys, proc, 0.0, 0.0, objs, nodes, orphans, 0,
+		"Y" if abn else ""])
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		## 【修复 20261002（作者 godot.log：store_buffer f null）】
+		## WM_CLOSE 与 PREDELETE 会先后到达——首写后置 null 防二次写入崩溃
+		if _f != null:
+			_f.store_line("==== SUMMARY: %d frames, %d abnormal (=%.1f%%) ====" % [_frame, _abnormal, float(_abnormal) / maxf(1.0, float(_frame)) * 100.0])
+			_f.close()
+			_f = null
+			print("[ProfilerSaver] %d 帧 / %d 异常帧 (%.1f%%) → %s" % [_frame, _abnormal, float(_abnormal) / maxf(1.0, float(_frame)) * 100.0, ProjectSettings.globalize_path(CSV_PATH)])

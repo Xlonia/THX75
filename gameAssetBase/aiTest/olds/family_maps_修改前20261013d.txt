@@ -1,0 +1,218 @@
+class_name FamilyMaps
+extends RefCounted
+## =============================================================
+## 热力图族·期望系（③期收官）：He 全局期望 / Hd 总结期望云 / Hr 快弹警告 / Hp 敌方规律
+## 【管线】每图 400×400 R8，front/back ping-pong，10Hz，单入口 advance()：
+##   advance(i, pts) = decay(front→back) → stamp(pts 进 back) → front=back
+## 【策划对齐与简化声明】
+##   He=所有非点向弹幕射程内轨迹期望（粗采样 8 点/发）
+##   Hr=快弹（速度≥4）1 秒轨迹
+##   Hp=敌方轨迹、0.98 慢衰减（长记忆规律）——每侧一张（Hp0 我方视角/Hp1 敌方视角）
+##   Hd=He 的慢积累+半径2模糊（期望云近似；多边形等高线为表现层）
+## 【AI 用途】采样点上多图加权（策划权重：He2 Hd3 Hr1 Hp3）→ _ai_drive
+## =============================================================
+
+const W := 400
+const H := 400
+const NAMES := ["He", "Hd", "Hr", "Hp0", "Hp1"]
+
+var ok := false
+var _rd: RenderingDevice = null
+var _tex: Array = []          ## _tex[i] = [texA, texB]
+var _front: Array = []        ## 每图当前状态所在槽（0/1）
+var _stamp_sets: Array = []   ## _stamp_sets[i] = [setA(写texA), setB(写texB)]
+var _decay_sets: Array = []   ## _decay_sets[i] = [setA→B, setB→A]
+var _sample_sets: Array = []  ## _sample_sets[i] = [setA(读texA), setB(读texB)]
+var _stamp_pipe: RID
+var _stamp_shader_rid: RID = RID()
+var _decay_shader_rid: RID = RID()
+var _sample_shader_rid: RID = RID()
+var _decay_pipe: RID
+var _sample_pipe: RID
+var _stamp_buf: RID
+var _vals_buf: RID
+var _ubos: Array = []     ## 每图 decay 参数 UBO
+var _decays := [0.9, 0.92, 0.9, 0.98, 0.98]
+var _blur2 := [0.0, 1.0, 0.0, 0.0, 0.0]
+
+func _init(rd: RenderingDevice, _ddm_unused: RID) -> void:
+	_rd = rd
+	if _rd == null:
+		return
+	var stamp_sh: RDShaderFile = load("res://shaders/traj_stamp.glsl")
+	var decay_sh: RDShaderFile = load("res://shaders/fam_decay.glsl")
+	var samp_sh: RDShaderFile = load("res://shaders/ht_sample.glsl")
+	if stamp_sh == null or decay_sh == null or samp_sh == null:
+		push_warning("[FamilyMaps] 着色器加载失败")
+		return
+	var stamp_rid := _rd.shader_create_from_spirv(stamp_sh.get_spirv(), "traj_stamp")
+	var decay_rid := _rd.shader_create_from_spirv(decay_sh.get_spirv(), "fam_decay")
+	var samp_rid := _rd.shader_create_from_spirv(samp_sh.get_spirv(), "fam_sample")
+	if not stamp_rid.is_valid() or not decay_rid.is_valid() or not samp_rid.is_valid():
+		push_warning("[FamilyMaps] SPIRV 无效")
+		return
+	_stamp_shader_rid = stamp_rid
+	_stamp_pipe = _rd.compute_pipeline_create(stamp_rid)
+	_decay_shader_rid = decay_rid
+	_decay_pipe = _rd.compute_pipeline_create(decay_rid)
+	_sample_shader_rid = samp_rid
+	_sample_pipe = _rd.compute_pipeline_create(samp_rid)
+	if not _stamp_pipe.is_valid() or not _decay_pipe.is_valid() or not _sample_pipe.is_valid():
+		push_warning("[FamilyMaps] 管线创建失败")
+		return
+	_stamp_buf = _rd.storage_buffer_create(4096 * 16)
+	_vals_buf = _rd.storage_buffer_create(4096 * 4)
+	var fmt := RDTextureFormat.new()
+	fmt.width = W
+	fmt.height = H
+	fmt.format = RenderingDevice.DATA_FORMAT_R8_UNORM
+	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	var zero := PackedByteArray()
+	zero.resize(W * H)
+	for i in NAMES.size():
+		var a := _rd.texture_create(fmt, RDTextureView.new(), [zero])
+		var b := _rd.texture_create(fmt, RDTextureView.new(), [zero])
+		if not a.is_valid() or not b.is_valid():
+			push_warning("[FamilyMaps] 纹理创建失败")
+			return
+		_tex.append([a, b])
+		_front.append(0)
+		var u_img_a := _img_uniform(a, 0)
+		var u_img_b := _img_uniform(b, 0)
+		var u_img_b1 := _img_uniform(b, 1) ## decay 着色器 binding 1（back 槽）
+		var u_img_a1 := _img_uniform(a, 1) ## decay 着色器 binding 1（反向 set）
+		var u_st := RDUniform.new()
+		u_st.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		u_st.binding = 1
+		u_st.add_id(_stamp_buf)
+		var u_sp := RDUniform.new()
+		u_sp.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		u_sp.binding = 1
+		u_sp.add_id(_stamp_buf)
+		var u_va := RDUniform.new()
+		u_va.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		u_va.binding = 2
+		u_va.add_id(_vals_buf)
+		var pb := _rd.uniform_buffer_create(16)
+		_ubos.append(pb)
+		var u_prm := RDUniform.new()
+		u_prm.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+		u_prm.binding = 2
+		u_prm.add_id(pb)
+		_stamp_sets.append([
+			_rd.uniform_set_create([u_img_a, u_st], stamp_rid, 0),
+			_rd.uniform_set_create([u_img_b, u_st], stamp_rid, 0),
+		])
+		var ds0 := _rd.uniform_set_create([u_img_a, u_img_b1, u_prm], decay_rid, 0)
+		var ds1 := _rd.uniform_set_create([u_img_b, u_img_a1, u_prm], decay_rid, 0)
+		_decay_sets.append([ds0, ds1])
+		_sample_sets.append([
+			_rd.uniform_set_create([u_img_a, u_sp, u_va], samp_rid, 0),
+			_rd.uniform_set_create([u_img_b, u_sp, u_va], samp_rid, 0),
+		])
+	ok = true
+
+func _img_uniform(rid: RID, binding: int) -> RDUniform:
+	var u := RDUniform.new()
+	u.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	u.binding = binding
+	u.add_id(rid)
+	return u
+
+func _push_params(i: int) -> void:
+	var f := PackedFloat32Array([_decays[i], _blur2[i]])
+	_rd.buffer_update(_ubos[i], 0, 16, f.to_byte_array())
+
+## 【单入口】第 i 图：衰减(front→back) → 印章(back) → front=back
+func advance(i: int, pts: PackedFloat32Array) -> void:
+	if not ok:
+		return
+	var front: int = _front[i]
+	var back: int = 1 - front
+	_push_params(i)
+	var cl := _rd.compute_list_begin()
+	_rd.compute_list_bind_compute_pipeline(cl, _decay_pipe)
+	var dset_sel = _decay_sets[i][front]
+	_rd.compute_list_bind_uniform_set(cl, dset_sel, 0)
+	_rd.compute_list_dispatch(cl, 50, 50, 1)
+	_rd.compute_list_end()
+	if pts.size() >= 2:
+		var n: int = mini(pts.size() / 2, 4096)
+		var full := PackedFloat32Array()
+		full.resize(n * 4)
+		for k in n:
+			full[k * 4] = pts[k * 2]
+			full[k * 4 + 1] = pts[k * 2 + 1]
+		_rd.buffer_update(_stamp_buf, 0, n * 16, full.to_byte_array())
+		var cl2 := _rd.compute_list_begin()
+		_rd.compute_list_bind_compute_pipeline(cl2, _stamp_pipe)
+		_rd.compute_list_bind_uniform_set(cl2, _stamp_sets[i][back], 0) ## 写 back
+		_rd.compute_list_dispatch(cl2, (n + 63) / 64, 1, 1)
+		_rd.compute_list_end()
+	_front[i] = back
+
+var _disp_cache: Dictionary = {} ## name -> {tex, front}（N6：front 未翻面复用）
+## F1 显示（front 槽回读；front 未翻面时复用缓存）
+func display(name: String) -> Texture2D:
+	if not ok:
+		return null
+	var i: int = NAMES.find(name)
+	if i < 0:
+		return null
+	var c: Dictionary = _disp_cache.get(name, {})
+	if c.has("tex") and c["front"] == _front[i]:
+		return c["tex"]
+	var data := _rd.texture_get_data(_tex[i][_front[i]], 0)
+	if data.is_empty():
+		return null
+	var t := ImageTexture.create_from_image(Image.create_from_data(W, H, false, Image.FORMAT_R8, data))
+	_disp_cache[name] = {"tex": t, "front": _front[i]}
+	return t
+
+## 多图批量 GPU 采样（points 顺序；每图一 dispatch，小体积回读）
+func sample_multi(points: PackedVector2Array) -> Dictionary:
+	var out := {}
+	if not ok or points.is_empty():
+		return out
+	var n: int = mini(points.size(), 4096)
+	var bytes := points.slice(0, n).to_byte_array()
+	_rd.buffer_update(_stamp_buf, 0, n * 8, bytes)
+	for i in NAMES.size():
+		var sset = _sample_sets[i][_front[i]]
+		var cl := _rd.compute_list_begin()
+		_rd.compute_list_bind_compute_pipeline(cl, _sample_pipe)
+		_rd.compute_list_bind_uniform_set(cl, sset, 0)
+		_rd.compute_list_dispatch(cl, (n + 63) / 64, 1, 1)
+		_rd.compute_list_end()
+		## 【修复】每图 dispatch 后立即回读——共用 vals 缓冲会被下一图覆盖
+		out[NAMES[i]] = _rd.buffer_get_data(_vals_buf, 0, n * 4).to_int32_array()
+	return out
+
+## 会话资源释放（战场 PREDELETE）
+func shutdown() -> void:
+	if _rd == null:
+		return
+	for i in NAMES.size():
+		if i < _stamp_sets.size():
+			for set_rid in _stamp_sets[i]:
+				if set_rid.is_valid():
+					_rd.free_rid(set_rid)
+		if i < _decay_sets.size():
+			for set_rid in _decay_sets[i]:
+				if set_rid.is_valid():
+					_rd.free_rid(set_rid)
+		if i < _sample_sets.size():
+			for set_rid in _sample_sets[i]:
+				if set_rid.is_valid():
+					_rd.free_rid(set_rid)
+		if i < _tex.size():
+			for rid in _tex[i]:
+				if rid.is_valid():
+					_rd.free_rid(rid)
+	for rid in [_stamp_pipe, _decay_pipe, _sample_pipe, _stamp_shader_rid, _decay_shader_rid, _sample_shader_rid, _stamp_buf, _vals_buf]:
+		if rid.is_valid():
+			_rd.free_rid(rid)
+	ok = false

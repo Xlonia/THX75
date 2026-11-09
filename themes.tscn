@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://byn12gf3gvehd"]
+
+[ext_resource type="Texture2D" uid="uid://v8l3oyk0g4nv" path="res://themes/images/tmainUvReimu.png" id="1_ewbgl"]
+[ext_resource type="Texture2D" uid="uid://vec1ifbijtgq" path="res://themes/images/Reimu.png" id="2_u0y5m"]
+[ext_resource type="Script" uid="uid://d26aom5m55xsp" path="res://reimu_bgswf.gd" id="3_u0y5m"]
+
+[node name="Control" type="Control" unique_id=2021257540]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Beckgroundvista" type="TextureRect" parent="." unique_id=1034548382]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_ewbgl")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Reimu" type="TextureRect" parent="Beckgroundvista" unique_id=1895857135]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_u0y5m")
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("3_u0y5m")
+
+[node name="ItemList" type="ItemList" parent="." unique_id=1628033139]
+layout_mode = 0
+offset_top = 112.0
+offset_right = 200.0
+offset_bottom = 528.0
+allow_reselect = true
+allow_rmb_select = true
+item_count = 1

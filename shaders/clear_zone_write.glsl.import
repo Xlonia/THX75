@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bqknpjr55r5yr"
+path="res://.godot/imported/clear_zone_write.glsl-1016104ce598c9dcfb9347dc0e103c94.res"
+
+[deps]
+
+source_file="res://shaders/clear_zone_write.glsl"
+dest_files=["res://.godot/imported/clear_zone_write.glsl-1016104ce598c9dcfb9347dc0e103c94.res"]
+
+[params]
+

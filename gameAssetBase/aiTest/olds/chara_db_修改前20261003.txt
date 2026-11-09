@@ -1,0 +1,96 @@
+class_name CharaDB
+extends RefCounted
+## =============================================================
+## 角色数据库（第①期：新增 poi 表达式列 + privates.csv + Enemy.csv）
+## Characters.csv 列（作者已提供 poi 数据）：
+##   ... Weapon_Muti, main_y, sub_x, sub_y,
+##   main_poi_x, main_poi_y, sub_poi_x, sub_poi_y, Char_*, NameZH/JP/EN
+## poi 列为表达式字符串（变量 wpcs/to_c），建议仅加减乘除
+## Enemy.csv：敌方角色（无 ID/Team 列——不需接受队伍指挥，批复说明）
+## privates.csv：杂兵（Name,Normal,Determine,Defend,NameZH/JP/EN）
+## =============================================================
+
+const CSV_PATH := "res://gameAssetBase/Characters.csv"
+const ENEMY_CSV_PATH := "res://gameAssetBase/Enemy.csv"
+const PRIVATES_CSV_PATH := "res://gameAssetBase/privates.csv"
+
+const INT_COLS := ["Cruise", "Normal", "Determine", "Defend", "Mag", "Phy", "ID", "Team", "Main_Cd", "Sub_Cd"]
+const FLOAT_COLS := ["Weapon_Muti", "Char_Raid", "Char_Allfire", "Char_Blitz", "Char_Cover", "Char_Elast", "Char_Delay", "Char_Feint"]
+const EXPR_COLS := ["main_y", "sub_x", "sub_y", "main_poi_x", "main_poi_y", "sub_poi_x", "sub_poi_y"] ## 可表达式（建议±*/）
+const POI_VARS: PackedStringArray = ["wpcs", "to_c"]
+
+static func load_all() -> Array[Dictionary]:
+	return _load_csv(CSV_PATH, true)
+
+static func load_enemies() -> Array[Dictionary]:
+	return _load_csv(ENEMY_CSV_PATH, false)
+
+static func load_privates() -> Array[Dictionary]:
+	return _load_csv(PRIVATES_CSV_PATH, false)
+
+static func _load_csv(path: String, full: bool) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("[CharaDB] 表格无法读取：%s" % path)
+		return out
+	var header: PackedStringArray = []
+	while not file.eof_reached():
+		var row: PackedStringArray = file.get_csv_line()
+		if row.size() == 0:
+			continue
+		var first: String = row[0].strip_edges()
+		if first.is_empty() or first.begins_with("#"):
+			continue
+		if header.is_empty():
+			header = row
+			continue
+		var d := {}
+		for i in header.size():
+			if i >= row.size() or header[i].is_empty():
+				continue
+			d[header[i]] = row[i] if i < row.size() else ""
+		if full:
+			_cast(d)
+		out.append(d)
+	file.close()
+	return out
+
+static func _cast(d: Dictionary) -> Dictionary:
+	for k in INT_COLS:
+		d[k] = int(String(d.get(k, "0")).to_float())
+	for k in FLOAT_COLS:
+		d[k] = String(d.get(k, "0")).to_float()
+	## poi 列保持字符串（表达式），缺失补 "0"
+	for k in EXPR_COLS:
+		var raw := String(d.get(k, "0")).strip_edges()
+		d[k] = raw if not raw.is_empty() else "0"
+	return d
+
+static func get_by_name(chara_name: String) -> Dictionary:
+	for d in load_all():
+		if d["Name"] == chara_name:
+			return d
+	return {}
+
+static func get_private_by_name(n: String) -> Dictionary:
+	for d in load_privates():
+		if d["Name"] == n:
+			return d
+	return {}
+
+static func get_enemy_by_name(n: String) -> Dictionary:
+	for d in load_enemies():
+		if d["Name"] == n:
+			return d
+	return {}
+
+## poi 表达式编译工具（FireControl 复用；错误返回 null）
+static func compile_poi(row: Dictionary, col: String) -> DanmakuExpr:
+	var raw := String(row.get(col, "0")).strip_edges()
+	if raw.is_empty():
+		raw = "0"
+	var e := DanmakuExpr.new()
+	if not e.compile(raw, POI_VARS):
+		return null
+	return e

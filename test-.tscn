@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://bno0eodua6moq"]
+
+[ext_resource type="Script" uid="uid://c6progvwfnx7p" path="res://test1.gd" id="1_sca1n"]
+[ext_resource type="PackedScene" uid="uid://bdhpabdkb1b37" path="res://Players/Marisa/marisa.tscn" id="2_cgqfc"]
+
+[node name="Node2D" type="Node2D" unique_id=265770717]
+script = ExtResource("1_sca1n")
+
+[node name="Timer" type="Timer" parent="." unique_id=1949967024]
+one_shot = true
+autostart = true
+
+[node name="Marisa" parent="." unique_id=669170817 instance=ExtResource("2_cgqfc")]
+position = Vector2(249, 100)

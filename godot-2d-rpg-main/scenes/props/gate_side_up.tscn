@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://cbl0vbjiosfi0"]
+
+[ext_resource type="PackedScene" uid="uid://cg11jqxohxkdv" path="res://scenes/props/gate_front_up.tscn" id="1_j13c4"]
+
+[node name="Gate_Side" instance=ExtResource("1_j13c4")]
+offset = Vector2(0, 14)
+region_rect = Rect2(0, 48, 192, 48)
+
+[node name="StaticBody2D" parent="." index="0"]
+position = Vector2(-2, 14)
+rotation = 1.5708

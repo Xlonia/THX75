@@ -1,0 +1,8 @@
+﻿event_name,owner,slot,timeline_frame,tag,texture,color,saturation,hue,alpha,pass,repeat_time,repeat_freq,range,is_abs_coord,dmg,dmg_mode,dmg_allow_moderate,rate,pattern,danmaku_size_muti,is_phy,is_cannon,x_offset,y_offset,speed,x,y,func,alarm,alarm_shader_alpha,laser_n_step,laser_render_scale,targe,targe_offsetx,targe_offsety,acc,turn_arg,speed_max,lost_max,lost_min,lost_if,explode_condit,release_condit,explode,release,can_destroy
+demo_aimed,*,main,-1,IsDanmakuRegular,tama0,#b50321,256,0,256,,0,0,300,0,3,N,1,,,1.0,0,0,0.0,0.0,3,gettarget(x),gettarget(y),,0,256,1,1,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,,,,,0,0
+demo_laser,*,main,-1,IsDanmakuLaser,laserpx1-16,#981cff,230,192,256,,0,0,150,0,3,N,1,0.85,1,1.0,1,1,0.0,0.0,1,20*cos(n)+gettarget(x)/d*n,40*sin(n)+gettarget(y)/d*n,,90,128,2,0.5,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,,,,,0
+demo_missile,MarisaA,sub,-1,Nodes,torpedo,#eeb30b,256,33,256,,0,0,300,0,2,N,1,0.7,,1.0,0,0,0.0,0.0,1.5,,,,0,256,1,1,enemy,0.0,0.0,0.02,0.05,4.0,320.0,0.0,,t>150,,demo_burst,,1
+demo_ring,MarisaB,sub,-1,IsDanmakuPhysical,tama1,#3bc5ff,256,141,256,,0,0,300,0,1,N,1,,0.5,1.0,1,0,0.0,0.0,2,gettarget(x),gettarget(y),,0,256,1,1,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,,,,,0
+demo_burst,*,rest,-1,IsDanmakuRegular,tama0,#3bff40,256,84,256,,0,0,60,0,1,N,1,,,1.0,0,0,0.0,0.0,2,cos(r0)+gettarget(x)/d,sin(r0)+gettarget(y)/d,target_y,0,0,1,1,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,,,,,0
+tama-regularline,*,main,-1,IsDanmakuRegular,tama0,#ffffff,256,0,256,,0,0,300,0,1,N,1,1,1,1.0,1,1,0.0,0.0,,gettarget(x),gettarget(y),,0,256,1,1,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,0
+tama-regularline_copy,*,main,-1,IsDanmakuRegular,knife,#ffffff,256,0,256,,12,2,300,0,1,N,1,1,1,1.0,1,1,0.0,0.0,,gettarget(x),gettarget(y),,0,256,1,1,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,0

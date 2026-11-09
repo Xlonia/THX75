@@ -1,0 +1,37 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8twd7bu2dct0"]
+
+[ext_resource type="Script" uid="uid://fnutmu58yf14" path="res://components/debug_window.gd" id="1_05m0w"]
+
+[node name="DebugWindow" type="CanvasLayer" node_paths=PackedStringArray("anim_label", "info_label")]
+script = ExtResource("1_05m0w")
+anim_label = NodePath("Panel/VBoxContainer/AnimLabel")
+info_label = NodePath("Panel/VBoxContainer/InfoLabel")
+
+[node name="Panel" type="Panel" parent="."]
+modulate = Color(0, 0, 0, 0.172549)
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 60.0
+grow_horizontal = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+top_level = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="AnimLabel" type="RichTextLabel" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 18
+fit_content = true
+scroll_active = false
+
+[node name="InfoLabel" type="RichTextLabel" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 18
+fit_content = true
+scroll_active = false
