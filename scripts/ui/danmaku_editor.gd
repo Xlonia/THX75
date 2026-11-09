@@ -1304,21 +1304,24 @@ func _on_preview() -> void:
 	GameGlobals.editor_events = events
 	GameGlobals.preview_event_name = events[selected_idx].event_name if selected_idx >= 0 and selected_idx < events.size() else "demo_aimed"
 	GameGlobals.arena_mode = "preview"
-	## 【0.0.9·预览临时窗（作者 20261110）】不再 goto_scene（编辑器场景被顶掉=
-	## 无法返回+多开）——弹出临时窗口加载试炼场；Esc 面板=解除暂停/退出试炼场
-	var win := Window.new()
-	win.title = "THX075 试炼场预览"
-	win.size = Vector2i(880, 920)
+	## 【0.0.9·预览替换主窗（作者 20261110 终裁=0.0.7-legacy/0.0.8 行为）】
+	## 试炼场**替换编辑器所在窗口的内容**（非游戏内子窗口）；Esc 面板=
+	## 解除暂停/退出试炼场；退出后编辑器节点原样挂回（_ready 不重跑=编辑状态零丢失）
+	var host: Window = get_window()
 	var arena := (load("res://scenes/battle_arena.tscn") as PackedScene).instantiate()
 	arena.preview_windowed = true
+	var ed := self
 	arena.preview_exit_cb = func():
-		win.queue_free()
-	win.add_child(arena)
-	win.close_requested.connect(func(): win.queue_free())
-	win.position = (DisplayServer.window_get_position()
-		+ (DisplayServer.window_get_size() - Vector2i(880, 920)) / 2)
-	get_tree().root.add_child(win)
-	_set_status("试炼场预览已弹出（独立窗口；Esc=暂停，可解除或退出返回编辑器）")
+		host.remove_child(arena)
+		arena.queue_free()
+		if host == get_tree().root:
+			get_tree().current_scene = ed
+		host.add_child(ed)
+	host.remove_child(ed)
+	if host == get_tree().root:
+		get_tree().current_scene = arena
+	host.add_child(arena)
+	_set_status("试炼场预览中（Esc=暂停；退出试炼场返回编辑器）")
 
 ## =============================================================
 ## 运算/参数引入工具浮窗（作者图示重做 2026-10-04）：

@@ -235,6 +235,7 @@ var pause_panel: PanelContainer
 ## 【20261003】两侧角色数据面板（作者批复：左友右敌，HP/P点/符卡）
 var left_panel: VBoxContainer = null
 var right_panel: VBoxContainer = null
+var _surr_box: PanelContainer = null ## 【投降提示框】敌方卡片列下方（深色）
 const SIDE_PANEL_W := 200.0
 ## MultiMesh 批量渲染（每材质一个 MM；粒子弹幕全部 16px 材质高度共享）
 var _mm: MultiMesh = null
@@ -4004,6 +4005,12 @@ func _refresh_hud() -> void:
 	## ——作者"角色卡没看见"的直接根因；两块面板每 HUD 拍（10Hz）增量刷新
 	_refresh_side_panel(left_panel, player_ents, Color(0.75, 0.85, 1.0))
 	_refresh_side_panel(right_panel, enemy_ents, Color(1.0, 0.8, 0.75))
+	if _surr_box != null:
+		_surr_box.visible = surrender_sender == 1 and not surrender_phase
+		if _surr_box.visible:
+			(_surr_box.get_child(0) as Label).text = "⚔ 敌方发起投降请求
+Shift+S 同意 / Shift+W 拒绝
+（拒绝：敌方全员+1符卡且回满P点）"
 	if _debug_used and not ht_side.is_empty() and ht_side[0] != null:
 		info_label.text += "\n[十六点性能检测] %s" % ht_side[0].stats_line()
 
@@ -4209,6 +4216,31 @@ func _build_side_panels() -> void:
 	right_panel.offset_bottom = -4
 	right_panel.add_theme_constant_override("separation", 6)
 	hud.add_child(right_panel)
+	## 【0.0.9·投降提示框（作者 20261110）】敌方卡片列下方深色框——投降请求
+	## 不再被机控 toast 覆盖；点数随存活态由 _refresh_hud 10Hz 控制
+	_surr_box = PanelContainer.new()
+	var _sb := StyleBoxFlat.new()
+	_sb.bg_color = Color(0.07, 0.07, 0.10, 0.94)
+	_sb.border_color = Color(1.0, 0.55, 0.3)
+	_sb.set_border_width_all(1)
+	_sb.set_corner_radius_all(4)
+	_surr_box.add_theme_stylebox_override("panel", _sb)
+	_surr_box.anchor_left = 1.0
+	_surr_box.anchor_right = 1.0
+	_surr_box.anchor_top = 1.0
+	_surr_box.anchor_bottom = 1.0
+	_surr_box.offset_left = -(SIDE_PANEL_W - 4)
+	_surr_box.offset_right = -4
+	_surr_box.offset_top = -72
+	_surr_box.offset_bottom = -4
+	_surr_box.visible = false
+	var _sl := Label.new()
+	_sl.name = "SurrLabel"
+	_sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sl.add_theme_font_size_override("font_size", 12)
+	_sl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.7))
+	_surr_box.add_child(_sl)
+	hud.add_child(_surr_box)
 
 ## 角色状态卡片面板（左友右敌）：
 ##   【缓存版 20261004】旧实现每 0.1s 整树重建（3200 节点/秒 churn）→
