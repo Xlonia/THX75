@@ -860,6 +860,13 @@ func _swap_selected_character() -> void:
 			chars.append(e)
 	if chars.is_empty():
 		return
+	## 【0.0.9·汐家特殊技能（新二 128；作者 20261111 释）】希洛妮娅(Xlonia)
+	## 长按 A=召唤釉怜冠姬(Remilna/Hnaszami)接替——不是与存活角色对换
+	if sel.chara_name() == "Xlonia":
+		var hz_row := CharaDB.get_by_name("Remilna")
+		if not hz_row.is_empty():
+			_do_summon(sel, hz_row)
+			return
 	var other: BattleEntity = chars[_pick_idx % chars.size()]
 	var tmp_db: Dictionary = sel.db
 	var tmp_pos: Vector2 = sel.position
@@ -917,6 +924,14 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 					break
 			if _wheel_cands.size() >= 8:
 				break
+	## 【0.0.9·召唤原有角色】被接替角色回填候补尾（不在场上才显示）
+	for nm0 in _summoned_out:
+		var nm: String = str(nm0)
+		if used.has(nm):
+			continue
+		var row0 := CharaDB.get_by_name(nm)
+		if not row0.is_empty():
+			_wheel_cands.append(row0)
 	if _wheel_cands.is_empty():
 		_toast("无可用候补——请在自定义对战设置召唤候补")
 		return
@@ -937,6 +952,9 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 		return
 	var ne := BattleEntity.new()
 	ne.setup(row, 0, BattleEntity.Kind.PLAYER, true)
+	ne.sit_cards = SitCardSystem.new()
+	## 【0.0.9·修复 20261111】原惰性创建在 _ent_tick_sit——支援框内召唤立即
+	## 强制发动能力→_apply_release 读 ne.sit_cards.on_released 踩 Nil（真炸）
 	ne.position = sel.position
 	ne.pp = sel.pp          ## 与原始角色共享
 	ne.spell_cards = sel.spell_cards
@@ -946,6 +964,15 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	var eidx := entities.find(sel)
 	if eidx >= 0:
 		entities[eidx] = ne
+	## 【0.0.9·火控接替修复（作者报告"召唤后角色不会释放任何弹幕"）】
+	## 原只换实体——fire_control 仍指向旧角色（dead=每帧跳过）→新角色无火控
+	for fc in fire_controls:
+		if fc.entity == sel:
+			fc.entity = ne
+	## 【0.0.9·召唤原有角色（作者 20261111）】被接替角色记入候补区
+	## （轮盘尾追加"召唤原有角色(名)"条目）
+	if not _summoned_out.has(sel.chara_name()):
+		_summoned_out.append(sel.chara_name())
 	sel.dead = true ## 原角色离场（接替）
 	if sel == player_leader:
 		player_leader = ne
@@ -1030,25 +1057,24 @@ func _refresh_br_panel() -> void:
 			+ ("点位指令 攻 (%d, %d) %.1fs\n" % [int(cmd_point.x), int(cmd_point.y), cmd_frames / 60.0] if cmd_frames > 0 and _cmd_ent == ent else "") \
 			+ ("点位指令 防 (%d, %d) %.1fs\n" % [int(_cmd_point_b.x), int(_cmd_point_b.y), _cmd_frames_b / 60.0] if _cmd_frames_b > 0 and _cmd_ent_b == ent else "")
 
-## 【0.0.9·铃仙队特殊技能（新二 89）】Y=全屏轰炸：我方全员主武器立即齐射一轮
-## （30 秒冷却；逐事件细节规格待补——本版=一次齐射实现）
+## 【0.0.9·铃仙队特殊技能（新二 89；作者 20261111 规格）】Y=全屏轰炸：
+## 战场分 5×5 共 25 个正方形，引用既有弹幕 **boom_rabbit0**（引用反查同名
+## 事件——颜色/x/y 后续作者自改，这里不落参数），在每个区块中点间隔 3 帧
+## 轮番释放一次（一轮=25 枚×3 帧=75 帧）；30 秒冷却
+var _reisen_queue: Array = [] ## {f:释放帧, p:区块中点}
+var _summoned_out: Array = [] ## 【召唤原有角色】被接替角色名（轮盘回填）
 func _reisen_bombard(caster: BattleEntity) -> void:
 	if caster.has_meta("reisen_cd") and time_frames < int(caster.get_meta("reisen_cd")):
 		_toast("全屏轰炸冷却中（%.0fs）" % (float(int(caster.get_meta("reisen_cd")) - time_frames) / 60.0))
 		return
+	if _find_event("boom_rabbit0") == null:
+		_toast("找不到弹幕事件 boom_rabbit0（轰炸取消）")
+		return
 	caster.set_meta("reisen_cd", time_frames + 1800)
-	var n := 0
-	for fc in fire_controls:
-		if fc.entity.dead or fc.entity.side != 0:
-			continue
-		for pnt in fc.weapon_points:
-			for ev in pnt.events:
-				if ev == null:
-					continue
-				var sp: Dictionary = ev.eval_spawn_params(_rot_eval_ctx(fc.entity, pnt, 0.0))
-				_spawn_event_copies(ev, _fire_origin(pnt, ev, fc.entity, sp), fc.entity, pnt, {}, 0)
-				n += 1
-	_toast("铃仙队特殊技能：全屏轰炸（我方 %d 个火力点齐射一轮；30 秒冷却）" % n)
+	for i in 25:
+		var cpos := Vector2(40.0 + 80.0 * float(i % 5), 40.0 + 80.0 * float(i / 5))
+		_reisen_queue.append({"f": time_frames + 3 * (i + 1), "p": cpos})
+	_toast("铃仙队特殊技能：全屏轰炸（5×5 区块中点·3 帧轮番·引用 boom_rabbit0）")
 
 ## 【0.0.9·成对角色表（新二 130）】
 func _pair_partner(nm: String) -> String:
@@ -1602,6 +1628,14 @@ func _physics_process(delta: float) -> void:
 		_fire_ticks(delta)
 		_cannon_tick() ## 【20261015】火炮节点按 repeat 时序生成弹幕粒子
 		for e3 in entities:
+			## 【0.0.9·铃仙轰炸队列】3 帧一枚轮番释放（引用 boom_rabbit0）
+			var rq := 0
+			while rq < _reisen_queue.size():
+				if time_frames >= int(_reisen_queue[rq]["f"]):
+					spawn_event_by_name("boom_rabbit0", _reisen_queue[rq]["p"], 0, 0)
+					_reisen_queue.remove_at(rq)
+				else:
+					rq += 1
 			if e3 is BattleEntity and (e3 as BattleEntity).kind == BattleEntity.Kind.PRIVATE:
 				var bm: int = int((e3 as BattleEntity).get_meta("banzai", 0))
 				if bm > 0:
@@ -2066,6 +2100,19 @@ func _consume_pending_samples() -> void:
 func _player_input() -> void:
 	_update_double_tap()
 	## ——完全接管（东方正作射击操作；策划）——
+	## 【0.0.9·撤离活动】最强引力直奔边界点；被弹=直接撤离（_resolve_hits）
+	for r9 in entities:
+		if r9 is BattleEntity and (r9 as BattleEntity).get_meta("retreating", false) 			and not (r9 as BattleEntity).dead:
+			var r9e: BattleEntity = r9
+			var rtgt: Vector2 = r9e.get_meta("retreat_target", r9e.position)
+			var rvec: Vector2 = rtgt - r9e.position
+			if rvec.length() <= 10.0:
+				r9e.set_meta("retreated", true)
+				r9e.dead = true
+				_toast("%s 撤离成功（抵达边界）" % r9e.chara_name())
+				continue
+			r9e.cruise_active = true
+			r9e.move(rvec.normalized(), 1.0)
 	if take_over and player_leader != null and not player_leader.dead:
 		var dir := Vector2.ZERO
 		if Input.is_physical_key_pressed(KEY_LEFT): dir.x -= 1
@@ -2142,6 +2189,9 @@ var _surr_ai_cd := -1         ## 【敌方投降 AI】-1=未计时；我方请�
 var _ai_surr_used := false    ## 敌方 AI 每场最多发起一次
 var _phase2_at := 0           ## 短兵阶段起始帧（破阵 5 秒符卡条件用）
 var _first_spell_fired := false ## 任一角色首次发动符卡攻击（破阵判定③）
+var _phase2_reentered := false  ## 【重新进入短兵】（投降门：重返短兵可降）
+var _phase3_at := -1            ## 破阵起始帧
+var _phase3_loss0 := 0          ## 破阵起始累计杂兵损失（"再有5个杂兵损失"基准）
 var surrender_frames := 0
 func _update_double_tap() -> void:
 	if team_stance != "":
@@ -2203,13 +2253,17 @@ func _update_double_tap() -> void:
 	if Input.is_physical_key_pressed(KEY_S) and not Input.is_physical_key_pressed(KEY_SHIFT) 		and not _priv_panel and not take_over and not _wheel_open:
 		_hold_s += 1
 		if _hold_s == 45:
-			if phase < 2:
-				_toast("未到撤离条件（撤离阶段判定④期实装；当前=短兵前）")
+			if phase < 4:
+				_toast("撤离仅限撤离阶段（第 4 阶段）——当前 %s" % {1: "远距压制", 2: "短兵", 3: "破阵"}.get(phase, "?"))
 			else:
 				var ssel := picked_entity()
-				if ssel != null and ssel.side == 0 and not ssel.dead:
-					ssel.dead = true
-					_toast("%s 撤退（长按 S；撤离阶段）" % ssel.chara_name())
+				if ssel != null and ssel.side == 0 and not ssel.dead and not ssel.get_meta("retreating", false):
+					## 【0.0.9·撤离活动（新二 245）】寻找撤离活动开始时距角色最近的点，
+					## 角色到该点直线方向=最强 APF 引力（压过其余一切引力斥力）；
+					## 被弹则直接撤离（见 _resolve_hits）
+					ssel.set_meta("retreating", true)
+					ssel.set_meta("retreat_target", _nearest_edge_point(ssel.position))
+					_toast("%s 撤离活动开始（向最近边界点；被弹即撤离）" % ssel.chara_name())
 	else:
 		_hold_s = 0
 
@@ -2431,11 +2485,12 @@ func _ai_drive(ent: BattleEntity, target: BattleEntity, time_scale: float) -> vo
 		var ring := maxf(0.0, 1.0 - float(300 - cmd_frames) / 120.0)
 		push += (cmd_point - ent.position).normalized() * ring * 0.7
 	if _cmd_frames_b > 0 and ent == _cmd_ent_b:
-		var ring_b := maxf(0.0, 1.0 - float(300 - _cmd_frames_b) / 120.0)
+		## 【0.0.9·B=APF 引力（作者 20261111：同"靠近搭档"原则）】
+		## 向指令点持续引力（近点衰减=驻防不震荡），其余避弹照常
 		var to_b: Vector2 = _cmd_point_b - ent.position
-		## 指定位置防御：靠近该点（30px 内停住=就地防御）
-		if to_b.length() > 30.0:
-			push += to_b.normalized() * maxf(ring_b, 0.35) * 0.7
+		var db := to_b.length()
+		if db > 1.0:
+			push += to_b / db * 0.55 * clampf(db / 24.0, 0.25, 1.0)
 	## 【号召点（策划）】有战术号召时队友向号召点引力（降低规避）
 	if rally_appeal > 0.0:
 		## 【号召乘数（新二）】号召强度 × 剩余能力/普通符卡数
@@ -2480,8 +2535,6 @@ func _ai_drive(ent: BattleEntity, target: BattleEntity, time_scale: float) -> vo
 	if d_anchor < 120.0:
 		anchor *= d_anchor / 120.0
 		push -= (anchor_src.position - ent.position).normalized() * (1.0 - d_anchor / 120.0) * 0.4
-	if _cmd_frames_b > 0 and ent == _cmd_ent_b:
-		anchor = 0.0 ## 【B 指令】防御中不追击（锚定归零；火力照常）
 	match ent.current_sit_card:
 		"a":
 			anchor = 0.9
@@ -3120,6 +3173,12 @@ func _resolve_hits() -> void:
 			## （持续 30 秒或至其被击败；一次抵挡一次替死）
 			if _take_banzai_hit(ent):
 				continue
+			## 【0.0.9·撤离活动】撤离途中被弹=直接撤离（不掉血——新二 245）
+			if ent.get_meta("retreating", false):
+				ent.set_meta("retreated", true)
+				ent.dead = true
+				_toast("%s 撤离途中被弹——直接撤离" % ent.chara_name())
+				continue
 			ent.take_hit(best_dmg, best_mi, best_ang)
 
 func _choose_part(angles: Array) -> Array:
@@ -3160,10 +3219,30 @@ func _update_phase() -> void:
 	## 全体 4 个角色 AP 归零 / 一方在一个角色 AP 归零后**投降**（surrender_sender
 	## 置位即视为触发——见 _apply_surrender_request）
 	elif phase == 3:
+		if _phase3_at < 0:
+			_phase3_at = time_frames
+			_phase3_loss0 = _priv_losses[0] + _priv_losses[1]
 		var p_broken := _side_ap_broken(0)
 		var e_broken := _side_ap_broken(1)
 		if p_broken >= 2 or e_broken >= 2 or p_broken + e_broken >= 4 or surrender_sender >= 0:
 			phase = 4
+		## 【0.0.9·重新进入短兵（新二 245）】破阵期杂兵损失≥5 后每 1s 检测：
+		## 双方杂兵满员 + 双方存活角色均<6 → 回短兵（2；此状态下可投降）
+		elif _priv_losses[0] + _priv_losses[1] - _phase3_loss0 >= 5 and time_frames % 60 == 0:
+			var _ok := true
+			for s2 in 2:
+				if _side_priv_vacancy(s2) > 0:
+					_ok = false
+				var alive_c := 0
+				for e10 in (player_ents if s2 == 0 else enemy_ents):
+					if e10 is BattleEntity and not e10.dead:
+						alive_c += 1
+				if alive_c >= 6:
+					_ok = false
+			if _ok:
+				phase = 2
+				_phase2_reentered = true
+				_toast("重新进入短兵阶段（投降门开启）")
 	## 角色全灭直接终局（_check_end 结算——原占位"全灭→phase4"撤销：phase4=撤离阶段）
 
 ## 【0.0.9·杂兵预备队（新二 137"回到杂兵预备"）20261110】退下/解散的杂兵
@@ -3198,6 +3277,19 @@ func _side_priv_vacancy(side: int) -> int:
 		if e is BattleEntity and not e.dead:
 			chars += 1
 	return maxi(0, chars * GameGlobals.versus_privates_per_char - alive - _priv_reserve_total(side))
+
+## 【0.0.9·撤离活动】场内点→最近边界点（8px 内缘）
+func _nearest_edge_point(p: Vector2) -> Vector2:
+	var cands := [Vector2(8.0, clampf(p.y, 8.0, 392.0)), Vector2(392.0, clampf(p.y, 8.0, 392.0)),
+		Vector2(clampf(p.x, 8.0, 392.0), 8.0), Vector2(clampf(p.x, 8.0, 392.0), 392.0)]
+	var best: Vector2 = cands[0]
+	var bd := p.distance_to(best)
+	for c in cands:
+		var d: float = p.distance_to(c)
+		if d < bd:
+			bd = d
+			best = c
+	return best
 
 func _side_ap_broken(side: int) -> int:
 	var n := 0
@@ -3794,10 +3886,15 @@ func _unhandled_input(event: InputEvent) -> void:
 						_surrender_accepted()
 						print("[投降] 我方同意敌方投降 → 结算")
 					else:
-						surrender_sender = 0
-						_surr_ai_cd = 60 ## 敌方 AI 1 秒后同意（新二 100）
-						print("[投降] 请求已发送（Shift+W 撤销；对方AI将立即同意）")
-						_toast("投降请求已发送")
+						## 【0.0.9·投降阶段门（新二 98-100 补全；作者 20261111）】
+						## 仅限第 3/4 阶段（或重新回到的短兵）
+						if not (phase >= 3 or (phase == 2 and _phase2_reentered)):
+							_toast("投降仅限破阵/撤离阶段（或重返短兵）——当前 %s" % {1: "远距压制", 2: "短兵", 3: "破阵", 4: "撤离"}.get(phase, "?"))
+						else:
+							surrender_sender = 0
+							_surr_ai_cd = 60 ## 敌方 AI 1 秒后同意（新二 100）
+							print("[投降] 请求已发送（Shift+W 撤销；对方AI将立即同意）")
+							_toast("投降请求已发送")
 			KEY_W:
 				if Input.is_physical_key_pressed(KEY_SHIFT):
 					if surrender_sender == 1:
@@ -4923,8 +5020,11 @@ func _draw_summon_wheel(onto: CanvasItem) -> void:
 			_wheel_sel = i ## 鼠标悬停选取
 		var col := Color(1, 0.9, 0.4, 0.95) if _wheel_sel == i and mouse_in else Color(0.7, 0.8, 0.95, 0.8)
 		onto.draw_circle(p, 30.0, Color(0.1, 0.14, 0.22, 0.9) if _wheel_sel == i and mouse_in else Color(0.08, 0.1, 0.16, 0.7))
+		var wn: String = str(_wheel_cands[i].get("NameZH", _wheel_cands[i].get("Name", "?")))
+		if _summoned_out.has(str(_wheel_cands[i].get("Name", ""))):
+			wn = "原:" + wn ## 【召唤原有角色】标记
 		onto.draw_string(ThemeDB.fallback_font, p + Vector2(-24, 4),
-			str(_wheel_cands[i].get("NameZH", _wheel_cands[i].get("Name", "?"))),
+			wn,
 			HORIZONTAL_ALIGNMENT_CENTER, 48, 11, col)
 	if not mouse_in:
 		_wheel_sel = -1 ## 鼠标未接触轮盘→默认第一位（策划）
