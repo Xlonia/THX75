@@ -943,6 +943,10 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 策划：新角色 25 结界、破损自动离场（结界破损离场钩子=barrier_shattered 既有）、
 	## 初始 P 点与符卡数量与原始角色共享；支援框外（中心350²内）召唤→下一帧强制发动能力
+	if _original_team.is_empty():
+		for e11 in player_ents:
+			if e11 is BattleEntity:
+				_original_team.append(e11.chara_name())
 	var idx := -1
 	for i in player_ents.size():
 		if player_ents[i] == sel:
@@ -964,15 +968,21 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	var eidx := entities.find(sel)
 	if eidx >= 0:
 		entities[eidx] = ne
-	## 【0.0.9·火控接替修复（作者报告"召唤后角色不会释放任何弹幕"）】
-	## 原只换实体——fire_control 仍指向旧角色（dead=每帧跳过）→新角色无火控
+	## 【0.0.9·火控接替（作者报告"召唤后依旧不能释放弹幕"——1111b 实证
+	## fc.entity 改指不够）】：事件绑定 _bound_main/sub、poi 表达式、每个
+	## FirePoint.entity 全是旧角色的——**整套 fc.setup(ne) 按新角色重读**
+	## （召唤角色出自己的弹幕；重读含开火迟滞 0.2s=接替后短暂蓄力）
 	for fc in fire_controls:
 		if fc.entity == sel:
 			fc.entity = ne
-	## 【0.0.9·召唤原有角色（作者 20261111）】被接替角色记入候补区
-	## （轮盘尾追加"召唤原有角色(名)"条目）
-	if not _summoned_out.has(sel.chara_name()):
-		_summoned_out.append(sel.chara_name())
+			fc.setup(ne)
+	## 【0.0.9·召唤原有角色（作者 20261111；1111b 修订）】仅**原班人马**被
+	## 接替时入候补区（候补角色离场=回候补列表本体，不再标"原"）；
+	## 召回原角色时即时除名
+	var xname := sel.chara_name()
+	_summoned_out.erase(xname)
+	if _original_team.has(xname) and not _summoned_out.has(xname):
+		_summoned_out.append(xname)
 	sel.dead = true ## 原角色离场（接替）
 	if sel == player_leader:
 		player_leader = ne
@@ -1062,7 +1072,8 @@ func _refresh_br_panel() -> void:
 ## 事件——颜色/x/y 后续作者自改，这里不落参数），在每个区块中点间隔 3 帧
 ## 轮番释放一次（一轮=25 枚×3 帧=75 帧）；30 秒冷却
 var _reisen_queue: Array = [] ## {f:释放帧, p:区块中点}
-var _summoned_out: Array = [] ## 【召唤原有角色】被接替角色名（轮盘回填）
+var _summoned_out: Array = [] ## 【召唤原有角色】离场的原班角色名（轮盘回填；召回即除名）
+var _original_team: Array = [] ## 开场原班角色名（首个召唤时快照）
 func _reisen_bombard(caster: BattleEntity) -> void:
 	if caster.has_meta("reisen_cd") and time_frames < int(caster.get_meta("reisen_cd")):
 		_toast("全屏轰炸冷却中（%.0fs）" % (float(int(caster.get_meta("reisen_cd")) - time_frames) / 60.0))

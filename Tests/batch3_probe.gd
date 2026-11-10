@@ -72,6 +72,48 @@ func _ready() -> void:
 			fc_new += 1
 	_chk(fc_new > 0, "火控已接替→新角色可开火（%d）" % fc_new)
 	_chk(arena._summoned_out.has(old_name), "原角色 %s 入候补区" % old_name)
+	## E. 召唤后开火实证：驱动 300 帧，按 source 分桶统计新弹
+	var ne2: BattleEntity = null
+	for e in arena.player_ents:
+		if e is BattleEntity and e.chara_name() == "Remilna":
+			ne2 = e
+			break
+	if ne2 != null:
+		## 诊断：新角色火控内部状态
+		for fc in arena.fire_controls:
+			if fc.entity == ne2:
+				var evn: int = 0
+				for p2 in fc.weapon_points:
+					evn += p2.events.size()
+				print("    [诊断] fc.entity=%s bound_main=%d 点数=%d 点事件合计=%d mode=%s engaged=%s" % [
+					fc.entity.chara_name(), fc._bound_main.size(), fc.weapon_points.size(), evn, fc.mode, str(fc._engaged)])
+		var fired_n := [0]
+		for fc in arena.fire_controls:
+			if fc.entity == ne2:
+				fc.fired.connect(func(_p, ev, _r):
+					fired_n[0] += 1
+					if fired_n[0] <= 3:
+						print("    [fired] emit #%d ev=%s" % [fired_n[0], ev.event_name]))
+		var cnt_old := 0
+		var cnt_new := 0
+		var bbase: int = arena.bullets.size()
+		arena._expired_count = 0
+		ne.immune_frames = 99999 ## 观测期免弹（真实战斗会击杀=污染观测）
+		for k in 300:
+			ne.immune_frames = 99999
+			arena._physics_process(1.0 / 60.0)
+			if k % 100 == 99:
+				for fc in arena.fire_controls:
+					if fc.entity == ne2 and fc.weapon_points.size() > 0:
+						var p9 = fc.weapon_points[0]
+						print("    [tick诊断] k=%d locked=%s timer=%.1f hp=%s dead=%s" % [
+							k + 1, str(p9.locked), p9.timer, str(fc.entity.hp), str(fc.entity.dead)])
+		for b in arena.bullets:
+			if b.source == ne2:
+				cnt_new += 1
+		print("    [开火实证] 新角色(Remilna)名下弹=%d" % cnt_new)
+		_chk(cnt_new > 0, "召唤角色用自己的火控出弹")
+
 	## C. 投降门：短兵（未重返）拒绝
 	arena.time_frames = 1190.0
 	_drive(15)
