@@ -582,15 +582,16 @@ func _test_facing_and_semantics() -> void:
 	var s0: Vector2 = fc.sub_points[0].offset
 	_check(absf(s0.x) < 0.01 and absf(absf(s0.y) - 22.0) < 0.01,
 		"僚机首点在朝向垂直侧（facing=RIGHT → |y|=22，得 %s）" % s0)
-	## 转向 → 编队随帧旋转：facing=UP 时僚机转到世界 x 侧
-	ent.facing = Vector2.UP
+	## 转向 → 编队随帧旋转：atk_facing=UP 时僚机转到世界 x 侧
+	## （作者 20261111 拆分：排布/贴图跟攻击朝向 atk_facing，运动 facing 不参与）
+	ent.atk_facing = Vector2.UP
 	fc._update_all_poi()
 	var s1: Vector2 = fc.sub_points[0].offset
 	_check(absf(s1.y) < 0.01 and absf(absf(s1.x) - 22.0) < 0.01,
-		"facing=UP → 僚机随帧转到 |x|=22（得 %s）" % s1)
+		"atk_facing=UP → 僚机随帧转到 |x|=22（得 %s）" % s1)
 	## 主机沿朝向
 	var p0: Vector2 = fc.weapon_points[0].offset
-	_check(absf(p0.x) < 0.01 and absf(p0.y + 14.0) < 0.01, "主机首点沿 facing=UP（得 %s）" % p0)
+	_check(absf(p0.x) < 0.01 and absf(p0.y + 14.0) < 0.01, "主机首点沿 atk_facing=UP（得 %s）" % p0)
 	## t/t_copy 语义：repeat 子代 t=载体释放时刻、t_copy=0
 	var evr := DanmakuEventData.new()
 	evr.event_name = "t_tcopy"

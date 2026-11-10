@@ -78,6 +78,8 @@ func _ready() -> void:
 	## ⑤C 单击=请求符卡
 	if sel != null and sel.sit_cards != null:
 		sel.sit_cards.pending_kind = ""
+		sel.spell_cards = 1 ## 【0.0.9·资源门】请求符卡需 1 张+装填完成
+		sel.sit_cards.spell_ready = true
 		arena._dt_last[KEY_C] = -999
 		_key(KEY_C)
 		_chk(sel.sit_cards.pending_kind == "s", "C 单击=请求释放符卡（原死分支，pending=%s）" % sel.sit_cards.pending_kind)

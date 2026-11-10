@@ -43,20 +43,25 @@ var touch_state: Dictionary = {}
 
 ## 巡航/快机（poi 的 to_c 与 移动用）
 var cruise_active := false
-## 【角色朝向（批复 20261019）】火力点/杂兵/贴图共用的局部帧 y 轴=朝向。
-## 暂定与速度方向一致（移动即转向；静止保持）；未来 AI 逻辑拓展再细分。
+## 【运动朝向（批复 20261019 → 作者 20261111 拆分）】=移动方向（静止保持）；
+## 不再驱动贴图/排布旋转（躲弹抽搐根除）
 var facing := Vector2.RIGHT:
 	set(v):
 		if v != Vector2.ZERO:
 			facing = v.normalized()
 
-## 局部帧基向量：forward=朝向（局部+y 方向），right=朝向顺时针 90°（局部+x 方向）
+## 【0.0.9·攻击朝向（作者 20261111）】=贴图/杂兵排布/火力排布面对的方向（指向
+## 瞄准的敌方角色——战场侧逐帧回写）
+var atk_facing := Vector2.RIGHT
+
+## 局部帧基向量：forward=**攻击朝向**（局部+y 方向，贴图/杂兵排布/火力 poi 共用
+## ——作者 20261111：攻击方向=面向瞄准的敌方角色；运动 facing 只表移动方向）
 func frame_forward() -> Vector2:
-	return facing
+	return atk_facing
 func frame_right() -> Vector2:
-	return facing.rotated(PI / 2.0)
+	return atk_facing.rotated(PI / 2.0)
 func frame_back() -> Vector2:
-	return -facing
+	return -atk_facing
 ## 局部(x=右侧,y=前方) → 世界
 func frame_to_world(lx: float, ly: float) -> Vector2:
 	return frame_right() * lx + frame_forward() * ly

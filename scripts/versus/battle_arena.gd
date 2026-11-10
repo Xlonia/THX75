@@ -891,6 +891,12 @@ func _take_banzai_hit(ent: BattleEntity) -> bool:
 ##    松开按键确认选取，鼠标未接触=默认第一位；圆环加大）——
 const SUMMON_EXCLUDE := ["晚汐", "风见幽香", "帕秋莉", "希洛妮娅", "叶妮雪尔米娜", "釉怜冠姬", "八云紫", "八云蓝", "宇佐见莲子", "梅莉", "清兰", "铃瑚"]
 func _open_summon_wheel(sel: BattleEntity) -> void:
+	if _wheel_lock:
+		return ## 【轮盘锁】取消后锁至松开 Shift+X 重按
+	## 【0.0.9·资源预检（作者 20261111）】召唤=资源指令——P 不足 25 阻止并提示
+	if sel.pp < 25:
+		_toast("指令失败：%s P点不足（召唤需 25，当前 %d）" % [sel.chara_name(), sel.pp])
+		return
 	_wheel_cands.clear()
 	var used := {}
 	for e in player_ents:
@@ -939,6 +945,16 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 	_wheel_sel = -1
 	_wheel_target = sel
 	_toast("%s 召唤轮盘（候补 %d 位）——松开 Shift+X 选取" % [sel.chara_name(), _wheel_cands.size()])
+
+## 【0.0.9·轮盘取消（作者 20261111）】Esc/右键/双击中心共用出口——关盘+锁键
+## （锁至松开 Shift+X 重按）+左上角字幕反馈。后续新增轮盘沿用本出口
+func _wheel_cancel() -> void:
+	if not _wheel_open:
+		return
+	_wheel_open = false
+	_wheel_lock = true
+	print("[召唤] 轮盘取消（锁至松开 Shift+X 重按）")
+	_toast("召唤已取消（松开并重按 Shift+X 可再次召唤）")
 
 func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 策划：新角色 25 结界、破损自动离场（结界破损离场钩子=barrier_shattered 既有）、
@@ -1712,6 +1728,8 @@ func _process(delta: float) -> void:
 	_render_ddm() ## GPU 弹幕图提交（渲染线程，异步不阻塞 physics）
 	_heatmap_tick()
 	## 【0.0.9·决斗操作批】轮盘超时/杂兵 meta 递减/右下面板刷新
+	if not (Input.is_physical_key_pressed(KEY_X) and Input.is_physical_key_pressed(KEY_SHIFT)):
+		_wheel_lock = false ## 【轮盘锁】松开组合键=解锁（同 Tab 语义）
 	if _wheel_open:
 		## 【按住模式（作者裁定）】Shift+X 松开→确认选取（鼠标未接触=默认第一位）
 		if not (Input.is_physical_key_pressed(KEY_X) and Input.is_physical_key_pressed(KEY_SHIFT)):
@@ -2124,6 +2142,12 @@ func _player_input() -> void:
 				continue
 			r9e.cruise_active = true
 			r9e.move(rvec.normalized(), 1.0)
+	## 【0.0.9·攻击朝向（作者 20261111）】攻击方向=贴图/杂兵排布朝向——指向
+	## 瞄准的敌方角色；运动 facing 不再驱动贴图旋转（躲弹抽搐根除）
+	if take_over and player_leader != null and not player_leader.dead:
+		var p_t: BattleEntity = bullet_nearest_enemy_from(0, player_leader.position)
+		if p_t != null and p_t.position != player_leader.position:
+			player_leader.atk_facing = (p_t.position - player_leader.position).normalized()
 	if take_over and player_leader != null and not player_leader.dead:
 		var dir := Vector2.ZERO
 		if Input.is_physical_key_pressed(KEY_LEFT): dir.x -= 1
@@ -2182,6 +2206,11 @@ var _wheel_open := false        ## 召唤轮盘（Shift+S 选中角色时呼出�
 var _wheel_sel := -1            ## 轮盘鼠标悬停槽位
 var _wheel_frames := 0          ## 轮盘超时（300 帧=5 秒→自动第一位）
 var _wheel_cands: Array = []    ## 轮盘候选（demo 角色池——候补数据源待作者裁定）
+## 【0.0.9·轮盘取消+锁键（作者 20261111）】Esc/右键/双击中心=取消并锁键
+## （同 Tab 锁——松开 Shift+X 重按才可再开；防误点浪费 25P）。统一走
+## _wheel_cancel——后续新增轮盘沿用同一出口。
+var _wheel_lock := false
+var _wheel_center_click := -999 ## 上次中心单击帧（双击检测 0.4s 窗口）
 var _wheel_target: BattleEntity = null
 var _priv_panel := false        ## 杂兵面板（Tab 按住呼出）
 var _priv_tab_lock := false     ## 【锁 tab（作者释）】双击面板外区域→本次按住 Tab 失效；松开重按解锁
@@ -2529,6 +2558,10 @@ func _ai_drive(ent: BattleEntity, target: BattleEntity, time_scale: float) -> vo
 	if bool(ent.ai_logic.get("cruise", false)) and ent.current_sit_card in ["a", "c"]:
 		ent.cruise_active = true
 	var tgt_pos: Vector2 = anchor_src.position
+	## 【0.0.9·攻击朝向】贴图/排布朝向=指向攻击目标（缓变——躲弹不再抽搐）
+	var atk_vec: Vector2 = anchor_src.position - ent.position
+	if atk_vec.length() > 0.01:
+		ent.atk_facing = atk_vec.normalized()
 	## 【攻击夹角（新二 20261021）】攻击方向与朝向夹角<1 弧度不发起攻击
 	var tgt_dir2 := anchor_src.position - ent.position
 	var atk_ang := absf(ent.facing.angle_to(tgt_dir2.normalized())) if tgt_dir2.length() > 0.01 else 0.0
@@ -3687,6 +3720,18 @@ func _unhandled_input(event: InputEvent) -> void:
 				_priv_panel = false
 				_toast("杂兵面板锁定（松开 Tab 重按解锁）")
 			_ml_last = time_frames
+	## 【轮盘取消②③（作者 20261111）】右键=取消并锁键；左键双击中心（≤30px，
+	## 0.4 秒内两次）=取消并锁键——轮盘是环形的，中心区无候补=天然取消键
+	if _wheel_open and event is InputEventMouseButton and event.pressed:
+		var wmp: Vector2 = (get_global_mouse_position() - world.position) / world.scale.x
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			_wheel_cancel()
+		elif event.button_index == MOUSE_BUTTON_LEFT and wmp.distance_to(Vector2(200, 200)) <= 30.0:
+			if time_frames - _wheel_center_click < 24:
+				_wheel_center_click = -999
+				_wheel_cancel()
+			else:
+				_wheel_center_click = time_frames
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
 			and (_cmd_arm_b or _cmd_arm_g or Input.is_physical_key_pressed(KEY_E)):
 		var wp: Vector2 = (get_global_mouse_position() - world.position) / world.scale.x
@@ -3729,6 +3774,9 @@ func _unhandled_input(event: InputEvent) -> void:
 						_toast("万岁冲锋：%s" % pd.chara_name())
 			return
 		if _wheel_open:
+			## 【轮盘取消①】轮盘期间仅放行 Esc（原整体 return=Esc 取消分支是死代码）
+			if event.keycode == KEY_ESCAPE:
+				_wheel_cancel()
 			return ## 轮盘期间屏蔽其它热键
 		match event.keycode:
 			KEY_ESCAPE:
@@ -3741,8 +3789,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					take_over = false
 					_toast("已取消完全接管")
 				elif _wheel_open:
-					_wheel_open = false
-					print("[召唤] 轮盘取消")
+					_wheel_cancel()
 				elif finished:
 					GameGlobals.goto_scene("res://scenes/title_menu.tscn")
 				else:
@@ -3770,11 +3817,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				if Input.is_physical_key_pressed(KEY_X) and not finished:
 					var vsel := picked_entity()
 					if vsel != null and vsel.sit_cards != null:
-						if vsel.sit_cards.spell_ready:
+						if not vsel.sit_cards.spell_ready:
+							_toast("指令失败：%s 符卡装填中（强制不执行——策划）" % vsel.chara_name())
+						elif vsel.spell_cards < 1:
+							_toast("指令失败：%s 无符卡可释放" % vsel.chara_name())
+						else:
 							_apply_release(vsel, "s")
 							_toast("强制释放符卡 → %s" % vsel.chara_name())
-						else:
-							_toast("符卡装填中：%s" % vsel.chara_name())
 				else:
 					GameGlobals.versus_volley = "salvo" if GameGlobals.versus_volley == "rotate" else "rotate"
 					for fc in fire_controls:
@@ -3875,19 +3924,26 @@ func _unhandled_input(event: InputEvent) -> void:
 						var last2: int = int(_dt_last.get(KEY_C, -999))
 						if now2 - last2 < 24: ## 双击 C=强制释放符卡
 							_dt_last[KEY_C] = -999
-							if csel.sit_cards.spell_ready:
+							if not csel.sit_cards.spell_ready:
+								_toast("指令失败：%s 符卡装填中（强制不执行——策划）" % csel.chara_name())
+							elif csel.spell_cards < 1:
+								_toast("指令失败：%s 无符卡可释放" % csel.chara_name())
+							else:
 								_apply_release(csel, "s")
 								print("[角色指令] %s 强制释放符卡" % csel.chara_name())
 								_toast("强制释放符卡 → %s" % csel.chara_name())
-							else:
-								print("[角色指令] %s 符卡装填中——到期前强制不执行（策划）" % csel.chara_name())
-								_toast("符卡装填中：%s" % csel.chara_name())
 						else:
 							_dt_last[KEY_C] = now2
-							csel.sit_cards.pending_kind = "s"
-							csel.sit_cards.pending_tries = 20 ## 【0.0.9·请求窗口 2 秒（新二 120）】
-							print("[角色指令] %s 请求释放符卡（2 秒内协同）" % csel.chara_name())
-							_toast("请求释放符卡 → %s" % csel.chara_name())
+							## 【0.0.9·资源预检（作者 20261111）】装填+符卡数
+							if not csel.sit_cards.spell_ready:
+								_toast("指令失败：%s 符卡装填中（%.0fs）" % [csel.chara_name(), csel.sit_cards.spell_load_t])
+							elif csel.spell_cards < 1:
+								_toast("指令失败：%s 无符卡可释放" % csel.chara_name())
+							else:
+								csel.sit_cards.pending_kind = "s"
+								csel.sit_cards.pending_tries = 20 ## 【0.0.9·请求窗口 2 秒（新二 120）】
+								print("[角色指令] %s 请求释放符卡（2 秒内协同）" % csel.chara_name())
+								_toast("请求释放符卡 → %s" % csel.chara_name())
 			KEY_S:
 				if Input.is_physical_key_pressed(KEY_SHIFT):
 					if surrender_sender == 0:
@@ -3966,20 +4022,27 @@ func _unhandled_input(event: InputEvent) -> void:
 						var last: int = int(_dt_last.get(KEY_X, -999))
 						if now - last < 24: ## 双击 X=强制释放（0.4s 窗口）
 							_dt_last[KEY_X] = -999
-							if xsel.sit_cards.skill_ready:
+							if not xsel.sit_cards.skill_ready:
+								_toast("指令失败：%s 能力装填中（强制不执行——策划）" % xsel.chara_name())
+							elif xsel.pp < 25:
+								_toast("指令失败：%s P点不足（能力需 25，当前 %d）" % [xsel.chara_name(), xsel.pp])
+							else:
 								_apply_release(xsel, "n")
 								print("[角色指令] %s 强制释放能力" % xsel.chara_name())
 								_toast("强制释放能力 → %s" % xsel.chara_name())
-							else:
-								print("[角色指令] %s 能力装填中——到期前强制不执行（策划）" % xsel.chara_name())
-								_toast("能力装填中：%s" % xsel.chara_name())
 						else:
 							_dt_last[KEY_X] = now
-							## 请求释放：复用申请替换机制（2 秒内进能力协同）
-							xsel.sit_cards.pending_kind = "n"
-							xsel.sit_cards.pending_tries = 20 ## 【0.0.9·请求窗口 2 秒（新二 119）】
-							print("[角色指令] %s 请求释放能力（2 秒内协同）" % xsel.chara_name())
-							_toast("请求释放能力 → %s" % xsel.chara_name())
+							## 【0.0.9·资源预检（作者 20261111）】指令下达前检测——
+							## 不满足则阻止生效并在左上角字幕返回指令失败
+							if not xsel.sit_cards.skill_ready:
+								_toast("指令失败：%s 能力装填中（%.0fs）" % [xsel.chara_name(), xsel.sit_cards.skill_load_t])
+							elif xsel.pp < 25:
+								_toast("指令失败：%s P点不足（能力需 25，当前 %d）" % [xsel.chara_name(), xsel.pp])
+							else:
+								xsel.sit_cards.pending_kind = "n"
+								xsel.sit_cards.pending_tries = 20 ## 【0.0.9·请求窗口 2 秒（新二 119）】
+								print("[角色指令] %s 请求释放能力（2 秒内协同）" % xsel.chara_name())
+								_toast("请求释放能力 → %s" % xsel.chara_name())
 			KEY_TAB:
 				## 【0.0.9·杂兵指令（新二 135-141 行）】Tab 呼出面板（按住显示）
 				_priv_panel = Input.is_physical_key_pressed(KEY_TAB)
@@ -4222,11 +4285,14 @@ func draw_entities(onto: CanvasItem) -> void:
 		if ent.kind != BattleEntity.Kind.PRIVATE:
 			var ct: Dictionary = CharaTex.get_chara(ent.chara_name(), str(ent.db.get("NameZH", "")))
 			if ct.is_empty():
-				onto.draw_line(ent.position, ent.position + ent.facing * (r + 7.0), col, 1.5) ## 无贴图=前向刻线
+				onto.draw_line(ent.position, ent.position + ent.atk_facing * (r + 7.0), col, 1.5) ## 无贴图=攻击朝向刻线
 			else:
 				var fi: int = (time_frames / 8 + ent.get_instance_id() % 64) % int(ct["frames"])
+				## 【0.0.9·侧向图集占位（作者 20261111）】运动方向与攻击方向差>60°
+				## → 后续版本切换侧向移动精灵图集；本版占位钩子返回本图集同帧
+				## （不影响现版显示——切换实装时在此换帧表）
 				var reg := CharaTex.frame_region(ct, fi)
-				onto.draw_set_transform(ent.position, ent.facing.angle() + PI / 2.0, Vector2.ONE)
+				onto.draw_set_transform(ent.position, ent.atk_facing.angle() + PI / 2.0, Vector2.ONE)
 				var mcol := Color(0.45, 0.45, 0.45) if ent.dead else Color.WHITE
 				onto.draw_texture_rect_region(ct["tex"], Rect2(-ct["fw"] / 2.0, -ct["fh"] / 2.0, ct["fw"], ct["fh"]), reg, mcol)
 				onto.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

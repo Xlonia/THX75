@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2batch4prb01"]
+
+[ext_resource type="Script" path="res://Tests/batch4_probe.gd" id="1"]
+
+[node name="Batch4Probe" type="Node"]
+script = ExtResource("1")
