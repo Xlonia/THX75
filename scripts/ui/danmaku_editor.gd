@@ -1748,7 +1748,7 @@ func _set_status(t: String) -> void:
 const CHARA_EDIT_META := ["Determine", "Defend", "Mag", "Phy", "NameZH", "NameJP", "NameEN"]
 const CHARA_EDIT_PERF := ["Cruise", "Normal", "Main_Cd", "Sub_Cd", "Weapon_Muti",
 	"main_y", "sub_x", "sub_y", "main_poi_x", "main_poi_y", "sub_poi_x", "sub_poi_y",
-	"main_para_rat", "main_seci_rat", "sub_para_rat"]
+	"main_para_rat", "main_seco_rat", "sub_para_rat"]
 const CHARA_EDIT_CHAR := ["Char_Raid", "Char_Allfire", "Char_Blitz", "Char_Cover",
 	"Char_Elast", "Char_Delay", "Char_Feint"]
 

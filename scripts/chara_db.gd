@@ -16,7 +16,7 @@ const PRIVATES_CSV_PATH := "res://gameAssetBase/privates.csv"
 
 const INT_COLS := ["Cruise", "Normal", "Determine", "Defend", "Mag", "Phy", "ID", "Team", "Main_Cd", "Sub_Cd"]
 const FLOAT_COLS := ["Weapon_Muti", "Char_Raid", "Char_Allfire", "Char_Blitz", "Char_Cover", "Char_Elast", "Char_Delay", "Char_Feint",
-	"main_para_rat", "main_seci_rat", "sub_para_rat"] ## 火力占比三列（作者 2026-10-03 提供）
+	"main_para_rat", "main_seco_rat", "sub_para_rat"] ## 火力占比三列（作者 2026-10-03 提供）
 const EXPR_COLS := ["main_y", "sub_x", "sub_y", "main_poi_x", "main_poi_y", "sub_poi_x", "sub_poi_y"] ## 可表达式（建议±*/）
 const POI_VARS: PackedStringArray = ["wpcs", "to_c"]
 
@@ -81,7 +81,7 @@ const COL_DEFAULTS := {
 	"main_poi_x": "0", "main_poi_y": "0", "sub_poi_x": "0", "sub_poi_y": "0",
 	"Char_Raid": "0.2", "Char_Allfire": "0.2", "Char_Blitz": "0.2", "Char_Cover": "0.2",
 	"Char_Elast": "0.2", "Char_Delay": "0.2", "Char_Feint": "0.2",
-	"main_para_rat": "0.3", "main_seci_rat": "0.3", "sub_para_rat": "0.3",
+	"main_para_rat": "0.3", "main_seco_rat": "0.3", "sub_para_rat": "0.3",
 	"NameZH": "未命名", "NameJP": "未命名", "NameEN": "Unnamed",
 }
 

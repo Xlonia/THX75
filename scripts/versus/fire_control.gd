@@ -141,9 +141,9 @@ func rebuild_points() -> void:
 	var rest_events := _bound_rest
 	var sub_events := _bound_sub
 	## 【火力占比（作者 2026-10-03 数据列）】主机每侧点数侧=ceil/floor 拆分：
-	## main_para_rat 进位=首要点数、main_seci_rat 去尾=次要点数、其余=其余武器点
+	## main_para_rat 进位=首要点数、main_seco_rat 去尾=次要点数、其余=其余武器点
 	var para_rat := float(entity.db.get("main_para_rat", 0.3))
-	var seco_rat := float(entity.db.get("main_seci_rat", 0.3))
+	var seco_rat := float(entity.db.get("main_seco_rat", 0.3))
 	var per_side := int(ceil(mpcs / 2.0)) ## 每侧（奇数含中点）
 	var para_cnt := mini(mpcs, int(ceil(per_side * para_rat)) * 2 if mpcs % 2 == 0 else int(ceil(per_side * para_rat)) * 2 - 1)
 	var seco_cnt := mini(mpcs - para_cnt, int(floor(per_side * seco_rat)) * 2)
@@ -174,7 +174,7 @@ func rebuild_points() -> void:
 	## 轮射解锁顺序：首要 → 次要 → 其余（get_index 越小越先解锁）
 	var para_cnt2: int = 0
 	for p in weapon_points:
-		if para_cnt2 < maxi(0, weapon_points.size() - maxi(0, int(floor(weapon_points.size() * (1.0 - float(entity.db.get("main_para_rat", 0.3)) - float(entity.db.get("main_seci_rat", 0.3))))))):
+		if para_cnt2 < maxi(0, weapon_points.size() - maxi(0, int(floor(weapon_points.size() * (1.0 - float(entity.db.get("main_para_rat", 0.3)) - float(entity.db.get("main_seco_rat", 0.3))))))):
 			para_cnt2 += 1
 		p.set_meta("rank", 0 if p.id < maxi(1, int(ceil(weapon_points.size() * float(entity.db.get("main_para_rat", 0.3))))) else 1)
 	for p in sub_points:
@@ -412,7 +412,7 @@ func set_mode(m: String) -> void:
 	## 轮射解锁顺序：首要 → 次要 → 其余（get_index 越小越先解锁）
 	var para_cnt2: int = 0
 	for p in weapon_points:
-		if para_cnt2 < maxi(0, weapon_points.size() - maxi(0, int(floor(weapon_points.size() * (1.0 - float(entity.db.get("main_para_rat", 0.3)) - float(entity.db.get("main_seci_rat", 0.3))))))):
+		if para_cnt2 < maxi(0, weapon_points.size() - maxi(0, int(floor(weapon_points.size() * (1.0 - float(entity.db.get("main_para_rat", 0.3)) - float(entity.db.get("main_seco_rat", 0.3))))))):
 			para_cnt2 += 1
 		p.set_meta("rank", 0 if p.id < maxi(1, int(ceil(weapon_points.size() * float(entity.db.get("main_para_rat", 0.3))))) else 1)
 	for p in sub_points:
