@@ -71,7 +71,7 @@ func _ready() -> void:
 	## 【0.0.9·宿主数据覆盖 20261111】THXGameKit 内核默认读自己 data/；
 	## THX75 的数据在 gameAssetBase——宿主 _ready 覆盖三个数据基址
 	CharaDB.DATA_BASE = "res://gameAssetBase"
-	DanmakuTex.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs"
+	DanmakuTex.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs" ## 材质根目录本身
 	CharaTex.DATA_BASE = "res://Players/Battle/Chars"
 	## 【20261003·根因复位 20261110】关闭子窗口内嵌=编辑器/弹幕浮窗为真 OS 窗口。
 	## 原行在 0.0.9 导出自检轮被卷进 _check_export_smoke 末尾——其 early-return

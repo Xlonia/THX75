@@ -128,7 +128,10 @@ func _open_editor_window() -> void:
 	_editor_window.min_size = Vector2i(860, 560)
 	_editor_window.position = (DisplayServer.window_get_position()
 		+ (DisplayServer.window_get_size() - Vector2i(1280, 800)) / 2)
-	var ed := (load("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn") as PackedScene).instantiate()
+	## 【挂载点适配】submodule 内 tscn 的脚本路径是内核绝对 res（th75 挂载点
+	## 不存在=窗口空白根因）——直接实例化 editor 脚本（Control），同等内容
+	var ed: Control = (load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/danmaku_editor.gd") as GDScript).new()
+	ed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_editor_window.add_child(ed)
 	_editor_window.close_requested.connect(func(): _editor_window.queue_free())
 	get_tree().root.add_child(_editor_window)

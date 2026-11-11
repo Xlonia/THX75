@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2texscanprb1"]
+
+[ext_resource type="Script" path="res://Tests/tex_scan_test.gd" id="1"]
+
+[node name="TexScanTest" type="Node"]
+script = ExtResource("1")
