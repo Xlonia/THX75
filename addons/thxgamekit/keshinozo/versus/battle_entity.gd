@@ -160,3 +160,47 @@ func _initial_ap() -> int:
 		Kind.PLAYER: return 50
 		Kind.PRIVATE: return 10 if is_elite_private else 5
 		_: return 25
+
+## =============================================================
+## 【被弹结算（自走棋插件·自 EntityCore 迁入 20261111）】
+##   N=一般（AP 先扣/AP=0 掉部位HP） I=穿透（dmg×AP/100 反比，AP=0 一发重伤）
+##   S=碎甲（部位瘫痪 dmg 秒）——免疫帧/部位归零=destroyed 信号
+##   _part_from_angle 部位判定也在本类（内核 EntityCore 只留状态底座）
+## =============================================================
+func take_hit(dmg: int, dmg_type: int, hit_angle: float) -> bool:
+	if dead or immune_frames > 0:
+		return false
+	if dmg <= 0 and dmg_type != 2:
+		return false
+	var part := _part_from_angle(hit_angle)
+	match dmg_type:
+		0: ## 一般(N)
+			if ap > 0:
+				ap = maxi(0, ap - dmg)
+			else:
+				hp[part] = maxi(0, hp[part] - dmg)
+				_apply_serious(part)
+		1: ## 穿透(I)（批复#9）：AP削减反比；AP=0 → dmg÷0=浮点最大值（一发重伤）
+			var direct: float
+			if ap > 0:
+				direct = maxf(1.0, float(dmg) * float(ap) / 100.0)
+				direct = minf(direct, impale_cap) ## 道具钩子（全光学迷彩等）
+			else:
+				direct = minf(3.4e38, impale_cap)
+			hp[part] = maxi(0, hp[part] - int(minf(direct, 1e9)))
+			_apply_serious(part)
+		2: ## 碎甲(S)
+			stun_frames[part] = maxi(stun_frames[part], dmg * 60)
+	immune_frames = 30
+	damaged.emit(self)
+	if hp[0] <= 0 and hp[1] <= 0 and hp[2] <= 0:
+		dead = true
+		destroyed.emit(self)
+	return true
+
+func _part_from_angle(angle: float) -> int:
+	if absf(angle_difference(angle, -PI / 2.0)) <= deg_to_rad(60.0):
+		return PART_WEAPON
+	if absf(angle_difference(angle, PI / 2.0)) <= deg_to_rad(60.0):
+		return PART_MOVE
+	return PART_BODY
