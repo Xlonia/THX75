@@ -139,6 +139,8 @@ func _ready() -> void:
 	_set_team(enemy_picks, ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"])
 	volley_pick.select(0 if GameGlobals.versus_volley == "rotate" else 1)
 
+var _pick_tex_rects: Array = [] ## （0.0.9）选人贴图（与 picks 槽位一一对应）
+
 func _team_column(parent: Control, label_text: String, picks: Array[OptionButton]) -> VBoxContainer:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
@@ -149,6 +151,16 @@ func _team_column(parent: Control, label_text: String, picks: Array[OptionButton
 	for i in TEAM_SLOTS:
 		var slot_row := HBoxContainer.new()
 		col.add_child(slot_row)
+		## 【0.0.9·角色贴图（作者 20261111 补漏）】自定义对战选人栏显示贴图
+		var tex_rect := TextureRect.new()
+		tex_rect.custom_minimum_size = Vector2(32, 32)
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		slot_row.add_child(tex_rect)
+		while _pick_tex_rects.size() <= i:
+			_pick_tex_rects.append(null)
+		_pick_tex_rects[i] = tex_rect
 		var pick := OptionButton.new()
 		pick.custom_minimum_size = Vector2(230, 0)
 		## 【批复 20261019】除第一位（自机/领队）外允许留空——1v1/1v5 等
@@ -284,6 +296,13 @@ func _add_labeled(grid: GridContainer, label_text: String, ctrl: Control) -> voi
 	grid.add_child(ctrl)
 
 func _set_team(picks: Array[OptionButton], names: Array) -> void:
+	## 【0.0.9·贴图同步】按槽位刷新贴图
+	for i in mini(names.size(), _pick_tex_rects.size()):
+		var nm: String = names[i]
+		var ct: Dictionary = CharaTex.get_chara(nm, "")
+		var tr: TextureRect = _pick_tex_rects[i]
+		if tr != null:
+			tr.texture = ct["tex"] if not ct.is_empty() else null
 	for i in mini(picks.size(), names.size()):
 		_select_by_name(picks[i], names[i])
 
