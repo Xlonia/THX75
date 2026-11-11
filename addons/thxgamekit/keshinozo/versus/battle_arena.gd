@@ -4620,7 +4620,7 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 			mm.instance_count = cnt ## 仅在数量增长时扩容（会重置缓冲，随后全量写）
 		for i in cnt:
 			var bl: Bullet = list[i]
-			var xf := Transform2D(bl.draw_rotation(), bl.pos)
+			var xf: Transform2D = bl.draw_transform() ## 【0.0.9·③】偏心中心（默认=(pos,rot) 逐位一致）
 			xf = xf.scaled_local(Vector2(bl.size_mul, bl.size_mul))
 			mm.set_instance_transform_2d(i, xf)
 			var rc: Array = bl.render_color_alpha() ## 【定值预计算】static 弹零计算
