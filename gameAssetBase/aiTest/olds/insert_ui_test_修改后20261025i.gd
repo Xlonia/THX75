@@ -7,7 +7,7 @@ func _check(c: bool, m: String) -> void:
 	if not c:
 		fails += 1
 func _ready() -> void:
-	var ed: Node = (load("res://scenes/danmaku_editor.tscn") as PackedScene).instantiate()
+	var ed: Node = (load("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn") as PackedScene).instantiate()
 	get_tree().root.call_deferred("add_child", ed)
 	await get_tree().process_frame
 	await get_tree().process_frame

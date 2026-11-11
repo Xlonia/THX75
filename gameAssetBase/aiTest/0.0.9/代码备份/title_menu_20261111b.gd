@@ -128,7 +128,7 @@ func _open_editor_window() -> void:
 	_editor_window.min_size = Vector2i(860, 560)
 	_editor_window.position = (DisplayServer.window_get_position()
 		+ (DisplayServer.window_get_size() - Vector2i(1280, 800)) / 2)
-	var ed := (load("res://scenes/danmaku_editor.tscn") as PackedScene).instantiate()
+	var ed := (load("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn") as PackedScene).instantiate()
 	_editor_window.add_child(ed)
 	_editor_window.close_requested.connect(func(): _editor_window.queue_free())
 	get_tree().root.add_child(_editor_window)

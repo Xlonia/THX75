@@ -375,7 +375,7 @@ func _update_scale() -> void:
 func _make_painter(node_name: String, kind: String) -> Node2D:
 	var n := Node2D.new()
 	n.name = node_name
-	n.set_script(load("res://scripts/versus/arena_painters.gd"))
+	n.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 	n.host = self
 	n.draw_kind = kind
 	world.add_child(n)
@@ -4157,7 +4157,7 @@ func _on_pause_btn(p: PanelContainer, txt: String) -> void:
 		"退出试炼场":
 			## 【0.0.8 行为】回编辑器场景（编辑器 _ready 从 GameGlobals.editor_events
 			## 重载=编辑状态经全局保留）
-			GameGlobals.goto_scene("res://scenes/danmaku_editor.tscn")
+			GameGlobals.goto_scene("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn")
 
 func _build_pause_panel() -> PanelContainer:
 	var p := PanelContainer.new()

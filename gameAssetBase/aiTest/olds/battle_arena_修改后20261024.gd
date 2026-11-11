@@ -212,7 +212,7 @@ func _update_scale() -> void:
 func _make_painter(node_name: String, kind: String) -> Node2D:
 	var n := Node2D.new()
 	n.name = node_name
-	n.set_script(load("res://scripts/versus/arena_painters.gd"))
+	n.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 	n.host = self
 	n.draw_kind = kind
 	world.add_child(n)

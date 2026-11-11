@@ -22,7 +22,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 Dialogic="*uid://ds2q0uclmolvu"
-GameGlobals="*res://scripts/game_globals.gd"
+THXKit="*res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd"
+GameGlobals="*res://addons/thxgamekit/keshinozo/game_globals.gd"
 GawWorkbenchRuntimeProbe="*uid://b1gt47ammaqro"
 ProfilerSaver="*res://profilersaver.gd"
 

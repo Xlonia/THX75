@@ -113,7 +113,7 @@ func _open_editor_window() -> void:
 	_editor_window.size = Vector2i(1280, 800)
 	_editor_window.min_size = Vector2i(860, 560)
 	_editor_window.position = (DisplayServer.window_get_position()		+ (DisplayServer.window_get_size() - Vector2i(1280, 800)) / 2)
-	var ed := (load("res://scenes/danmaku_editor.tscn") as PackedScene).instantiate()
+	var ed := (load("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn") as PackedScene).instantiate()
 	_editor_window.add_child(ed)
 	## X 关闭 = 彻底释放（旧版仅隐藏 → "不能退出/再打不开"的观感）
 	_editor_window.close_requested.connect(func(): _editor_window.queue_free())

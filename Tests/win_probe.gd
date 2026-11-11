@@ -16,7 +16,7 @@ func _ready() -> void:
 	var w := Window.new()
 	w.title = "THX075 弹幕编辑器"
 	w.size = Vector2i(1280, 800)
-	var ed := (load("res://scenes/danmaku_editor.tscn") as PackedScene).instantiate()
+	var ed := (load("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn") as PackedScene).instantiate()
 	w.add_child(ed)
 	get_tree().root.add_child(w)
 	w.show()

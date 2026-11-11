@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dtk4l6adj2ph4"]
 
-[ext_resource type="Script" uid="uid://b4n8iannutlmc" path="res://scripts/ui/title_menu.gd" id="1"]
+[ext_resource type="Script" uid="uid://b4n8iannutlmc" path="res://addons/thxgamekit/keshinozo/ui/title_menu.gd" id="1"]
 
 [node name="TitleMenu" type="Control" unique_id=1940824512]
 layout_mode = 3

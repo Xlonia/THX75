@@ -118,6 +118,6 @@ func _on_menu(id: String) -> void:
 ## 拉起独立 Godot 实例运行编辑器场景（另附 启动弹幕编辑器.bat 双击即用）
 func _open_editor_window() -> void:
 	var args := PackedStringArray(["--path", ProjectSettings.globalize_path("res://"),
-		"res://scenes/danmaku_editor.tscn"])
+		"res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn"])
 	var pid := OS.create_process(OS.get_executable_path(), args)
 	print("[标题] 弹幕编辑器独立启动 pid=%d" % pid if pid > 0 else "[标题] 编辑器启动失败")

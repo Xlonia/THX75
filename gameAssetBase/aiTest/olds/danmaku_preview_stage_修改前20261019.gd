@@ -29,7 +29,7 @@ func _ready() -> void:
 	add_child(bg)
 	_mm_layer = Node2D.new()
 	## 复用战场绘制桥（draw_kind="bulletmm" → 本舞台 draw_bullet_mm）
-	_mm_layer.set_script(load("res://scripts/versus/arena_painters.gd"))
+	_mm_layer.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 	_mm_layer.host = self
 	_mm_layer.draw_kind = "bulletmm"
 	var mat := ShaderMaterial.new()

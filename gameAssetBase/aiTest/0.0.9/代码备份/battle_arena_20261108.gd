@@ -340,7 +340,7 @@ func _update_scale() -> void:
 func _make_painter(node_name: String, kind: String) -> Node2D:
 	var n := Node2D.new()
 	n.name = node_name
-	n.set_script(load("res://scripts/versus/arena_painters.gd"))
+	n.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 	n.host = self
 	n.draw_kind = kind
 	world.add_child(n)
@@ -3916,7 +3916,7 @@ var _contour_map := ""
 func _ensure_contour_layer() -> void:
 	if _contour_layer == null:
 		_contour_layer = Node2D.new()
-		_contour_layer.set_script(load("res://scripts/versus/arena_painters.gd"))
+		_contour_layer.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 		_contour_layer.host = self
 		_contour_layer.draw_kind = "contour"
 		_contour_layer.position = Vector2(200, 0) ## 与原图 sprite 对齐

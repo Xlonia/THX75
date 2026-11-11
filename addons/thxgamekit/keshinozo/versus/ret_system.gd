@@ -42,7 +42,7 @@ func _init(e: BattleEntity) -> void:
 func avatar_ok(pos: Vector2) -> bool:
 	if world == null or not world.has_method("bullet_hit_query"):
 		return true
-	var r := entity.barrier_radius()
+	var r: float = entity.barrier_radius()
 	## 【22b 20261031f·审计#35】原 8 点各查一次=8 次哈希查询/次（风暴帧
 	## 38400 次/拍的元凶）。改：包围盒一次查询——空=可行（省 8 次）；
 	## 非空才逐点复核（命中情形才花钱）。
@@ -53,7 +53,7 @@ func avatar_ok(pos: Vector2) -> bool:
 	var by1 := -INF
 	for d8 in 8:
 		var a := TAU * float(d8) / 8.0
-		var p := pos + Vector2(cos(a), sin(a)) * r
+		var p: Vector2 = pos + Vector2(cos(a), sin(a)) * r
 		corners.append(p)
 		bx0 = minf(bx0, p.x)
 		by0 = minf(by0, p.y)
