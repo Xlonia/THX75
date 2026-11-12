@@ -73,6 +73,9 @@ func _ready() -> void:
 	CharaDB.DATA_BASE = "res://gameAssetBase"
 	DanmakuTex.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs" ## 材质根目录本身
 	CharaTex.DATA_BASE = "res://Players/Battle/Chars"
+	## 【宿主开关 20261113（作者令）】THX 系列特殊判定盒恒关→判定盒像素编辑禁用
+	## （编辑器按钮按不了）；内核裸本体默认开
+	THXKit.allow_hitbox_edit = false
 	## 【20261003·根因复位 20261110】关闭子窗口内嵌=编辑器/弹幕浮窗为真 OS 窗口。
 	## 原行在 0.0.9 导出自检轮被卷进 _check_export_smoke 末尾——其 early-return
 	## 使数据齐全环境从不执行=编辑器 Window 被嵌进主窗口（"窗口内窗口"=作者

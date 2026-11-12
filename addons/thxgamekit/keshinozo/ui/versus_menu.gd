@@ -58,8 +58,8 @@ func _ready() -> void:
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 40)
 	root.add_child(cols)
-	var pcol := _team_column(cols, "我方（第1位为自机）", player_picks)
-	var ecol := _team_column(cols, "敌方", enemy_picks)
+	var pcol := _team_column(cols, "我方（第1位为自机）", player_picks, 0)
+	var ecol := _team_column(cols, "敌方", enemy_picks, 1)
 	## 配置行
 	var cfg := GridContainer.new()
 	cfg.columns = 4
@@ -135,13 +135,15 @@ func _ready() -> void:
 	back.pressed.connect(func(): GameGlobals.goto_scene("res://scenes/title_menu.tscn"))
 	root.add_child(back)
 	## 默认队伍
-	_set_team(player_picks, ["MarisaA", "ReimuA", "ReisenA", "Alice", "Nitori"])
-	_set_team(enemy_picks, ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"])
+	_set_team(player_picks, ["MarisaA", "ReimuA", "ReisenA", "Alice", "Nitori"], 0)
+	_set_team(enemy_picks, ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"], 1)
 	volley_pick.select(0 if GameGlobals.versus_volley == "rotate" else 1)
 
-var _pick_tex_rects: Array = [] ## （0.0.9）选人贴图（与 picks 槽位一一对应）
+## 【选人贴图二维化 20261113】[side][i]→TextureRect——旧版两列共用一维
+## 索引互相覆盖（敌方建列把我方引用挤掉→手选永不刷新=作者"选了不显示"）
+var _pick_tex_rects: Array = []
 
-func _team_column(parent: Control, label_text: String, picks: Array[OptionButton]) -> VBoxContainer:
+func _team_column(parent: Control, label_text: String, picks: Array[OptionButton], side: int) -> VBoxContainer:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	parent.add_child(col)
@@ -158,9 +160,12 @@ func _team_column(parent: Control, label_text: String, picks: Array[OptionButton
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		slot_row.add_child(tex_rect)
-		while _pick_tex_rects.size() <= i:
-			_pick_tex_rects.append(null)
-		_pick_tex_rects[i] = tex_rect
+		while _pick_tex_rects.size() <= side:
+			_pick_tex_rects.append([])
+		var side_arr: Array = _pick_tex_rects[side]
+		while side_arr.size() <= i:
+			side_arr.append(null)
+		side_arr[i] = tex_rect
 		var pick := OptionButton.new()
 		pick.custom_minimum_size = Vector2(230, 0)
 		## 【批复 20261019】除第一位（自机/领队）外允许留空——1v1/1v5 等
@@ -174,6 +179,8 @@ func _team_column(parent: Control, label_text: String, picks: Array[OptionButton
 		pick.select(i if i < _chars.size() else 0)
 		picks.append(pick)
 		slot_row.add_child(pick)
+		## 【手选刷新 20261113】选择变化即刷该槽位贴图（旧版只在初始化/F8 刷）
+		pick.item_selected.connect(func(_idx: int): _refresh_pick_tex(side, i))
 		## 【批复 20261024】角色选框旁三按钮：对战逻辑/杂兵排布/资源
 		var cfg_b := Button.new()
 		cfg_b.text = "逻辑"
@@ -295,14 +302,31 @@ func _add_labeled(grid: GridContainer, label_text: String, ctrl: Control) -> voi
 	grid.add_child(l)
 	grid.add_child(ctrl)
 
-func _set_team(picks: Array[OptionButton], names: Array) -> void:
-	## 【0.0.9·贴图同步】按槽位刷新贴图
-	for i in mini(names.size(), _pick_tex_rects.size()):
-		var nm: String = names[i]
-		var ct: Dictionary = CharaTex.get_chara(nm, "")
-		var tr: TextureRect = _pick_tex_rects[i]
-		if tr != null:
-			tr.texture = ct["tex"] if not ct.is_empty() else null
+func _apply_pick_tex(side: int, i: int, nm: String) -> void:
+	## 单槽位贴图应用（空名/缺图=null→前向刻线）
+	if side >= _pick_tex_rects.size():
+		return
+	var side_arr: Array = _pick_tex_rects[side]
+	if i >= side_arr.size():
+		return
+	var tr: TextureRect = side_arr[i]
+	if tr == null:
+		return
+	var ct: Dictionary = CharaTex.get_chara(nm, "")
+	tr.texture = ct["tex"] if not ct.is_empty() else null
+
+func _refresh_pick_tex(side: int, i: int) -> void:
+	## 手选槽位刷新：读该侧 pick 当前选中名
+	if side >= _pick_tex_rects.size():
+		return
+	var pick: OptionButton = player_picks[i] if side == 0 else enemy_picks[i]
+	var nm: String = str(pick.get_item_metadata(pick.selected)) if pick.selected >= 0 else ""
+	_apply_pick_tex(side, i, nm)
+
+func _set_team(picks: Array[OptionButton], names: Array, side: int = 0) -> void:
+	## 【0.0.9·贴图同步】按槽位刷新贴图（side 维度 20261113）
+	for i in mini(names.size(), (_pick_tex_rects[side] as Array).size() if side < _pick_tex_rects.size() else 0):
+		_apply_pick_tex(side, i, String(names[i]))
 	for i in mini(picks.size(), names.size()):
 		_select_by_name(picks[i], names[i])
 
@@ -352,8 +376,8 @@ func _open_roster_cfg() -> void:
 ## 【0.0.9·预设探针（作者批）】一键替换选中：我方萃香×5，敌方早苗+希洛妮娅+3空
 ## （作者消歧义原文：我方五位均为伊吹萃香(Suika)，敌方1号东风谷早苗(Sanae)，2号希洛妮娅(Xlonia)）
 func _apply_preset_probe() -> void:
-	_set_team(player_picks, ["Suika", "Suika", "Suika", "Suika", "Suika"])
-	_set_team(enemy_picks, ["Sanae", "Xlonia", "", "", ""])
+	_set_team(player_picks, ["Suika", "Suika", "Suika", "Suika", "Suika"], 0)
+	_set_team(enemy_picks, ["Sanae", "Xlonia", "", "", ""], 1)
 	print("[预设探针] 已替换选中：我方萃香×5　敌方早苗+希洛妮娅+3空（开始决斗生效）")
 
 func _on_start() -> void:

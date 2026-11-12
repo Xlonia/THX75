@@ -5,4 +5,6 @@ extends Node
 func _ready() -> void:
 	var n := Node.new()
 	n.set_script(probe_script)
-	add_child(n)
+	## 挂 root（不在 current_scene 内）——探针做 change_scene 验证时自身
+	## 不被连坐（监视器存活到 quit）
+	get_tree().root.add_child.call_deferred(n)

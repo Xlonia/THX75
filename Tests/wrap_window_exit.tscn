@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Tests/kit_probe_wrapper.gd" id="1"]
+[ext_resource type="Script" path="res://addons/thxgamekit/kit/Tests/window_exit_probe.gd" id="2"]
+
+[node name="W" type="Node"]
+script = ExtResource("1")
+probe_script = ExtResource("2")
