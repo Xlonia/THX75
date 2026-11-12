@@ -14,33 +14,9 @@ extends RefCounted
 ## 预设：扇形/线列/蝶翼/潮汐(公转)——参数为作者批复原文公式
 ## =============================================================
 
-const PRESETS := {
-	"扇形防护": {
-		"termin_point_x": "(custom_a*privates_id-custom_a)*(-1)^privates_id+0.5*custom_a",
-		"termin_point_y": "15+custom_b-3*custom_a*privates_id",
-		"termin_range": "0.7*custom_a",
-		"dict_zh": {"custom_a": "散布规模", "custom_b": "前后距离"},
-	},
-	"线列防护": {
-		"termin_point_x": "(custom_a*privates_id-custom_a)*(-1)^privates_id+0.5*custom_a",
-		"termin_point_y": "15+custom_b",
-		"termin_range": "0.7*custom_a",
-		"dict_zh": {"custom_a": "散布规模", "custom_b": "前后距离"},
-	},
-	"蝶翼防护": {
-		"termin_point_x": "(privates_id-3)^0*custom_a*(-1)^privates_id",
-		"termin_point_y": "(privates_id-3)^0*custom_a*(-1)^(privates_id-1)+custom_b*(abs(privates_id-3)-1)*(abs(privates_id-3)-2)",
-		"termin_range": "0.7*custom_a",
-		"dict_zh": {"custom_a": "散布规模"},
-	},
-	"潮汐防护": {
-		"termin_point_x": "sin(getField(t)*0.1*custom_b)*custom_a",
-		"termin_point_y": "cos(getField(t)*0.1*custom_b)*custom_a",
-		"termin_range": "0.7*custom_a",
-		"tpp": "10*tau",
-		"dict_zh": {"custom_a": "散布规模", "custom_b": "环绕速度"},
-	},
-}
+## 【数据源统一 20261112】预设公式库=内核 ThxFormationPresets（同名类冲突
+## 修复：运行时半部只留 setup/step/编译，公式与覆盖层 IO 归内核）
+const PRESETS := ThxFormationPresets.PRESETS
 
 ## 表达式变量表（排布域）：privates_id/custom_*/t/field_t + getField(t) 别名
 const FORMATION_VARS: PackedStringArray = [
@@ -65,23 +41,12 @@ func setup(owner_ent: BattleEntity, priv: BattleEntity, preset: String, customs:
 		custom_vals[k] = customs[k]
 	_compile()
 
-const OVERRIDE_PATH := "user://formation_override.cfg"
-
-## 【批复 20261024】玩家可改公式（编辑器排布页）——覆盖层持久化
+## 【覆盖层 IO 统一 20261112】持久化归内核 ThxFormationPresets（同名函数冲突修复）
 static func load_override() -> Dictionary:
-	var f := FileAccess.open(OVERRIDE_PATH, FileAccess.READ)
-	if f == null:
-		return {}
-	var d: Variant = f.get_var()
-	f.close()
-	return d if d is Dictionary else {}
+	return ThxFormationPresets.load_override()
 
 static func save_override(d: Dictionary) -> void:
-	var f := FileAccess.open(OVERRIDE_PATH, FileAccess.WRITE)
-	if f != null:
-		f.store_var(d)
-		f.close()
-
+	ThxFormationPresets.save_override(d)
 func _compile() -> void:
 	var preset: Dictionary = PRESETS.get(preset_name, PRESETS["线列防护"]).duplicate()
 	## 应用玩家覆盖（编辑器排布页保存的公式）
