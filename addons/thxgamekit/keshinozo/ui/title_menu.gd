@@ -94,7 +94,7 @@ func _ready() -> void:
 func _show_completion() -> void:
 	if Engine.is_editor_hint():
 		return
-	CompletionView.show(get_tree())
+	load("res://addons/thxgamekit/keshinozo/ui/completion_view.gd").show(get_tree())
 
 ## 【批复】RPG/东方式：Z=选中、X=退出/返回
 var _menu_buttons: Array = []
