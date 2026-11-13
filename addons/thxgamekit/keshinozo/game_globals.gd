@@ -473,13 +473,15 @@ func arena_rendering_device() -> RenderingDevice:
 ## 双击类（W/S/A/D）与修饰键（Ctrl/Shift/Enter/Esc）暂不开放修改。
 ## 持久化：user://keybinds.cfg
 ## =============================================================
+## 【键位默认表对齐 20261114（m21 裁定：早苗/铃仙能力=Y，H=右下面板）】
+## gg:428 残留（KEY_H）清理——"早苗技能"改名"能力（早苗/铃仙）"=KEY_Y
 const KEY_DEFAULTS := {
-	"增援": KEY_R, "自动增援": KEY_T, "早苗技能": KEY_H,
+	"增援": KEY_R, "自动增援": KEY_T, "能力（早苗/铃仙）": KEY_Y,
 	"指定位置进攻": KEY_G, "指定位置防御": KEY_B,
 	"轮射齐射切换": KEY_V,
 	"热力图显示": KEY_F1, "选取高亮": KEY_F2, "弹幕图显示": KEY_F3,
 }
-const KEY_MODIFIABLE := ["增援", "自动增援", "早苗技能", "指定位置进攻", "指定位置防御",
+const KEY_MODIFIABLE := ["增援", "自动增援", "能力（早苗/铃仙）", "指定位置进攻", "指定位置防御",
 	"轮射齐射切换", "热力图显示", "选取高亮", "弹幕图显示"]
 var key_config: Dictionary = {}
 

@@ -3672,7 +3672,7 @@ func _update_hud_debug_labels() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	## 【键位设置】配置键映射回默认键码（R/T/H/V/F1/F2/F3/G/B 可改）
 	if event is InputEventKey and event.pressed:
-		for action in ["增援", "自动增援", "早苗技能", "指定位置进攻", "指定位置防御",
+		for action in ["增援", "自动增援", "能力（早苗/铃仙）", "指定位置进攻", "指定位置防御",
 				"轮射齐射切换", "热力图显示", "选取高亮", "弹幕图显示"]:
 			if event.keycode == GameGlobals.get_key(action):
 				var mapped: int = GameGlobals.KEY_DEFAULTS[action]
