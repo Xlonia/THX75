@@ -29,7 +29,9 @@ ProfilerSaver="*res://profilersaver.gd"
 
 [dialogic]
 
-directories/dch_directory={}
+directories/dch_directory={
+"unit_test_character": "res://Tests/Resources/unit_test_character.dch"
+}
 directories/dtl_directory={}
 layout/style_directory={}
 glossary/default_case_sensitive=true
@@ -75,7 +77,7 @@ project/assembly_name="TH75"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/godot_ai_workbench/plugin.cfg", "res://addons/thxgamekit/kit/plugin.cfg")
+enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/godot_ai_workbench/plugin.cfg", "res://addons/thxgamekit/kit/addons/thx_gamekit/plugin.cfg")
 
 [input]
 
