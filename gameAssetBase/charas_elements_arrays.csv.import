@@ -13,8 +13,6 @@ dest_files=["res://gameAssetBase/charas_elements_arrays.para.translation", "res:
 
 [params]
 
-import_translations=false
-
 compress=1
 delimiter=0
 unescape_keys=false

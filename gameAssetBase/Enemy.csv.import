@@ -13,8 +13,6 @@ dest_files=["res://gameAssetBase/Enemy.NameZH.translation", "res://gameAssetBase
 
 [params]
 
-import_translations=false
-
 compress=1
 delimiter=0
 unescape_keys=false

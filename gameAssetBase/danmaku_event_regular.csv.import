@@ -13,8 +13,6 @@ dest_files=["res://gameAssetBase/danmaku_event_regular.slot.translation", "res:/
 
 [params]
 
-import_translations=false
-
 compress=1
 delimiter=0
 unescape_keys=false
