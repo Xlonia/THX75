@@ -1,0 +1,104 @@
+WARNING: editor/file_system/editor_file_system.cpp:3497 - Detected another project.godot at res://addons/thxgamekit/kit. The folder will be ignored.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:195 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:269 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:276 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:295 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:306 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:325 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:92 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:93 - Parse Error: Identifier "DanmakuTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:94 - Parse Error: Identifier "CharaTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:122 - Parse Error: Identifier "TimelineData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:122 - Parse Error: Cannot infer the type of "tl" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:135 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:148 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:156 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:157 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:158 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:159 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:160 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:164 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:167 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:169 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:172 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:175 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:179 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:188 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:189 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:204 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:236 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:244 - Parse Error: Identifier "DanmakuTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:277 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:279 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:289 - Parse Error: Cannot infer the type of "ev" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:296 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:307 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:310 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:314 - Parse Error: Cannot infer the type of "tl" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:319 - Parse Error: Cannot infer the type of "ev" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:326 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:370 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:393 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:404 - Parse Error: Identifier "TimelineData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd:459 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: modules/gdscript/gdscript_resource_format.cpp:46 - Failed to load script "res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd" with error "Parse error".
+  ERROR: Failed to create an autoload, script 'res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd' is not compiling.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:26 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:27 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:28 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:29 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:30 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:25 - Parse Error: Assigned value for constant "OFFICIAL_EVENT_CSVS" isn't a constant expression.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:63 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:201 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:256 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:266 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:290 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:301 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:327 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:73 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:74 - Parse Error: Identifier "DanmakuTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:75 - Parse Error: Identifier "CharaTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:104 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:142 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:155 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:166 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:169 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:171 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:174 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:179 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:183 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:192 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:193 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:211 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:243 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:251 - Parse Error: Identifier "DanmakuTex" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:272 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:274 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:284 - Parse Error: Cannot infer the type of "ev" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:291 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:307 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:312 - Parse Error: Identifier "CharaDB" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:316 - Parse Error: Cannot infer the type of "tl" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:321 - Parse Error: Cannot infer the type of "ev" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:328 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:357 - Parse Error: Could not find type "DanmakuEventData" in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:358 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:358 - Parse Error: Cannot infer the type of "c" variable because the value doesn't have a set type.
+  ERROR: res://addons/thxgamekit/keshinozo/game_globals.gd:359 - Parse Error: Identifier "DanmakuEventData" not declared in the current scope.
+  ERROR: modules/gdscript/gdscript_resource_format.cpp:46 - Failed to load script "res://addons/thxgamekit/keshinozo/game_globals.gd" with error "Parse error".
+  ERROR: Failed to create an autoload, script 'res://addons/thxgamekit/keshinozo/game_globals.gd' is not compiling.
+  ERROR: Failed to create an autoload, script 'uid://c1i57du11e86j' is not compiling.
+  ERROR: editor/settings/editor_autoload_settings.cpp:566 - Condition "!info->node" is true. Continuing.
+  ERROR: Failed to create an autoload, script 'uid://batg8m0na6wew' is not compiling.
+  ERROR: editor/settings/editor_autoload_settings.cpp:566 - Condition "!info->node" is true. Continuing.
+添加自动加载
+[THXGameKit] 数据基底就绪：弹幕事件/表达式/材质/时间轴/角色表/场景
+--- GDScript language server started on port 6005 ---
+  ERROR: res://addons/thxgamekit/keshinozo/ui/title_menu.gd:61 - Compile Error: Identifier not found: GameGlobals
+  ERROR: modules/gdscript/gdscript_resource_format.cpp:46 - Failed to load script "res://addons/thxgamekit/keshinozo/ui/title_menu.gd" with error "Compilation failed".
+  ERROR: res://scripts/danmaku/contour_field.gd:78 - Compile Error: Identifier not found: GameGlobals
+  ERROR: modules/gdscript/gdscript_resource_format.cpp:46 - Failed to load script "res://scripts/danmaku/contour_field.gd" with error "Compilation failed".
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/editor/scenario_editor.gd:99 - Parse Error: Could not find type "TimelineData" in the current scope.
+  ERROR: res://addons/thxgamekit/kit/addons/thx_gamekit/editor/scenario_editor.gd:189 - Parse Error: Identifier "Bullet" not declared in the current scope.
+  ERROR: modules/gdscript/gdscript_resource_format.cpp:46 - Failed to load script "res://addons/thxgamekit/kit/addons/thx_gamekit/editor/scenario_editor.gd" with error "Parse error".
