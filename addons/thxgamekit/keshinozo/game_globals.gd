@@ -470,21 +470,10 @@ func load_default_archive() -> void:
 		preset_points = pp2
 
 ## 统一场景跳转
-var _scene_holder: Node = null ## 【手动场景管理 20261114】绕开 change_scene_to_file 的
-## 卸载→挂载空隙（空转窗口：物理 tick 空推+渲染无节流=空转根因；激进方案作者批准）
-
 func goto_scene(res_path: String) -> void:
-	## 手动同步切换：旧场景同帧释放+新场景同帧挂载——无空隙帧
-	var tree := get_tree()
-	var res: PackedScene = load(res_path)
-	if res == null:
-		push_error("[goto_scene] 场景加载失败：" + res_path)
-		return
-	if _scene_holder != null and is_instance_valid(_scene_holder):
-		_scene_holder.queue_free()
-	_scene_holder = res.instantiate()
-	tree.root.add_child(_scene_holder)
-	tree.current_scene = _scene_holder
+	## 【手动切场景撤销 20261114】回 change_scene_to_file（作者指令——m54 手动版
+	## 作者机 nodes=1 vs 探针成功=差异待查）
+	get_tree().change_scene_to_file(res_path)
 
 ## =============================================================
 ## 【内存泄漏修复（作者 2026-10-04：反复预览/弹幕显示 → 提交 11G 死机）】
