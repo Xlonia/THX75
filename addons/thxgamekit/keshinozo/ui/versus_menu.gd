@@ -30,10 +30,9 @@ func _input(event: InputEvent) -> void:
 	if event.keycode in [KEY_CTRL, KEY_SHIFT, KEY_ALT, KEY_ENTER, KEY_ESCAPE]:
 		return ## 修饰键不开放
 	GameGlobals.set_key(capturing_action, int(event.keycode))
-	if capture_label:
-		capture_label.text = "    当前按键: %s" % OS.get_keycode_string(int(event.keycode))
+	if capture_hint:
+		capture_hint.text = "「%s」已改为 %s" % [capturing_action, OS.get_keycode_string(int(event.keycode))]
 	capturing_action = ""
-	if capture_hint: capture_hint.visible = false
 
 func _ready() -> void:
 	_chars = CharaDB.load_all()
@@ -134,9 +133,20 @@ func _ready() -> void:
 	back.text = "返回标题"
 	back.pressed.connect(func(): GameGlobals.goto_scene("res://scenes/title_menu.tscn"))
 	root.add_child(back)
-	## 默认队伍
-	_set_team(player_picks, ["MarisaA", "ReimuA", "ReisenA", "Alice", "Nitori"], 0)
-	_set_team(enemy_picks, ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"], 1)
+	## 默认队伍（【对战预设 20261114】有存档用存档阵容，否则出厂默认）
+	var pt: Array = GameGlobals.player_team_default if not GameGlobals.player_team_default.is_empty() else ["MarisaA", "ReimuA", "ReisenA", "Alice", "Nitori"]
+	var et: Array = GameGlobals.enemy_team_default if not GameGlobals.enemy_team_default.is_empty() else ["Rumia", "Suika", "Aya", "Patchouli", "Yuka"]
+	_set_team(player_picks, pt, 0)
+	_set_team(enemy_picks, et, 1)
+	## 开始决斗时自动保存当前阵容为预设（下次"继续"还原）
+	go.pressed.connect(func():
+		var pn: Array = []
+		var en: Array = []
+		for pk in player_picks:
+			pn.append(str(pk.get_item_metadata(pk.selected)) if pk.selected >= 0 else "")
+		for pk in enemy_picks:
+			en.append(str(pk.get_item_metadata(pk.selected)) if pk.selected >= 0 else "")
+		GameGlobals.save_team_preset(pn, en))
 	volley_pick.select(0 if GameGlobals.versus_volley == "rotate" else 1)
 
 ## 【选人贴图二维化 20261113】[side][i]→TextureRect——旧版两列共用一维
@@ -464,11 +474,27 @@ func _show_key_bindings() -> void:
 			h.text = "【%s指令】" % b["cat"]
 			h.add_theme_font_size_override("font_size", 17)
 			box.add_child(h)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		box.add_child(row)
 		var l := Label.new()
 		var mark: String = "✓" if String(b["state"]).begins_with("已") else "…"
 		l.text = "%s  %s → %s（%s）｜%s" % [mark, b["keys"], b["name"], b["dur"], b["state"]]
 		l.add_theme_font_size_override("font_size", 12)
-		box.add_child(l)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		## 【改键入口实装 20261114（作者遗留：capturing_action 从未赋值）】
+		## KEY_MODIFIABLE 单功能键=按钮捕获改键；其余（双击/修饰键）不开放
+		if b["name"] in GameGlobals.KEY_MODIFIABLE:
+			var kb := Button.new()
+			kb.text = "修改按键"
+			kb.focus_mode = Control.FOCUS_NONE
+			var act: String = b["name"]
+			kb.pressed.connect(func():
+				capturing_action = act
+				capture_hint.visible = true
+				capture_hint.text = "「%s」请按下新的按键…（Esc 取消）" % act)
+			row.add_child(kb)
 	win.close_requested.connect(func(): win.queue_free())
 	capture_hint = Label.new()
 	capture_hint.text = "请按下新的按键…（Esc 取消）"

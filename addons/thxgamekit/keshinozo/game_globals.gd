@@ -414,8 +414,21 @@ func save_default_archive() -> void:
 		"contour_edge_px": contour_edge_px,
 		"bullet_sample_n": bullet_sample_n,
 		"preset_points": _points_to_json(preset_points),
-		"priv_reinforce_gap": priv_reinforce_gap}))
+		"priv_reinforce_gap": priv_reinforce_gap,
+		## 【对战预设 20261114（计划书：角色对战逻辑预设可被玩家保存）】
+		"player_team": player_team_default,
+		"enemy_team": enemy_team_default,
+		"key_config": key_config}))
 	f.close()
+
+## 【对战预设】默认队伍阵容（继续/进对战自动还原）
+var player_team_default: Array = []
+var enemy_team_default: Array = []
+
+func save_team_preset(player_names: Array, enemy_names: Array) -> void:
+	player_team_default = player_names
+	enemy_team_default = enemy_names
+	save_default_archive()
 
 func _points_to_json(pts: Array) -> Array:
 	var out: Array = []
@@ -441,6 +454,12 @@ func load_default_archive() -> void:
 		contour_edge_px = cep if cep in [8, 16, 24, 32] else 8
 	if data is Dictionary and data.has("bullet_sample_n"):
 		bullet_sample_n = clampi(int(data["bullet_sample_n"]), 1, 5)
+	if data is Dictionary and data.has("player_team"):
+		player_team_default = data["player_team"]
+	if data is Dictionary and data.has("enemy_team"):
+		enemy_team_default = data["enemy_team"]
+	if data is Dictionary and data.has("key_config"):
+		key_config = data["key_config"]
 	if data is Dictionary and data.has("priv_reinforce_gap"):
 		priv_reinforce_gap = clampi(int(data["priv_reinforce_gap"]), 0, 50)
 	if data is Dictionary and data.has("preset_points") and (data["preset_points"] as Array).size() == 3:
