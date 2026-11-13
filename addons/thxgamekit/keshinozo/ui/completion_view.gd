@@ -1,6 +1,3 @@
-@tool
-const _CDB := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/data/chara_db.gd")
-const _CTX := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/render/chara_tex.gd")
 class_name CompletionView
 extends RefCounted
 ## =============================================================
@@ -30,11 +27,11 @@ static func show(tree: SceneTree) -> void:
 	h1.text = "【角色】贴图=Players/Battle/Chars/<名>.PNG；弹幕槽=main/sub/skill/spell"
 	h1.add_theme_font_size_override("font_size", 13)
 	box.add_child(h1)
-	var rows := _CDB.load_all()
+	var rows := CharaDB.load_all()
 	var no_tex := 0
 	var no_ev := 0
 	for d in rows:
-		var has_tex: bool = not _CTX.get_chara(str(d.get("Name", "")), str(d.get("NameZH", ""))).is_empty()
+		var has_tex: bool = not CharaTex.get_chara(str(d.get("Name", "")), str(d.get("NameZH", ""))).is_empty()
 		var miss := _missing_slots(d)
 		var full := miss == ""
 		if not has_tex:
