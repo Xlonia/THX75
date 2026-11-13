@@ -815,7 +815,7 @@ func _sanae_skill() -> void:
 		return ## 场上无早苗
 	if sanae.current_sit_card == "a" and enemy_leader != null:
 		## 神奈子：御柱弹（用 demo_missile 类弹模拟；伤害按剩余速度比）
-		var ev := GameGlobals.get_event("demo_missile")
+		var ev = GameGlobals.get_event("demo_missile")
 		if ev != null:
 			var b := Bullet.new()
 			b.setup(ev, sanae.position, 0, sanae, self, 0, {})
@@ -3114,7 +3114,7 @@ func _resolve_nodesb_clash() -> void:
 			if bl.ev.tag != DanmakuEventData.TAG_NODES_B or bl.hidden_now:
 				continue
 			## 对撞命题为真（或旧 can_destroy）才参与互推
-			var on := bl.ev.can_destroy or (bl.ev.ex_clash != null and bl.ev.ex_clash.eval_prop(ctx, 0.0) > 0.5)
+			var on: bool = bl.ev.can_destroy or (bl.ev.ex_clash != null and bl.ev.ex_clash.eval_prop(ctx, 0.0) > 0.5)
 			if on:
 				parts.append(bl)
 				if parts.size() >= 64:

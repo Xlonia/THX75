@@ -255,24 +255,24 @@ func _test_arena_hits_and_heatmap() -> void:
 func _test_stress_override() -> void:
 	print("[10] 高火力覆写测试")
 	GameGlobals.apply_stress_override(true)
-	var ev := GameGlobals.get_event("demo_aimed")
+	var ev = GameGlobals.get_event("demo_aimed")
 	_check(ev != null and ev.repeat_freq > 2 and ev.range_frames == 600,
 		"覆写后 repeat_freq 增加、range×2（得 freq=%d range=%d）" % [ev.repeat_freq, ev.range_frames])
 	GameGlobals.apply_stress_override(false)
-	var ev2 := GameGlobals.get_event("demo_aimed")
+	var ev2 = GameGlobals.get_event("demo_aimed")
 	_check(ev2 != null and ev2.range_frames == 300, "关闭覆写后还原官方参数")
 
 ## —— ⑩b 数据守卫：demo 行列对齐（20261003 移位事故回归）+ 自机狙冻结朝向 ——
 func _test_demo_data_guard() -> void:
 	print("[10b] demo数据守卫 + 自机狙朝向")
-	var ev := GameGlobals.get_event("demo_aimed")
+	var ev = GameGlobals.get_event("demo_aimed")
 	## 【20261025d】作者已将 demo_aimed 改为洋葱自机狙（gettarget(x)+min(x_copy*t,x_copy)）——
 	## 列对齐断言改为前缀守卫（防历史移位事故回归），冻结断言改朝向断言（现为活弹幕）
 	## 【22b 20261102】守卫放宽：作者已将 demo_aimed 改回简单自机狙
 	## （x=gettarget(x)）——前缀守卫只防列移位（gettarget 记法仍在），不锁内容
 	_check(ev != null and ev.x.contains("gettarget(x") and ev.y.contains("gettarget(y"),
 		"demo_aimed 列对齐（gettarget 记法在位，内容随作者数据演进）")
-	var eb := GameGlobals.get_event("demo_burst")
+	var eb = GameGlobals.get_event("demo_burst")
 	_check(eb != null and eb.x == "cos(r0)+gettarget(x)/d", "demo_burst 列对齐（d 用法）")
 	var arena: Node2D = load("res://scenes/battle_arena.tscn").instantiate()
 	arena._ready()
@@ -299,7 +299,7 @@ func _test_timeline_and_laser() -> void:
 	tl.add_event(10, "demo_laser")
 	var txt := tl.to_gd()
 	_check(TimelineData.is_timeline_gd(txt), "时间轴 .gd 头部标记")
-	var back := TimelineData.parse_gd(txt)
+	var back = TimelineData.parse_gd(txt)
 	_check(back.tl_name == "smoke_tl" and back.slot == "spell" and back.ticks.size() == 2,
 		"时间轴元数据/tick数往返")
 	_check(back.ticks.get(3, PackedStringArray()).size() == 2, "同 tick 多事件往返")
@@ -676,9 +676,9 @@ func _test_gettarget_wordparams() -> void:
 	e4.compile("gettarget(1d_ht_aver)", DanmakuEventData.EXPR_VARS)
 	_check(e4._text == "ht1daver", "gettarget(1d_ht_aver) 重排翻译（数字开头非法标识符）")
 	## 真实 Youshio1 事件本体：编译零错 + 帧控检测激活
-	var y := GameGlobals.get_event("Youshio1")
+	var y = GameGlobals.get_event("Youshio1")
 	_check(y != null, "Youshio1 已加载")
 	if y != null:
 		var cerrs: Array[String] = y.compile()
-		var uses := y.ex_x != null and y.ex_x.uses_variable("x_copy")
+		var uses: bool = y.ex_x != null and y.ex_x.uses_variable("x_copy")
 		_check(cerrs.is_empty() and uses, "Youshio1 编译零错且帧控激活（ex_x=%s）" % uses)

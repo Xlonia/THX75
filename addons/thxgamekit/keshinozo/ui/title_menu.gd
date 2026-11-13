@@ -1,3 +1,4 @@
+@tool
 extends Control
 ## =============================================================
 ## title_menu —— 标题画面主菜单（游戏的完整入口）
@@ -15,6 +16,8 @@ const MENU_ITEMS := [
 ]
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return ## 编辑器态不构建（运行时 UI）
 	## 背景（原工程资产）
 	var bg := TextureRect.new()
 	bg.texture = load("res://themes/images/tmainUvReimu.png")
@@ -58,7 +61,8 @@ func _ready() -> void:
 		_menu_buttons.append(c as Button)
 	## 【0.0.9·旧弹幕模式（作者批 20261108）】默认=渲染帧驱动（工作期调试同款，
 	## 永不积压）；勾选=引擎 60Hz 物理调度+多 tick 追赶（高级玩家对比测试·重启生效）
-	GameGlobals.load_default_archive()
+	if not Engine.is_editor_hint():
+		GameGlobals.load_default_archive()
 	var legacy := CheckBox.new()
 	legacy.text = "旧弹幕模式（高级测试用·重启生效）"
 	legacy.button_pressed = GameGlobals.bullet_legacy_physics
@@ -88,6 +92,8 @@ func _ready() -> void:
 
 ## 复用自定义对战的完成度弹窗（同款数据源）
 func _show_completion() -> void:
+	if Engine.is_editor_hint():
+		return
 	CompletionView.show(get_tree())
 
 ## 【批复】RPG/东方式：Z=选中、X=退出/返回

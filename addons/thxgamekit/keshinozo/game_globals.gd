@@ -1,3 +1,4 @@
+@tool
 extends Node
 ## =============================================================
 ## GameGlobals —— 全局单例（project.godot autoload）
@@ -10,8 +11,8 @@ extends Node
 ## 【mod 加载运算流程】（对应策划文档《弹幕编辑器》.thx 结构）
 ##   ① _ready：载入官方 danmaku_event.csv → official_events
 ##   ② 扫描 res://mods 与 user://mods 下 *.thx（zip 包）
-##   ③ 逐包读 danmaku_event.csv → DanmakuEventData.parse_csv_text
-##   ④ texture/ 下材质字节流 → DanmakuTex.load_from_bytes（运行时材质缓存）
+##   ③ 逐包读 danmaku_event.csv → _DMD.parse_csv_text
+##   ④ texture/ 下材质字节流 → _DTX.load_from_bytes（运行时材质缓存）
 ##   ⑤ 事件以 event_name 为键进 mod_events（后加载覆盖先加载）
 ## 查询优先级：mod_events > official_events（mod 覆盖官方同名事件）
 ## .thx 同时是『导出为官方数据』的交换格式：编辑器可把 .thx 内容
@@ -22,12 +23,24 @@ extends Node
 ##   danmaku_event_regular.csv / _physical / _functed / _laser / _nodes
 ## 旧的单文件 danmaku_event.csv 兼容读取（老 mod/官方旧包仍可用）。
 const OFFICIAL_EVENT_CSV := "res://gameAssetBase/danmaku_event.csv"
+## 【编辑器扫描兼容 20261114】全局类引用改为 **preload 常量**（编译期路径
+## 绑定，不依赖全局类注册顺序——@tool 化内核后编辑器依赖图提前解析本文件）
+const _DMD := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/danmaku/danmaku_event_data.gd")
+const _TL := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/danmaku/timeline_data.gd")
+const _CDB := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/data/chara_db.gd")
+const _DTX := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/danmaku/danmaku_tex.gd")
+const _CTX := preload("res://addons/thxgamekit/kit/addons/thx_gamekit/core/render/chara_tex.gd")
+const TAG_REGULAR := "IsDanmakuRegular"
+const TAG_PHYSICAL := "IsDanmakuPhysical"
+const TAG_FUNCTED := "IsDanmakuFuncted"
+const TAG_LASER := "IsDanmakuLaser"
+const TAG_NODES := "Nodes"
 const OFFICIAL_EVENT_CSVS: Dictionary = {
-	DanmakuEventData.TAG_REGULAR: "res://gameAssetBase/danmaku_event_regular.csv",
-	DanmakuEventData.TAG_PHYSICAL: "res://gameAssetBase/danmaku_event_physical.csv",
-	DanmakuEventData.TAG_FUNCTED: "res://gameAssetBase/danmaku_event_functed.csv",
-	DanmakuEventData.TAG_LASER: "res://gameAssetBase/danmaku_event_laser.csv",
-	DanmakuEventData.TAG_NODES: "res://gameAssetBase/danmaku_event_nodes.csv",
+	"IsDanmakuRegular": "res://gameAssetBase/danmaku_event_regular.csv",
+	"IsDanmakuPhysical": "res://gameAssetBase/danmaku_event_physical.csv",
+	"IsDanmakuFuncted": "res://gameAssetBase/danmaku_event_functed.csv",
+	"IsDanmakuLaser": "res://gameAssetBase/danmaku_event_laser.csv",
+	"Nodes": "res://gameAssetBase/danmaku_event_nodes.csv",
 }
 const MOD_DIRS: Array[String] = ["res://mods", "user://mods"]
 
@@ -60,19 +73,21 @@ var versus_volley := "rotate"     ## "rotate"=轮射 / "salvo"=齐射
 var arena_mode := "versus"        ## "versus" / "preview"
 
 ## —— 弹幕编辑器跨场景状态 ——
-var editor_events: Array[DanmakuEventData] = [] ## 编辑器当前事件列表
+var editor_events: Array = [] ## 编辑器当前事件列表（@tool 化：强类型改弱——扫描期类型注册未完成）
 var editor_textures: Dictionary = {}            ## 材质名 -> PackedByteArray（导入的材质）
 var editor_timelines: Array = []
 var mod_timelines: Dictionary = {}    ## mod 时间轴注册表（名→TimelineData）
-var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→TimelineData）                ## Array[TimelineData]（能力/符卡时间轴，②期）
+var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→TimelineData）                ## Array（能力/符卡时间轴，②期）
 var preview_event_name := ""                    ## 试炼场要发射的事件名
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return ## 编辑器态不构建/不覆盖（数据基址=运行时推送）
 	## 【0.0.9·宿主数据覆盖 20261111】THXGameKit 内核默认读自己 data/；
 	## THX75 的数据在 gameAssetBase——宿主 _ready 覆盖三个数据基址
-	CharaDB.DATA_BASE = "res://gameAssetBase"
-	DanmakuTex.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs" ## 材质根目录本身
-	CharaTex.DATA_BASE = "res://Players/Battle/Chars"
+	_CDB.DATA_BASE = "res://gameAssetBase"
+	_DTX.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs" ## 材质根目录本身
+	_CTX.DATA_BASE = "res://Players/Battle/Chars"
 	## 【宿主开关 20261113（作者令）】THX 系列特殊判定盒恒关→判定盒像素编辑禁用
 	## （编辑器按钮按不了）；内核裸本体默认开
 	THXKit.allow_hitbox_edit = false
@@ -98,10 +113,10 @@ func _ready() -> void:
 	_check_export_smoke.call_deferred()
 
 func _check_export_smoke() -> void:
-	var missing: Array[String] = []
+	var missing: Array = []
 	if official_events.is_empty():
 		missing.append("弹幕事件表")
-	if CharaDB.load_all().is_empty():
+	if _CDB.load_all().is_empty():
 		missing.append("角色表")
 	if missing.is_empty():
 		return
@@ -139,8 +154,8 @@ func _load_official() -> void:
 		if not FileAccess.file_exists(path):
 			continue
 		loaded = true
-		for ev in DanmakuEventData.parse_csv_text(FileAccess.get_file_as_string(path)):
-			var cerrs: Array[String] = ev.compile()
+		for ev in _DMD.parse_csv_text(FileAccess.get_file_as_string(path)):
+			var cerrs: Array = ev.compile()
 			if not cerrs.is_empty():
 				push_warning("[事件表] %s 编译失败：%s" % [ev.event_name, cerrs[0]]) ## 静默失败是 Youshio1 事故根因
 			## 【20261020】同名先到先得（regular→physical→…表序）——不同分表
@@ -152,7 +167,7 @@ func _load_official() -> void:
 	if not FileAccess.file_exists(OFFICIAL_EVENT_CSV):
 		return
 	var text := FileAccess.get_file_as_string(OFFICIAL_EVENT_CSV)
-	for ev in DanmakuEventData.parse_csv_text(text):
+	for ev in _DMD.parse_csv_text(text):
 		ev.compile()
 		official_events[ev.event_name] = ev
 
@@ -163,24 +178,24 @@ func _load_official() -> void:
 func sync_official_events(events: Array, exclude_names: PackedStringArray = PackedStringArray()) -> void:
 	## 【合并式 20261020】工作集优先（同名覆盖），但不清除分表既有事件——
 	## "新建"等会重建工作集的操作不得抹掉盘上其它弹幕（防数据损失）
-	var existing: Array[DanmakuEventData] = []
+	var existing: Array = []
 	for path in OFFICIAL_EVENT_CSVS.values():
 		if FileAccess.file_exists(path):
-			existing.append_array(DanmakuEventData.parse_csv_text(FileAccess.get_file_as_string(path)))
+			existing.append_array(_DMD.parse_csv_text(FileAccess.get_file_as_string(path)))
 	var merged := {}
-	for ev: DanmakuEventData in existing:
+	for ev in existing:
 		if not exclude_names.has(ev.event_name):
 			merged[ev.event_name] = ev
-	for ev: DanmakuEventData in events:
+	for ev in events:
 		if exclude_names.has(ev.event_name):
 			continue
 		## 【20261020】同名同标签→工作集覆盖（作者编辑）；同名不同标签→先到先得
 		## （不同分表的同名行互不覆盖——曾致物理版数据写进 regular 文件的污染）
-		var cur: DanmakuEventData = merged.get(ev.event_name)
+		var cur = merged.get(ev.event_name)
 		if cur == null or cur.tag == ev.tag:
 			merged[ev.event_name] = ev
 	var by_tag := {}
-	for ev: DanmakuEventData in merged.values():
+	for ev in merged.values():
 		if not by_tag.has(ev.tag):
 			by_tag[ev.tag] = []
 		by_tag[ev.tag].append(ev)
@@ -189,8 +204,8 @@ func sync_official_events(events: Array, exclude_names: PackedStringArray = Pack
 		if f == null:
 			push_warning("[GameGlobals] 事件分表写入失败: " + str(OFFICIAL_EVENT_CSVS[tag]))
 			continue
-		var lines: Array[String] = [",".join(DanmakuEventData.CSV_HEADER)]
-		for ev: DanmakuEventData in by_tag.get(tag, []):
+		var lines: Array[String] = [",".join(_DMD.CSV_HEADER)]
+		for ev in by_tag.get(tag, []):
 			lines.append(ev.to_csv_row())
 		f.store_string("
 ".join(lines) + "
@@ -198,7 +213,7 @@ func sync_official_events(events: Array, exclude_names: PackedStringArray = Pack
 		f.close()
 
 ## 【20261020】时间轴落盘（重命名等引用同步用；官方库存 gameAssetBase/timelines/）
-func save_timeline_gd(tl: TimelineData) -> void:
+func save_timeline_gd(tl) -> void:
 	var dir := "res://gameAssetBase/timelines"
 	DirAccess.make_dir_recursive_absolute(dir)
 	var f := FileAccess.open(dir + "/" + tl.tl_name + ".gd", FileAccess.WRITE)
@@ -208,7 +223,7 @@ func save_timeline_gd(tl: TimelineData) -> void:
 	f.store_string(tl.to_gd())
 	f.close()
 	for i in editor_timelines.size():
-		if editor_timelines[i] is TimelineData and editor_timelines[i].tl_name == tl.tl_name:
+		if editor_timelines[i] and editor_timelines[i].tl_name == tl.tl_name:
 			editor_timelines[i] = tl
 			break
 
@@ -240,7 +255,7 @@ func load_thx(path: String) -> Array[String]:
 	## ① danmaku_event.csv → 事件池
 	if zr.get_files().has("danmaku_event.csv"):
 		var text := zr.read_file("danmaku_event.csv").get_string_from_utf8()
-		for ev in DanmakuEventData.parse_csv_text(text):
+		for ev in _DMD.parse_csv_text(text):
 			ev.compile()
 			mod_events[ev.event_name] = ev
 			names.append(ev.event_name)
@@ -248,12 +263,12 @@ func load_thx(path: String) -> Array[String]:
 	for f in zr.get_files():
 		if f.begins_with("texture/"):
 			var tex_name := f.get_file().get_basename()
-			DanmakuTex.load_from_bytes(tex_name, zr.read_file(f))
+			_DTX.load_from_bytes(tex_name, zr.read_file(f))
 	zr.close()
 	return names
 
 ## 事件查询（mod 覆盖官方）
-func get_event(event_name: String) -> DanmakuEventData:
+func get_event(event_name: String):
 	if mod_events.has(event_name):
 		return mod_events[event_name]
 	return official_events.get(event_name)
@@ -263,15 +278,15 @@ func get_event(event_name: String) -> DanmakuEventData:
 ## 【批复 2026-10-01#5】原 _slot_cache 逻辑已注释移除（见类头说明）——
 ##   旧代码：`if _slot_cache.has(key): return _slot_cache[key]` …
 ##   `_slot_cache[key] = out`（试炼场二次进入不失效 → 陈旧预览）。
-func get_slot_events(owner_name: String, slot: String, row: Dictionary = {}) -> Array[DanmakuEventData]:
+func get_slot_events(owner_name: String, slot: String, row: Dictionary = {}) -> Array:
 	## 【重写 20261020（作者批复）】角色弹幕分配=角色侧数据：Characters.csv 的
 	## main_evs/sub_evs/rest_evs 三列（分号分隔的事件名列表）。
 	## 事件按名解析：编辑器工作集 → Mod → 官方（工作集优先，去重）。
 	## 旧的"事件 owner 标记绑定"逻辑全部废除（owner 列仅作数据兼容展示）；
 	## '*' 通配不再产生任何绑定（根治"把所有弹幕都放了个遍"）。
-	var out: Array[DanmakuEventData] = []
+	var out: Array = []
 	if row.is_empty():
-		row = CharaDB.get_by_name(owner_name)
+		row = _CDB.get_by_name(owner_name)
 	if row.is_empty():
 		return out
 	var col: String = {"main": "main_evs", "sub": "sub_evs", "rest": "rest_evs"}.get(slot, "")
@@ -281,14 +296,14 @@ func get_slot_events(owner_name: String, slot: String, row: Dictionary = {}) -> 
 		var ev_name: String = nm.strip_edges()
 		if ev_name == "":
 			continue
-		var ev := resolve_event_by_name(ev_name)
+		var ev = resolve_event_by_name(ev_name)
 		if ev != null:
 			out.append(ev)
 	return out
 
 ## 按事件名解析（编辑器工作集 → Mod → 官方）
-func resolve_event_by_name(ev_name: String) -> DanmakuEventData:
-	for ev: DanmakuEventData in editor_events:
+func resolve_event_by_name(ev_name: String):
+	for ev in editor_events:
 		if ev.event_name == ev_name:
 			return ev
 	if mod_events.has(ev_name):
@@ -298,34 +313,34 @@ func resolve_event_by_name(ev_name: String) -> DanmakuEventData:
 	return null
 
 ## 能力/符卡时间轴事件（timeline_frame≥0，按帧排序）
-func get_timeline_events(chara_name: String, slot: String, row: Dictionary = {}) -> Array[DanmakuEventData]:
+func get_timeline_events(chara_name: String, slot: String, row: Dictionary = {}) -> Array:
 	## 【重写 20261020】能力/符卡时间轴=角色侧列表：Characters.csv 的
 	## skill_evs/spell_evs（分号分隔的【时间轴名】列表；每个时间轴 0.1秒一帧、
 	## 每帧是弹幕事件列表——与火力点模型同构）。
 	## 时间轴按名解析：编辑器工作集 → Mod → 官方；其 tick 内事件逐个返回
 	## （事件需在编辑器工作集/官方池中有同名定义）。
-	var out: Array[DanmakuEventData] = []
+	var out: Array = []
 	var col: String = {"skill": "skill_evs", "spell": "spell_evs"}.get(slot, "")
 	if col == "":
 		return out
 	if row.is_empty():
-		row = CharaDB.get_by_name(chara_name)
+		row = _CDB.get_by_name(chara_name)
 	if row.is_empty():
 		return out
 	for tl_name in String(row.get(col, "")).split(";", false):
-		var tl := resolve_timeline(tl_name.strip_edges())
+		var tl = resolve_timeline(tl_name.strip_edges())
 		if tl == null:
 			continue
 		for tick in tl.ticks:
 			for ev_name in tl.ticks[tick]:
-				var ev := resolve_event_by_name(ev_name.strip_edges())
+				var ev = resolve_event_by_name(ev_name.strip_edges())
 				if ev != null:
 					out.append(ev)
 	return out
 
 ## 按时间轴名解析（工作集 → Mod → 官方）
-func resolve_timeline(tl_name: String) -> TimelineData:
-	for tl: TimelineData in editor_timelines:
+func resolve_timeline(tl_name: String):
+	for tl in editor_timelines:
 		if tl.tl_name == tl_name:
 			return tl
 	if mod_timelines.has(tl_name):
@@ -354,9 +369,9 @@ var _stress_names: Array[String] = [] ## 本功能覆写过的事件名（关闭
 
 func apply_stress_override(on: bool) -> void:
 	if on:
-		for ev: DanmakuEventData in official_events.values():
-			var c := DanmakuEventData.new()
-			c.from_csv_row(DanmakuEventData.split_csv_line(ev.to_csv_row()))
+		for ev in official_events.values():
+			var c := _DMD.new()
+			c.from_csv_row(_DMD.split_csv_line(ev.to_csv_row()))
 			c.repeat_freq = ev.repeat_freq + 2
 			c.range_frames = ev.range_frames * 2
 			mod_events[c.event_name] = c
