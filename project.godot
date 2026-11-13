@@ -29,7 +29,9 @@ ProfilerSaver="*res://profilersaver.gd"
 
 [dialogic]
 
-directories/dch_directory={}
+directories/dch_directory={
+"unit_test_character": "res://Tests/Resources/unit_test_character.dch"
+}
 directories/dtl_directory={}
 layout/style_directory={}
 glossary/default_case_sensitive=true
