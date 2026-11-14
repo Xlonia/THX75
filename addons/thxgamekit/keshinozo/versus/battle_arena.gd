@@ -1319,13 +1319,16 @@ func _grant_spell_random(side: int) -> void:
 	if not pool.is_empty():
 		(pool.pick_random() as BattleEntity).receive_spell()
 
-## 【0.0.9·内核配置 nonhuman_res_ban 20261114（m67）】GameKit 内核引用页选框
-## （THXKit.scenario_cfg）——勾选后非人类玩家（AI 实体）不能获取任何资源：
-## 掉落拾取/符卡授予/拒绝投降奖励全封。人类=接管中的主控角色。
+## 【0.0.9·内核配置 nonhuman_res_ban（m67 立项/m68 语义修正·作者令）】
+## GameKit 内核引用页选框（THXKit.scenario_cfg）——勾选后**非人类玩家的一方**
+## （=无人类参与的一方，即敌方侧全体）不能获取任何资源：掉落拾取/符卡授予/
+## 拒绝投降奖励全封。
+## 【m68 消歧义】按"一方"概括：人类玩家一方（**含非自机角色**）不受限；
+## m67 原实现按"非人类角色"逐个判定=把人类一方非自机也概括进去（过宽）已修正。
 func _res_banned(ent: BattleEntity) -> bool:
 	if not bool(THXKit.scenario_cfg.get("nonhuman_res_ban", false)):
 		return false
-	return not (take_over and ent == player_leader)
+	return ent.side != 0 ## 人类=玩家侧（side 0）；非人类一方=敌方侧整侧封禁
 
 ## 主要符卡释放奖励（【m67 作者裁定】推翻直接+1符）：释放者原地掉落一枚
 ## **灰化符卡拾取物**（owner=释放方）——掉落方不可拾、仅对方可拣（语义补充：
@@ -1672,6 +1675,14 @@ func _physics_process(delta: float) -> void:
 		return
 	var dt := delta * 60.0
 	time_frames += 1
+	## 【m68 修复（作者实测"释放能力/符卡后消弹不会停下来"）】消弹域每帧消退：
+	## clear_frames 递减、归零=关闭（apply_clear 原本只设不减=全场无递减点）。
+	## 放主帧频——被弹/消弹结算虽是 30Hz，消退计时应按真实帧走
+	for ent in entities:
+		if ent is BattleEntity and ent.clear_active():
+			ent.clear_frames -= 1
+			if ent.clear_frames <= 0:
+				ent.clear_radius = 0.0
 	if not finished:
 		_player_input()
 		_ai_sides()
@@ -3254,6 +3265,8 @@ func _resolve_hits() -> void:
 			continue ## 0.5秒减免：角色不参与所有DDM（作者批复）
 		if ent.clear_active():
 			## 【批复 2026-10-13】屏蔽改消除：范围内敌方弹幕持续消除（消弹特效）
+			## （消退计数在 _physics_process 主帧频——本函数 30Hz+免疫跳过，
+			## 在此递减会拖慢消退且免疫期暂停）
 			_clear_bullets_around(ent)
 		## 【0.0.9·恢复 20261109】被弹结算主体——第五十二轮回退语义改动时 Edit
 		## 旧串匹配误删（约 55 行，角色完全不受伤）；从 battle_arena_20261109i

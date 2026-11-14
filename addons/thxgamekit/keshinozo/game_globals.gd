@@ -540,3 +540,11 @@ func set_key(action: String, keycode: int) -> void:
 	for k in KEY_MODIFIABLE:
 		cf.set_value("keys", k, int(key_config.get(k, KEY_DEFAULTS.get(k, 0))))
 	cf.save("user://keybinds.cfg")
+
+## 【m68 默认设置（作者 20261114）】恢复出厂键位并持久化（同大部分游戏的"默认设置"）
+func reset_key_config() -> void:
+	key_config = KEY_DEFAULTS.duplicate()
+	var cf := ConfigFile.new()
+	for k in KEY_MODIFIABLE:
+		cf.set_value("keys", k, int(KEY_DEFAULTS[k]))
+	cf.save("user://keybinds.cfg")

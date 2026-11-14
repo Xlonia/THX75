@@ -12,6 +12,7 @@ const MENU_ITEMS := [
 	{"id": "story", "label": "剧情模式"},
 	{"id": "ex", "label": "EX关卡"},
 	{"id": "versus", "label": "自定义对战"},
+	{"id": "settings", "label": "设置"},
 	{"id": "editor", "label": "弹幕编辑器"},
 ]
 
@@ -117,8 +118,21 @@ func _on_menu(id: String) -> void:
 			GameGlobals.goto_scene("res://scenes/ex_placeholder.tscn")
 		"versus":
 			GameGlobals.goto_scene("res://scenes/versus_menu.tscn")
+		"settings":
+			_open_settings()
 		"editor":
 			_open_editor_process()
+
+## 【m68 设置（作者 20261114）】覆盖层面板（非场景切换——空转专案教训）；
+## 键位改键+默认设置，持久化 user://keybinds.cfg（settings_menu.gd 实现）
+var _settings: Control = null
+func _open_settings() -> void:
+	if _settings != null and is_instance_valid(_settings):
+		return ## 已开着
+	_settings = Control.new()
+	_settings.set_script(load("res://addons/thxgamekit/keshinozo/ui/settings_menu.gd"))
+	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_settings)
 
 ## 【编辑器=独立进程 20261114（作者批准：THXGameKit 同款模式，推翻 20261110
 ## 同进程子窗口方案）】OS.create_process 启动 scenes/danmaku_editor.tscn

@@ -6,12 +6,13 @@ extends Node
 ##   B. 时间轴执行器（机械验证）：注入探针时间轴（tick0/tick30 各一发）→
 ##      手动入列→逐 tick 推进（run.tick 前进）→时间轴完成后出列
 ## 【跑法】godot --headless --path . res://Tests/spell_probe.tscn → SPELL_OK / SPELL_FAIL n
-const RUN := 240
+const RUN := 440
 var arena: Node2D
 var _step := 0
 var _fails := 0
 var _run_dict: Dictionary = {}
 var _tick_advanced := false
+var _pl: BattleEntity = null
 func _ready() -> void:
 	arena = load("res://scenes/battle_arena.tscn").instantiate()
 	add_child(arena)
@@ -37,6 +38,7 @@ func _run_a() -> void:
 	if pl == null:
 		_fail("无 player_leader")
 		return
+	_pl = pl
 	if pl.sit_cards == null:
 		pl.sit_cards = SitCardSystem.new() ## 防御兜底（与 arena 2799 同款）
 	pl.spell_cards = 1
@@ -92,17 +94,28 @@ func _run_c() -> void:
 	arena._spawn_drop(pl.position, "spell", 0, 0)
 	arena.drops[arena.drops.size() - 1]["probe"] = true
 	_c1_tagged = true
-	## C2：nonhuman_res_ban=敌方（AI）符卡授予封禁
+	## C2：nonhuman_res_ban=非人类一方（敌方侧全体）封禁——【m68 语义】
+	## 人类一方（含非自机角色）不受限
 	if _enemy_can_receive():
 		THXKit.scenario_cfg["nonhuman_res_ban"] = true
 		var s0 := _enemy_spell_sum()
 		arena._grant_spell_random(1)
 		if _enemy_spell_sum() != s0:
 			_fail("nonhuman_res_ban 开启后敌方仍获得符卡")
+		var p0 := _side_spell_sum(0)
+		arena._grant_spell_random(0)
+		if _side_spell_sum(0) == p0:
+			_fail("人类一方角色被误封（按一方概括语义应放行）")
 		THXKit.scenario_cfg["nonhuman_res_ban"] = false
 		arena._grant_spell_random(1)
 		if _enemy_spell_sum() == s0:
 			_fail("nonhuman_res_ban 关闭后敌方未获得符卡")
+func _side_spell_sum(side: int) -> int:
+	var s := 0
+	for e in arena.entities:
+		if e is BattleEntity and e.side == side and not e.dead:
+			s += int(e.spell_cards)
+	return s
 func _enemy_spell_sum() -> int:
 	var s := 0
 	for e in arena.entities:
@@ -127,6 +140,8 @@ func _process(_d: float) -> void:
 				alive = true
 		if not alive:
 			_fail("owner 掉落被掉落方角色拾取（禁拾规则失效）")
+	if _step == 380 and _pl != null and _pl.clear_radius != 0.0:
+		_fail("消弹域未消退（m68 修复失效——clear_frames 递减未生效）")
 	if _step == 90 and int(_run_dict.get("tick", -1)) >= 1:
 		_tick_advanced = true ## tick0（第6帧）与后续 tick 已推进
 	if _step >= RUN:
