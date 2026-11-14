@@ -118,27 +118,20 @@ func _on_menu(id: String) -> void:
 		"versus":
 			GameGlobals.goto_scene("res://scenes/versus_menu.tscn")
 		"editor":
-			_open_editor_window()
+			_open_editor_process()
 
-## 【0.0.9·编辑器窗口（作者 20261110 终裁）】回归古典的额外窗口（同进程独立
-## OS 窗口——主体可呼出编辑器、编辑器可弹预览窗）；保留 启动弹幕编辑器.bat
-## 供命令行/直接双击启动
-var _editor_window: Window = null
-func _open_editor_window() -> void:
-	if _editor_window != null and is_instance_valid(_editor_window):
-		_editor_window.grab_focus()
-		return
-	_editor_window = Window.new()
-	_editor_window.title = "THX075 弹幕编辑器"
-	_editor_window.size = Vector2i(1280, 800)
-	_editor_window.min_size = Vector2i(860, 560)
-	_editor_window.position = (DisplayServer.window_get_position()
-		+ (DisplayServer.window_get_size() - Vector2i(1280, 800)) / 2)
-	## 【挂载点适配】submodule 内 tscn 的脚本路径是内核绝对 res（th75 挂载点
-	## 不存在=窗口空白根因）——直接实例化 editor 脚本（Control），同等内容
-	var ed: Control = (load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/danmaku_editor.gd") as GDScript).new()
-	ed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_editor_window.add_child(ed)
-	_editor_window.close_requested.connect(func(): _editor_window.queue_free())
-	get_tree().root.add_child(_editor_window)
-	_editor_window.show()
+## 【编辑器=独立进程 20261114（作者批准：THXGameKit 同款模式，推翻 20261110
+## 同进程子窗口方案）】OS.create_process 启动 scenes/danmaku_editor.tscn
+## （th75 挂载点包装场景——kit tscn 是内核逻辑路径不能直跑）。
+## 为什么必须独立进程：同进程子窗口里的编辑器退出链会把宿主进程一起带走
+## （get_tree().quit 语义），且子窗口 X 按钮=无保存提问直接销毁。
+## 标题进程常驻不受影响=零空转；编辑器进程退出=关窗。保留 .bat 同路径。
+func _open_editor_process() -> void:
+	var godot_exe := OS.get_executable_path()
+	var project_dir := ProjectSettings.globalize_path("res://")
+	var args := PackedStringArray(["--path", project_dir, "res://scenes/danmaku_editor.tscn"])
+	var pid := OS.create_process(godot_exe, args)
+	if pid > 0:
+		print("[标题] 编辑器独立进程已启动 pid=%d" % pid)
+	else:
+		push_error("[标题] 编辑器独立进程启动失败")

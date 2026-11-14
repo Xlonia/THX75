@@ -4155,9 +4155,15 @@ func _on_pause_btn(p: PanelContainer, txt: String) -> void:
 		"返回标题":
 			GameGlobals.goto_scene("res://scenes/title_menu.tscn")
 		"退出试炼场":
-			## 【0.0.8 行为】回编辑器场景（编辑器 _ready 从 GameGlobals.editor_events
-			## 重载=编辑状态经全局保留）
-			GameGlobals.goto_scene("res://addons/thxgamekit/kit/scenes/danmaku_editor.tscn")
+			## 【窗口化 20261114】预览窗（battle_arena 预览若在子窗口跑）=
+			## 关窗回宿主（宿主进程/主窗均不动，零场景切换）；
+			## 主窗替换式预览遗留路径=回 th75 标题（编辑器另行独立进程打开）
+			GameGlobals.arena_mode = "editor"
+			var w := get_parent() as Window
+			if w != null and w != get_tree().root:
+				w.queue_free()
+			else:
+				GameGlobals.goto_scene("res://scenes/title_menu.tscn")
 
 func _build_pause_panel() -> PanelContainer:
 	var p := PanelContainer.new()
