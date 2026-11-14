@@ -15,9 +15,9 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="TH75"
-run/max_fps=60
 run/main_scene="res://scenes/title_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
+run/max_fps=60
 config/icon="res://icon.svg"
 
 [autoload]
@@ -30,7 +30,9 @@ ProfilerSaver="*res://profilersaver.gd"
 
 [dialogic]
 
-directories/dch_directory={}
+directories/dch_directory={
+"unit_test_character": "res://Tests/Resources/unit_test_character.dch"
+}
 directories/dtl_directory={}
 layout/style_directory={}
 glossary/default_case_sensitive=true
