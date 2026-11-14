@@ -63,6 +63,10 @@ var versus_player_team: Array = []
 ## logic∈{standoff_hp,standoff_ap,standoff_far,approach_near,none}
 ## formation=PrivateFormation.PRESETS 键名；pp/spell=初始资源
 var versus_chara_cfg: Dictionary = {}
+## 【m67 拒不投降 20261114（作者指定）】自定义对战预设：本场双方投降禁用
+## （剧情用——特定难度角色尤其是最终 boss 一之濑葵望的对战）；versus_menu
+## 勾选框→战斗侧三处门（我方请求/AI 自动同意/AI 主动发起）实时读本值
+var duel_no_surrender := false
 ## 【v0.0.8 避弹调试 20261025】AI 慢速调试：敌方一方 AI 与速度 =0.25 倍
 ## （机制参照须臾枝/时之魔珠的时间尺度地基；非道具，纯调试开关）
 var ai_slow_debug := false ## 我方角色名列表（空=默认队伍）

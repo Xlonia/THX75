@@ -26,6 +26,7 @@ func _ready() -> void:
 		arena._physics_process(1.0 / 60.0)
 	_run_a()
 	_run_b()
+	_run_c()
 func _fail(msg: String) -> void:
 	_fails += 1
 	print("SPELL_FAIL: ", msg)
@@ -41,10 +42,6 @@ func _run_a() -> void:
 	pl.spell_cards = 1
 	pl.pp = 100
 	pl.sit_cards.spell_ready = true
-	var spell_sum := 0
-	for e in arena.entities:
-		if e is BattleEntity and e.side == 1 and not e.dead:
-			spell_sum += int(e.spell_cards)
 	arena._apply_release(pl, "m")
 	if int(pl.spell_cards) != 0:
 		_fail("符卡未扣减（=%d）" % int(pl.spell_cards))
@@ -60,12 +57,13 @@ func _run_a() -> void:
 			para = true
 	if not para:
 		_fail("敌方未瘫痪")
-	var spell_sum2 := 0
-	for e in arena.entities:
-		if e is BattleEntity and e.side == 1 and not e.dead:
-			spell_sum2 += int(e.spell_cards)
-	if spell_sum2 <= spell_sum:
-		_fail("最接近敌方+1符未生效（%d→%d）" % [spell_sum, spell_sum2])
+	## 【m67】释放奖励=灰化符卡掉落（owner=释放方）——不再直接+1符
+	var drop_cnt := 0
+	for d in arena.drops:
+		if int(d.get("owner", -1)) == 0:
+			drop_cnt += 1
+	if drop_cnt < 1:
+		_fail("主要符卡未掉落灰化符卡（owner=0）")
 
 ## B：时间轴执行器（绕过角色数据列——直接入列）
 func _run_b() -> void:
@@ -83,11 +81,52 @@ func _run_b() -> void:
 	_run_dict = {"ent": pl, "tl": tl, "start_frame": arena.time_frames, "tick": -1}
 	arena._spell_runs.append(_run_dict)
 
+## C：m67 掉落语义（owner 禁拾）+ 内核配置 nonhuman_res_ban
+var _c1_tagged := false
+func _run_c() -> void:
+	var pl = arena.player_leader
+	if pl == null:
+		return
+	## C1：owner=0 掉落在我方主控脚下——规则生效=我方角色永不拾取
+	##（3 帧内主控漂移 <10px：若禁拾失效必被当场拾走）
+	arena._spawn_drop(pl.position, "spell", 0, 0)
+	arena.drops[arena.drops.size() - 1]["probe"] = true
+	_c1_tagged = true
+	## C2：nonhuman_res_ban=敌方（AI）符卡授予封禁
+	if _enemy_can_receive():
+		THXKit.scenario_cfg["nonhuman_res_ban"] = true
+		var s0 := _enemy_spell_sum()
+		arena._grant_spell_random(1)
+		if _enemy_spell_sum() != s0:
+			_fail("nonhuman_res_ban 开启后敌方仍获得符卡")
+		THXKit.scenario_cfg["nonhuman_res_ban"] = false
+		arena._grant_spell_random(1)
+		if _enemy_spell_sum() == s0:
+			_fail("nonhuman_res_ban 关闭后敌方未获得符卡")
+func _enemy_spell_sum() -> int:
+	var s := 0
+	for e in arena.entities:
+		if e is BattleEntity and e.side == 1 and not e.dead:
+			s += int(e.spell_cards)
+	return s
+func _enemy_can_receive() -> bool:
+	for e in arena.entities:
+		if e is BattleEntity and e.side == 1 and not e.dead and e.can_receive_spell():
+			return true
+	return false
+
 func _process(_d: float) -> void:
 	if arena == null:
 		return
 	_step += 1
 	arena._physics_process(1.0 / 60.0)
+	if _step == 3 and _c1_tagged:
+		var alive := false
+		for d in arena.drops:
+			if d.get("probe", false):
+				alive = true
+		if not alive:
+			_fail("owner 掉落被掉落方角色拾取（禁拾规则失效）")
 	if _step == 90 and int(_run_dict.get("tick", -1)) >= 1:
 		_tick_advanced = true ## tick0（第6帧）与后续 tick 已推进
 	if _step >= RUN:

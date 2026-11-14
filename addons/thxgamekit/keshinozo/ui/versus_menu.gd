@@ -10,6 +10,7 @@ var enemy_picks: Array[OptionButton] = []
 var pp_spin: SpinBox
 var volley_pick: OptionButton
 var _stress_check: CheckBox
+var _no_surr_check: CheckBox ## 【m67】拒不投降（本场双方投降禁用）
 var _sample_pick: OptionButton
 var _edge_pick: OptionButton
 var _chars: Array[Dictionary] = []
@@ -96,6 +97,12 @@ func _ready() -> void:
 	stress.button_pressed = false
 	_add_labeled(cfg, "覆写测试", stress)
 	_stress_check = stress
+	## 【m67 拒不投降（作者指定 20261114）】本场双方投降禁用（剧情 boss 战用）
+	var no_surr := CheckBox.new()
+	no_surr.text = "拒不投降（双方投降禁用——剧情 boss 战）"
+	no_surr.button_pressed = false
+	_add_labeled(cfg, "投降", no_surr)
+	_no_surr_check = no_surr
 	var hint := Label.new()
 	hint.text = "WASD移动　Shift:全队快机(演示)　V轮射↔齐射　F3 DDM图　Esc暂停"
 	hint.add_theme_font_size_override("font_size", 12)
@@ -411,6 +418,7 @@ func _on_start() -> void:
 	GameGlobals.contour_edge_px = 8 * (_edge_pick.selected + 1) ## 8/16/24/32
 	GameGlobals.save_default_archive() ## 采样/精度进默认存档
 	GameGlobals.apply_stress_override(_stress_check.button_pressed)
+	GameGlobals.duel_no_surrender = _no_surr_check.button_pressed ## 【m67】拒不投降进本场
 	GameGlobals.arena_mode = "versus"
 	GameGlobals.goto_scene("res://scenes/battle_arena.tscn")
 

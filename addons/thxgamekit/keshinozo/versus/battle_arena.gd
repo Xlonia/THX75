@@ -790,7 +790,10 @@ func _on_entity_destroyed(ent: BattleEntity) -> void:
 
 ## 生成掉落拾取物（材质 pp/spell）
 ## 【批复 2026-10-13】散落：随机方向 1px/帧 初速，模长每帧 -0.05，20 帧后静止
-func _spawn_drop(pos: Vector2, kind: String, amount: int) -> void:
+## 【m67 掉落语义（作者 20261114）】owner_side>=0=掉落方专属禁止拾取：
+## 掉落方的角色不吸附不拾取、仅对方可拣（目前仅符卡释放掉落使用）；
+## 既有杂兵掉落维持"双方可拾"批复（owner=-1）
+func _spawn_drop(pos: Vector2, kind: String, amount: int, owner_side := -1) -> void:
 	if _drop_tex.is_empty():
 		_drop_tex["pp"] = load("res://gameAssetBase/shooting/resource/pp.PNG")
 		_drop_tex["spell"] = load("res://gameAssetBase/shooting/resource/spell.PNG")
@@ -800,6 +803,7 @@ func _spawn_drop(pos: Vector2, kind: String, amount: int) -> void:
 		"vel": dir * 1.0,           ## 初速 1px/帧
 		"kind": kind, "amount": amount, "frames": 1800, ## 30秒消失
 		"tex": _drop_tex.get(kind),
+		"owner": owner_side,        ## 掉落方 side（-1=双方可拾；>=0=该方禁拾仅对方可拣）
 	})
 
 ## 【早苗技能（策划；批复：神由态势卡自动选）】
@@ -1241,6 +1245,10 @@ func _update_drops() -> void:
 		var nd := 1e9
 		for e in entities:
 			if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
+				if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
+					continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
+				if _res_banned(e):
+					continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
 				var dist: float = e.position.distance_to(d["pos"])
 				if dist < nd:
 					nd = dist
@@ -1268,6 +1276,8 @@ func _grant_spell_ordered(side: int, n_cards: int) -> void:
 	var ents: Array = player_ents if side == 0 else enemy_ents
 	for e in ents:
 		if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and e.can_receive_spell():
+			if _res_banned(e):
+				continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
 			pool.append(e)
 	for k in n_cards:
 		if pool.is_empty():
@@ -1303,15 +1313,25 @@ func _grant_spell_random(side: int) -> void:
 	var pool: Array = []
 	for e in entities:
 		if e is BattleEntity and e.side == side and e.can_receive_spell():
+			if _res_banned(e):
+				continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
 			pool.append(e)
 	if not pool.is_empty():
 		(pool.pick_random() as BattleEntity).receive_spell()
 
-## 主要符卡释放钩子：最接近的敌方角色+1符（【m66 接线】_apply_release "m" 调用）
+## 【0.0.9·内核配置 nonhuman_res_ban 20261114（m67）】GameKit 内核引用页选框
+## （THXKit.scenario_cfg）——勾选后非人类玩家（AI 实体）不能获取任何资源：
+## 掉落拾取/符卡授予/拒绝投降奖励全封。人类=接管中的主控角色。
+func _res_banned(ent: BattleEntity) -> bool:
+	if not bool(THXKit.scenario_cfg.get("nonhuman_res_ban", false)):
+		return false
+	return not (take_over and ent == player_leader)
+
+## 主要符卡释放奖励（【m67 作者裁定】推翻直接+1符）：释放者原地掉落一枚
+## **灰化符卡拾取物**（owner=释放方）——掉落方不可拾、仅对方可拣（语义补充：
+## 一方掉落的资源不能被自己一方获取）；对方需实体到场拣取（最近敌有先机）
 func _on_main_spell_released(caster: BattleEntity) -> void:
-	var near := bullet_nearest_enemy_from(caster.side, caster.position)
-	if near != null and near.can_receive_spell():
-		near.receive_spell()
+	_spawn_drop(caster.position, "spell", 0, caster.side)
 
 ## =============================================================
 ## 【符卡时间轴执行 20261114（m66·符卡与能力事件化①运行时）】
@@ -1668,14 +1688,20 @@ func _physics_process(delta: float) -> void:
 	## ②敌方 AI 绝境主动发起（每场一次；相位≥2 每 2 秒检测）
 	if finished == false:
 		if surrender_sender == 0 and not surrender_phase:
-			_surr_ai_cd -= 1
-			if _surr_ai_cd <= 0:
-				_surrender_accepted()
-				_toast("敌方 AI 同意了投降")
+			if GameGlobals.duel_no_surrender:
+				## 【m67 拒不投降】本场预设禁用投降——敌方拒绝我方请求
+				surrender_sender = -1
+				_toast("敌方拒不投降（本场投降禁用）")
+			else:
+				_surr_ai_cd -= 1
+				if _surr_ai_cd <= 0:
+					_surrender_accepted()
+					_toast("敌方 AI 同意了投降")
 		## 【0.0.9·AI 投降策划口径（新二 245；作者 20261110 令）】"有一方在一个
 		## 角色的AP归零后投降"=破阵(3)/撤离(4)阶段、敌方已有角色被剥、且战况
 		## 劣势（存活或被剥数落后）时发起——原"存活≤2 即降"（受伤即降）撤销
-		elif surrender_sender < 0 and phase >= 3 and time_frames % 120 == 0 and not _ai_surr_used:
+		elif surrender_sender < 0 and phase >= 3 and time_frames % 120 == 0 and not _ai_surr_used \
+				and not GameGlobals.duel_no_surrender: ## 【m67 拒不投降】AI 不发起
 			var e_alive2 := 0
 			for e8 in enemy_ents:
 				if not e8.dead:
@@ -4031,9 +4057,12 @@ func _unhandled_input(event: InputEvent) -> void:
 						_surrender_accepted()
 						print("[投降] 我方同意敌方投降 → 结算")
 					else:
+						## 【m67 拒不投降】本场预设禁用投降——请求被拦截
+						if GameGlobals.duel_no_surrender:
+							_toast("本场拒不投降——双方投降已禁用")
 						## 【0.0.9·投降阶段门（新二 98-100 补全；作者 20261111）】
 						## 仅限第 3/4 阶段（或重新回到的短兵）
-						if not (phase >= 3 or (phase == 2 and _phase2_reentered)):
+						elif not (phase >= 3 or (phase == 2 and _phase2_reentered)):
 							_toast("投降仅限破阵/撤离阶段（或重返短兵）——当前 %s" % {1: "远距压制", 2: "短兵", 3: "破阵", 4: "撤离"}.get(phase, "?"))
 						else:
 							surrender_sender = 0
@@ -4046,7 +4075,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						## 【0.0.9·拒绝敌方投降（新二 100/245）】发送方全员+1符卡且回满P
 						## （允许赶尽杀绝——AC 难度来源）
 						for e7 in enemy_ents:
-							if not e7.dead:
+							if not e7.dead and not _res_banned(e7): ## 【m67】nonhuman_res_ban 同封拒绝奖励
 								e7.spell_cards += 1
 								e7.add_pp(BattleEntity.PP_CAP)
 						surrender_sender = -1
@@ -4397,7 +4426,9 @@ func draw_entities(onto: CanvasItem) -> void:
 			continue
 		var blink := 1.0 if d["frames"] > 300 else (0.4 + 0.6 * absf(sin(float(d["frames"]) * 0.2)))
 		var dtex: Texture2D = d["tex"]
-		onto.draw_texture_rect(dtex, Rect2(d["pos"] - dtex.get_size() * 0.5, dtex.get_size()), false, Color(1, 1, 1, blink))
+		## 【m67】owner 掉落=灰化（掉落方不可拣的视觉信号——仅对方可拾）
+		var dcol := Color(0.55, 0.55, 0.55, blink) if int(d.get("owner", -1)) >= 0 else Color(1, 1, 1, blink)
+		onto.draw_texture_rect(dtex, Rect2(d["pos"] - dtex.get_size() * 0.5, dtex.get_size()), false, dcol)
 	## 【Hcs/Hct 可视化 20261020】F3 第8/9档：选中角色 49 点热度点阵；
 	## Hcs 档 [ ] 键切换查阅目标时间后的帧（轨迹前瞻长度即时重算）；
 	## Hct 档红叉标注热力施加点（与 Hcs 弹幕重合的采样点）
