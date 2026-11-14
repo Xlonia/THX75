@@ -1307,11 +1307,58 @@ func _grant_spell_random(side: int) -> void:
 	if not pool.is_empty():
 		(pool.pick_random() as BattleEntity).receive_spell()
 
-## 主要符卡释放钩子（符卡释放系统实装时调用）：最接近的敌方角色+1符
+## 主要符卡释放钩子：最接近的敌方角色+1符（【m66 接线】_apply_release "m" 调用）
 func _on_main_spell_released(caster: BattleEntity) -> void:
 	var near := bullet_nearest_enemy_from(caster.side, caster.position)
 	if near != null and near.can_receive_spell():
 		near.receive_spell()
+
+## =============================================================
+## 【符卡时间轴执行 20261114（m66·符卡与能力事件化①运行时）】
+## 符卡=spell_evs 列表第 idx 个时间轴（时间轴名=符卡名；0.1s/tick，
+## tick=弹幕事件名列表——与火力点模型同构）。释放起逐 tick 以释放者当前位置
+## 经 _spawn_event_copies 展开（自机狙=最近敌，与试炼场预览同语义）；
+## 释放者死亡=符卡中断。idx 每次释放递增=多符卡轮放。
+## ②预埋（作者问询 20261114）：反弹/就近消弹/亡计/被弹=本运行时的四个
+## 新钩位（发射时/被消弹时/被击破时/被弹时）——届时只增钩子不改本框架。
+## =============================================================
+var _spell_runs: Array = [] ## {ent, tl, start_frame, tick}
+var _spell_idx := {} ## 实体 instance_id→下一次释放的符卡序号（轮放）
+
+func _spell_timeline_run(ent: BattleEntity) -> float:
+	var idx := int(_spell_idx.get(ent.get_instance_id(), 0))
+	_spell_idx[ent.get_instance_id()] = idx + 1
+	var tl = GameGlobals.get_spell_timeline(ent.chara_name(), idx)
+	if tl == null or tl.ticks.is_empty():
+		ent.set_meta("spell_announce", "")
+		return 0.0 ## 无符卡时间轴=纯消弹域（调用方 5s 兜底）
+	ent.set_meta("spell_announce", String(tl.tl_name))
+	_spell_runs.append({"ent": ent, "tl": tl, "start_frame": time_frames, "tick": -1})
+	return float(tl.ticks.keys().max()) * 0.1 + 0.1 ## 最后事件执行时刻（秒）
+
+## 符卡时间轴逐 tick 推进（_physics_process 每帧调用；0.1s/tick=6 帧）
+func _spell_runs_tick() -> void:
+	if _spell_runs.is_empty():
+		return
+	for i in range(_spell_runs.size() - 1, -1, -1):
+		var run: Dictionary = _spell_runs[i]
+		var ent: BattleEntity = run["ent"]
+		if ent == null or not is_instance_valid(ent) or ent.dead:
+			_spell_runs.remove_at(i) ## 释放者死亡=符卡中断
+			continue
+		var tl = run["tl"]
+		var last_tick := int(tl.ticks.keys().max())
+		var tick := int(time_frames - int(run["start_frame"])) / 6
+		if tick > last_tick:
+			_spell_runs.remove_at(i) ## 时间轴执行完毕
+			continue
+		if tick <= int(run["tick"]):
+			continue
+		run["tick"] = tick
+		for ev_name in tl.ticks.get(tick, []):
+			var ev := _find_event(String(ev_name).strip_edges())
+			if ev != null:
+				_spawn_event_copies(ev, ent.position, ent, null, {}, 0)
 
 ## 试炼场发射器：每 0.5s 从顶部随机 x 发射当前编辑事件
 var preview_emit_interval := 0.5 ## 【可变探针】试炼场自动发射间隔（秒；emit= 启动参数可改）
@@ -1608,6 +1655,7 @@ func _physics_process(delta: float) -> void:
 	if not finished:
 		_player_input()
 		_ai_sides()
+		_spell_runs_tick() ## 【m66】主要符卡时间轴逐 tick 执行
 		if is_preview:
 			_preview_emitter(delta)
 			_preview_controls() ## 【批复 20261024】预览可控：方向键移动玩家
@@ -2857,10 +2905,12 @@ func _ent_tick_sit(delta: float) -> void:
 func _apply_release(ent: BattleEntity, kind: String) -> void:
 	## 【批复 2026-10-13】不论能力/符卡/主要符卡：释放即消除范围内弹幕
 	## 能力 80px / 次级符卡 200px（主要符卡=全屏，随符卡数据实装）
-	var radius := 80.0 if kind == "n" else 200.0
+	## 【m66】能力80 / 次级符卡200 / 主要符卡=全屏（策划：500px 覆盖全场——
+	## "m" 档 rr2=INF=全场消弹，不受半径距离检查约束）
+	var radius: float = {"n": 80.0, "s": 200.0, "m": 500.0}.get(kind, 200.0)
 	var cleared := 0
 	## 【22b 20261030c 效能化】同 _clear_bullets_around：倒序+平方距
-	var rr2: float = radius * radius
+	var rr2: float = (INF if kind == "m" else radius * radius)
 	var qx: float = ent.position.x
 	var qy: float = ent.position.y
 	for ci in range(bullets.size() - 1, -1, -1):
@@ -2914,6 +2964,23 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
+		"m":
+			## 【0.0.9·主要符卡实装 20261114（m66）】策划：1张+100P·全屏·5s 起步；
+			## 时长=符卡时间轴最后事件执行时刻（无时间轴=5s 占位）；
+			## 消弹=全场（rr2=INF）；最接近敌方+1符（_on_main_spell_released 接线）
+			if ent.spell_cards >= 1 and ent.pp >= 100:
+				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
+				ent.spell_cards -= 1
+				ent.pp -= 100
+				var m_span: float = maxf(_spell_timeline_run(ent), 5.0)
+				ent.apply_clear(500.0, m_span)
+				ent.set_meta("released_kind", "m")
+				ent.set_meta("release_flash", ent.chara_name())
+				ent.set_meta("clear_count", cleared)
+				_paralyze_fire(1 - ent.side, m_span)
+				var aname := String(ent.get_meta("spell_announce", ""))
+				_toast(("符卡宣言 %s" % aname) if aname != "" else "符卡释放")
+				_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
 	ent.sit_cards.on_released(kind)
 
 ## 敌方火力瘫痪（时间轴实装前占位 1s/时长秒；实装后=至时间轴最后事件）
@@ -3905,8 +3972,19 @@ func _unhandled_input(event: InputEvent) -> void:
 					_cmd_arm_b = false
 					_toast("已取消全部指令")
 				elif take_over and Input.is_physical_key_pressed(KEY_X) and not finished:
-					## 【0.0.9·接管 X+C=主要符卡（新二 112）】随主要符卡数据实装（留位）
-					_toast("主要符卡未实装（随主要符卡数据④期+）")
+					## 【0.0.9·接管 X+C=主要符卡（新二 112）·m66 实装】
+					## 资源门：符卡装填(短兵起30s)+1符+100P
+					var tcm := player_leader
+					if tcm == null or tcm.dead:
+						pass
+					elif tcm.sit_cards == null or not tcm.sit_cards.spell_ready:
+						_toast("符卡装填中（短兵起 30s）")
+					elif tcm.spell_cards < 1:
+						_toast("符卡不足（需 1 张）")
+					elif tcm.pp < 100:
+						_toast("P 不足（需 100P）")
+					else:
+						_apply_release(tcm, "m")
 				elif take_over and not finished:
 					## 【0.0.9·接管 C=次要符卡（新二 112）】
 					var tcs := player_leader

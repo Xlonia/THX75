@@ -131,9 +131,9 @@ func on_released(kind: String) -> void:
 	if kind == "n":
 		skill_ready = false
 		skill_load_t = 0.0
-	elif kind == "s":
+	elif kind == "s" or kind == "m":
 		spell_ready = false
-		spell_load_t = 0.0
+		spell_load_t = 0.0 ## 【m66】主要符卡同样吃符卡装填（短兵起 30s）
 
 func _init() -> void:
 	## 【0.0.9·测试台确定性 20261109】种子取自全局 RNG（randi）——正常游戏

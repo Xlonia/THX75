@@ -338,6 +338,19 @@ func get_timeline_events(chara_name: String, slot: String, row: Dictionary = {})
 					out.append(ev)
 	return out
 
+## 【符卡事件化 20261114（m66）】第 idx 张符卡=spell_evs 列表第 idx 个时间轴
+## （时间轴名=符卡名；0.1s/tick、tick=弹幕事件名列表——与火力点模型同构）。
+## 返回 resolve 后的时间轴（未定义/越界=null）——战斗侧逐 tick 执行；
+## 数据侧现全空（待 scheme），运行时先行=数据到位即活。
+func get_spell_timeline(chara_name: String, idx: int = 0):
+	if _CDB == null:
+		return null
+	var row: Dictionary = _CDB.get_by_name(chara_name)
+	var names := String(row.get("spell_evs", "")).split(";", false)
+	if idx < 0 or idx >= names.size():
+		return null
+	return resolve_timeline(names[idx].strip_edges())
+
 ## 按时间轴名解析（工作集 → Mod → 官方）
 func resolve_timeline(tl_name: String):
 	for tl in editor_timelines:
