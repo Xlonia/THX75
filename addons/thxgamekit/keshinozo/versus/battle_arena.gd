@@ -804,7 +804,6 @@ func _spawn_drop(pos: Vector2, kind: String, amount: int, owner_side := -1) -> v
 		"kind": kind, "amount": amount, "frames": 1800, ## 30秒消失
 		"tex": _drop_tex.get(kind),
 		"owner": owner_side,        ## 掉落方 side（-1=双方可拾；>=0=该方禁拾仅对方可拣）
-		"grace": 30 if owner_side >= 0 else 0, ## 【m69】owner 掉落=1 秒拾取延迟
 	})
 
 ## 【早苗技能（策划；批复：神由态势卡自动选）】
@@ -822,10 +821,12 @@ func _sanae_skill() -> void:
 		## 神奈子：御柱弹（用 demo_missile 类弹模拟；伤害按剩余速度比）
 		var ev = GameGlobals.get_event("demo_missile")
 		if ev != null:
-			var b := Bullet.new()
-			b.setup(ev, sanae.position, 0, sanae, self, 0, {})
-			b.set_meta("onbashira", true)
-			bullets.append(b)
+			## 【m70 作者规格】50×10：以早苗为中心左右各 50px 范围内均匀发射 4+4 共 8 根
+			for i in 8:
+				var b := Bullet.new()
+				b.setup(ev, sanae.position + Vector2(lerpf(-50.0, 50.0, float(i) / 7.0), 0.0), 0, sanae, self, 0, {})
+				b.set_meta("onbashira", true)
+				bullets.append(b)
 	else:
 		## 诹访子：移动到 Ht 最低点（48 采样点中最低者）
 		var best := Vector2.ZERO
@@ -1241,32 +1242,26 @@ func _update_drops() -> void:
 			var sp := maxf(v.length() - 0.05, 0.0)
 			d["pos"] += v.normalized() * minf(v.length(), sp + 0.05) ## 先按当前速位移
 			d["vel"] = v.normalized() * sp
-		## 【m69】owner 掉落=1 秒拾取延迟（30Hz 计）：近战释放瞬间贴脸敌就在
-		## 拾取半径内、灰化符卡落地同拍被收走=作者两次实测"没出现"的根因——
-		## 先落稳可见（散落物理照常），1 秒后才允许吸附/收集
-		var grace := int(d.get("grace", 0))
-		if grace > 0:
-			d["grace"] = grace - 1
-		var can_pick := grace <= 0
 		## 【批复 2026-10-14】双方可拾 + 吸附：40px 内吸向最近角色，<10px 收集
+		## （【m70】m69 拾取延迟已按作者令回退）
 		var nearest: BattleEntity = null
 		var nd := 1e9
-		if can_pick:
-			for e in entities:
-				if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
-					if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
-						continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
-					if _res_banned(e):
-						continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
-					var dist: float = e.position.distance_to(d["pos"])
-					if dist < nd:
-						nd = dist
-						nearest = e
+		for e in entities:
+			if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
+				if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
+					continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
+				if _res_banned(e):
+					continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
+				var dist: float = e.position.distance_to(d["pos"])
+				if dist < nd:
+					nd = dist
+					nearest = e
 		var picked := false
 		if nearest != null and nd < 40.0:
 			var pull: Vector2 = (nearest.position - d["pos"]).normalized()
 			d["pos"] += pull * maxf(2.0, 12.0 - nd * 0.2)
 			if nd < 10.0:
+				print("[掉落·排查] 收集 kind=%s owner=%d by %s(side%d)" % [d["kind"], int(d.get("owner", -1)), nearest.chara_name(), nearest.side]) ## 【排查 m70·临时——定位后拆除】
 				if d["kind"] == "pp":
 					_redistribute_pp(nearest, d["amount"])
 				else:
@@ -1279,6 +1274,7 @@ func _update_drops() -> void:
 			drops.remove_at(i)
 		i -= 1
 func _grant_spell_ordered(side: int, n_cards: int) -> void:
+	print("[授予·排查] ordered side=%d n=%d" % [side, n_cards]) ## 【排查 m70·临时——定位后拆除】
 	var pool: Array = []
 	var ents: Array = player_ents if side == 0 else enemy_ents
 	for e in ents:
@@ -1293,6 +1289,7 @@ func _grant_spell_ordered(side: int, n_cards: int) -> void:
 		(pool[0] as BattleEntity).receive_spell()
 
 func _on_barrier_shattered(ent: BattleEntity) -> void:
+	print("[破阵·排查] %s 屏障碎→对侧+%d符" % [ent.chara_name(), SPELLS_ON_BARRIER_BREAK]) ## 【排查 m70·临时】
 	for i in SPELLS_ON_BARRIER_BREAK:
 		_grant_spell_random(1 - ent.side) ## 对方可接收角色+3符
 	if not ent.dead:
@@ -1317,6 +1314,7 @@ func _side_pp_hungry(side: int) -> Array:
 
 ## 对方可接收符卡角色随机其一 +1符（全满则无事发生——"溢出部分作为物品存储"未实装）
 func _grant_spell_random(side: int) -> void:
+	print("[授予·排查] random side=%d" % side) ## 【排查 m70·临时——定位后拆除】
 	var pool: Array = []
 	for e in entities:
 		if e is BattleEntity and e.side == side and e.can_receive_spell():
@@ -1342,6 +1340,7 @@ func _res_banned(ent: BattleEntity) -> bool:
 ## 一方掉落的资源不能被自己一方获取）；对方需实体到场拣取（最近敌有先机）
 func _on_main_spell_released(caster: BattleEntity) -> void:
 	_spawn_drop(caster.position, "spell", 0, caster.side)
+	print("[符卡m·排查] 掉落生成 owner=%d @ %s" % [caster.side, caster.position]) ## 【排查 m70·临时——定位后拆除】
 
 ## =============================================================
 ## 【符卡时间轴执行 20261114（m66·符卡与能力事件化①运行时）】
@@ -2394,7 +2393,10 @@ func _update_double_tap() -> void:
 					## 角色到该点直线方向=最强 APF 引力（压过其余一切引力斥力）；
 					## 被弹则直接撤离（见 _resolve_hits）
 					ssel.set_meta("retreating", true)
-					ssel.set_meta("retreat_target", _nearest_edge_point(ssel.position))
+					## 【m70 作者 20261115】撤离目标=S 期间点击点（一次一用）>支援框外最近点
+					var rtarget := _retreat_click if _retreat_click != Vector2.INF else _nearest_frame_exit_point(ssel.position)
+					_retreat_click = Vector2.INF
+					ssel.set_meta("retreat_target", rtarget)
 					_toast("%s 撤离活动开始（向最近边界点；被弹即撤离）" % ssel.chara_name())
 	else:
 		_hold_s = 0
@@ -3436,6 +3438,25 @@ func _side_priv_vacancy(side: int) -> int:
 	return maxi(0, chars * GameGlobals.versus_privates_per_char - alive - _priv_reserve_total(side))
 
 ## 【0.0.9·撤离活动】场内点→最近边界点（8px 内缘）
+## 【m70】撤离出框点：支援框=中心 350×350（新二 8/21）——退出须到框外，
+## 取当前位置到框边最短的出框点（框外 10px，钳制在场内）
+func _nearest_frame_exit_point(p: Vector2) -> Vector2:
+	var half := 175.0
+	var margin := 10.0
+	var dxl: float = p.x - (200.0 - half)
+	var dxr: float = (200.0 + half) - p.x
+	var dyt: float = p.y - (200.0 - half)
+	var dyb: float = (200.0 + half) - p.y
+	var m: float = minf(minf(dxl, dxr), minf(dyt, dyb))
+	if m > 0.0:
+		if m == dxl: return Vector2(maxf(8.0, 200.0 - half - margin), clampf(p.y, 8.0, 392.0))
+		if m == dxr: return Vector2(minf(392.0, 200.0 + half + margin), clampf(p.y, 8.0, 392.0))
+		if m == dyt: return Vector2(clampf(p.x, 8.0, 392.0), maxf(8.0, 200.0 - half - margin))
+		return Vector2(clampf(p.x, 8.0, 392.0), minf(392.0, 200.0 + half + margin))
+	return p
+
+var _retreat_click := Vector2.INF ## 【m70】S 期间点击的撤离出框点（INF=未设；一次一用）
+
 func _nearest_edge_point(p: Vector2) -> Vector2:
 	var cands := [Vector2(8.0, clampf(p.y, 8.0, 392.0)), Vector2(392.0, clampf(p.y, 8.0, 392.0)),
 		Vector2(clampf(p.x, 8.0, 392.0), 8.0), Vector2(clampf(p.x, 8.0, 392.0), 392.0)]
@@ -3845,6 +3866,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_wheel_cancel()
 			else:
 				_wheel_center_click = time_frames
+## 【m70 撤离点击点（作者 20261115）】长按 S 期间左键点战场=指定撤离出框点（一次一用）
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+			and Input.is_physical_key_pressed(KEY_S) and not Input.is_physical_key_pressed(KEY_SHIFT) 			and _hold_s > 0:
+		var srp: Vector2 = (get_global_mouse_position() - world.position) / world.scale.x
+		if srp.x >= 0 and srp.x <= 400 and srp.y >= 0 and srp.y <= 400:
+			_retreat_click = srp
+			_toast("撤离出框点已指定 %s（长按 S 结束时生效）" % srp.round())
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
 			and (_cmd_arm_b or _cmd_arm_g or Input.is_physical_key_pressed(KEY_E)):
 		var wp: Vector2 = (get_global_mouse_position() - world.position) / world.scale.x
