@@ -797,6 +797,7 @@ func _spawn_drop(pos: Vector2, kind: String, amount: int, owner_side := -1) -> v
 	if _drop_tex.is_empty():
 		_drop_tex["pp"] = load("res://gameAssetBase/shooting/resource/pp.PNG")
 		_drop_tex["spell"] = load("res://gameAssetBase/shooting/resource/spell.PNG")
+		_drop_tex["spell_gray"] = load("res://gameAssetBase/shooting/resource/spell_gray.PNG") ## 【m70 灰卡=对比度0符卡副本（独立资源，作者 20261115）】
 	var dir := Vector2.RIGHT.rotated(randf() * TAU)
 	drops.append({
 		"pos": pos,
@@ -1339,7 +1340,7 @@ func _res_banned(ent: BattleEntity) -> bool:
 ## **灰化符卡拾取物**（owner=释放方）——掉落方不可拾、仅对方可拣（语义补充：
 ## 一方掉落的资源不能被自己一方获取）；对方需实体到场拣取（最近敌有先机）
 func _on_main_spell_released(caster: BattleEntity) -> void:
-	_spawn_drop(caster.position, "spell", 0, caster.side)
+	_spawn_drop(caster.position, "spell_gray", 0, caster.side) ## 【m70】独立资源=对比度0符卡副本
 	print("[符卡m·排查] 掉落生成 owner=%d @ %s" % [caster.side, caster.position]) ## 【排查 m70·临时——定位后拆除】
 
 ## =============================================================
@@ -2219,6 +2220,11 @@ func _consume_pending_samples() -> void:
 ## 移动只在"完全接管"（Ctrl+Enter 进入，东方正作射击操作）下用方向键。
 func _player_input() -> void:
 	_update_double_tap()
+	## 【m70 取消指令】键盘双击（中键/右键双击在鼠标事件段）
+	if _double_pressed("ctrl", Input.is_physical_key_pressed(KEY_CTRL)):
+		_cancel_stance_cmds()
+	if _double_pressed("shift", Input.is_physical_key_pressed(KEY_SHIFT)):
+		_cancel_point_retreat()
 	## ——完全接管（东方正作射击操作；策划）——
 	## 【0.0.9·撤离活动】最强引力直奔边界点；被弹=直接撤离（_resolve_hits）
 	for r9 in entities:
@@ -2324,6 +2330,40 @@ var _phase2_reentered := false  ## 【重新进入短兵】（投降门：重返
 var _phase3_at := -1            ## 破阵起始帧
 var _phase3_loss0 := 0          ## 破阵起始累计杂兵损失（"再有5个杂兵损失"基准）
 var surrender_frames := 0
+## 【m70 取消指令（scheme 新二 135/作者 20261115）】双击 Ctrl/中键=取消姿态/冒进/防御；
+## 双击 Shift/右键=取消位置进攻/防御与撤退（0.4s=24 帧窗口）
+var _cancel_last := {}
+var _mmid_last := 0
+var _mright_last := 0
+func _double_pressed(id: String, held: bool) -> bool:
+	var was: bool = _cancel_last.get(id + "_h", false)
+	_cancel_last[id + "_h"] = held
+	if held and not was:
+		var last: int = int(_cancel_last.get(id, -999))
+		if time_frames - last <= 24:
+			_cancel_last[id] = -999
+			return true
+		_cancel_last[id] = time_frames
+	return false
+
+func _cancel_stance_cmds() -> void:
+	team_stance = ""
+	team_stance_frames = 0
+	_combo_frames = 0
+	_toast("已取消姿态/冒进/防御指令")
+
+func _cancel_point_retreat() -> void:
+	_cmd_arm_g = false
+	_cmd_arm_b = false
+	cmd_frames = 0
+	_cmd_frames_b = 0
+	var n := 0
+	for e9 in entities:
+		if e9 is BattleEntity and e9.get_meta("retreating", false):
+			e9.set_meta("retreating", false)
+			n += 1
+	_toast("已取消位置进攻/防御与撤退（撤回 %d 人）" % n)
+
 func _update_double_tap() -> void:
 	if team_stance != "":
 		team_stance_frames -= 1
@@ -2397,9 +2437,15 @@ func _update_double_tap() -> void:
 					var rtarget := _retreat_click if _retreat_click != Vector2.INF else _nearest_frame_exit_point(ssel.position)
 					_retreat_click = Vector2.INF
 					ssel.set_meta("retreat_target", rtarget)
-					_toast("%s 撤离活动开始（向最近边界点；被弹即撤离）" % ssel.chara_name())
+					_toast("%s 撤离活动开始（被弹即撤离）" % ssel.chara_name())
 	else:
 		_hold_s = 0
+	## 【m70 scheme 84 行】S+9/S+0=直接往撤退预设点退下（框内自动吸附框上）
+	if not take_over and not _priv_panel and not _wheel_open 			and Input.is_physical_key_pressed(KEY_S) and not Input.is_physical_key_pressed(KEY_SHIFT):
+		if Input.is_physical_key_pressed(KEY_9) and time_frames % 30 == 0:
+			_retreat_to_preset(0)
+		elif Input.is_physical_key_pressed(KEY_0) and time_frames % 30 == 0:
+			_retreat_to_preset(1)
 
 func _ai_sides() -> void:
 	## 【③期·双方同套 AI（作者批复：友方也加 AI，自走棋）】
@@ -3010,6 +3056,7 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
+				_spawn_drop(ent.position, "spell_gray", 0, ent.side) ## 【m70 作者裁定】一方角色释放符卡=灰卡掉落（泛指符卡——次级也掉）
 		"m":
 			## 【0.0.9·主要符卡实装 20261114（m66）】策划：1张+100P·全屏·5s 起步；
 			## 时长=符卡时间轴最后事件执行时刻（无时间轴=5s 占位）；
@@ -3457,6 +3504,19 @@ func _nearest_frame_exit_point(p: Vector2) -> Vector2:
 
 var _retreat_click := Vector2.INF ## 【m70】S 期间点击的撤离出框点（INF=未设；一次一用）
 
+## 【m70 撤退预设点（scheme 新二 84 行：设置中鼠标指定，对应 9/0 两键）】
+func _retreat_to_preset(idx: int) -> void:
+	var psel := picked_entity()
+	if psel == null or psel.side != 0 or psel.dead or psel.get_meta("retreating", false):
+		return
+	if phase < 4:
+		_toast("撤离仅限撤离阶段（第 4 阶段）")
+		return
+	var rp: Vector2 = GameGlobals.retreat_points[idx]
+	psel.set_meta("retreating", true)
+	psel.set_meta("retreat_target", _nearest_frame_exit_point(rp))
+	_toast("%s 撤退 → 预设点%s" % [psel.chara_name(), "9" if idx == 0 else "0"])
+
 func _nearest_edge_point(p: Vector2) -> Vector2:
 	var cands := [Vector2(8.0, clampf(p.y, 8.0, 392.0)), Vector2(392.0, clampf(p.y, 8.0, 392.0)),
 		Vector2(clampf(p.x, 8.0, 392.0), 8.0), Vector2(clampf(p.x, 8.0, 392.0), 392.0)]
@@ -3854,6 +3914,21 @@ func _unhandled_input(event: InputEvent) -> void:
 				_priv_panel = false
 				_toast("杂兵面板锁定（松开 Tab 重按解锁）")
 			_ml_last = time_frames
+	## 【m70 取消指令】中键双击=取消姿态/冒进/防御；右键双击=取消点位+撤退
+	## （0.4s 窗口；S 按住时右键=瞬间撤退，不进入双击计数）
+	if event is InputEventMouseButton and event.pressed and not _wheel_open:
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			if time_frames - _mmid_last <= 24:
+				_mmid_last = -999
+				_cancel_stance_cmds()
+			else:
+				_mmid_last = time_frames
+		elif event.button_index == MOUSE_BUTTON_RIGHT and not Input.is_physical_key_pressed(KEY_S):
+			if time_frames - _mright_last <= 24:
+				_mright_last = -999
+				_cancel_point_retreat()
+			else:
+				_mright_last = time_frames
 	## 【轮盘取消②③（作者 20261111）】右键=取消并锁键；左键双击中心（≤30px，
 	## 0.4 秒内两次）=取消并锁键——轮盘是环形的，中心区无候补=天然取消键
 	if _wheel_open and event is InputEventMouseButton and event.pressed:
@@ -3873,6 +3948,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if srp.x >= 0 and srp.x <= 400 and srp.y >= 0 and srp.y <= 400:
 			_retreat_click = srp
 			_toast("撤离出框点已指定 %s（长按 S 结束时生效）" % srp.round())
+	## 【m70 scheme 133】S+右键=瞬间发动能力直接撤退（撤离阶段）
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT 			and Input.is_physical_key_pressed(KEY_S) and not Input.is_physical_key_pressed(KEY_SHIFT) 			and _hold_s > 0 and phase >= 4 and not _wheel_open and not _priv_panel:
+		var sselr: BattleEntity = picked_entity()
+		if sselr != null and sselr.side == 0 and not sselr.dead:
+			_apply_release(sselr, "n") ## 瞬间发动能力（费用门照常）
+			sselr.set_meta("retreated", true)
+			sselr.dead = true
+			_toast("%s 瞬间发动能力并直接撤退" % sselr.chara_name())
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
 			and (_cmd_arm_b or _cmd_arm_g or Input.is_physical_key_pressed(KEY_E)):
 		var wp: Vector2 = (get_global_mouse_position() - world.position) / world.scale.x

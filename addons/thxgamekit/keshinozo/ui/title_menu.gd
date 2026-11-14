@@ -72,8 +72,9 @@ func _ready() -> void:
 		GameGlobals.save_default_archive()
 		print("[标题] 旧弹幕模式=%s（重启生效）" % str(on)))
 	add_child(legacy)
-	legacy.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	legacy.position.y -= 90
+	legacy.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	## 【m70 作者 20261115】与"设置"项重叠→移到版本号右斜上方
+	legacy.position = Vector2(350, -56)
 	## 版本注记
 	var foot := Label.new()
 	foot.text = "TH75 东方无欲拾食纪 v0.0.9 | Story/EX为占位（剧情待实装）"

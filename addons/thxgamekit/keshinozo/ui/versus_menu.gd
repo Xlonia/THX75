@@ -119,6 +119,9 @@ func _ready() -> void:
 	var pts_b := Button.new()
 	pts_b.text = "机控预设点设置（鼠标点选 4/5/6）"
 	pts_b.pressed.connect(_open_preset_points)
+	var ret_b := Button.new()
+	ret_b.text = "撤退预设点设置（鼠标点选 9/0）"
+	ret_b.pressed.connect(_open_retreat_points)
 	var keys_b := Button.new()
 	keys_b.text = "键位一览"
 	keys_b.pressed.connect(_show_key_bindings)
@@ -128,7 +131,7 @@ func _ready() -> void:
 	btn_grid.add_theme_constant_override("h_separation", 12)
 	btn_grid.add_theme_constant_override("v_separation", 6)
 	root.add_child(btn_grid)
-	for b2 in [done_b, pts_b, roster_b, probe_b, keys_b]:
+	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b]:
 		btn_grid.add_child(b2)
 		(b2 as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var go := Button.new()
@@ -451,6 +454,31 @@ func _open_preset_points() -> void:
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(tip)
 	var picker := PresetPointPicker.new()
+	picker.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.add_child(picker)
+	win.close_requested.connect(func(): win.queue_free())
+	win.position = (DisplayServer.window_get_position()
+		+ (DisplayServer.window_get_size() - sz) / 2)
+	get_tree().root.add_child(win)
+
+## 【m70 撤退预设点窗口（scheme 新二 84 行）】9/0 两槽（左键落点·右键换槽·自动存档）
+func _open_retreat_points() -> void:
+	var win := Window.new()
+	win.title = "撤退预设点（左键落点·右键换槽·自动存档）"
+	var sz := Vector2i(int(400 * RetreatPointPicker.SCALE) + 40, int(400 * RetreatPointPicker.SCALE) + 110)
+	win.size = sz
+	var root := VBoxContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 6)
+	win.add_child(root)
+	var tip := Label.new()
+	tip.text = "左键=把当前槽（金色）设到点击处，槽按 9→0 循环；右键=只换槽。
+决斗中：按住 S 后按 9/0 即往该点撤退；S+左键=临时点；S+右键=发动能力并直接撤退。
+撤退点语义上应在支援框（蓝框）外。"
+	tip.add_theme_font_size_override("font_size", 11)
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(tip)
+	var picker := RetreatPointPicker.new()
 	picker.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(picker)
 	win.close_requested.connect(func(): win.queue_free())

@@ -415,6 +415,8 @@ var contour_edge_px := 8
 ## 【0.0.9·机控预设点（新二 81 行）20261109】三个预设点（0-400 场地坐标），
 ## 设置界面配置、任意决斗可用；热键 4/5/6。临时点（新二 82）不入档（每场重置）。
 var preset_points: Array = [Vector2(100, 100), Vector2(300, 100), Vector2(200, 300)]
+## 【m70 撤退预设点（scheme 新二 84 行：9/0 两键）——默认=支援框外左右】
+var retreat_points: Array = [Vector2(30, 200), Vector2(370, 200)]
 ## 【0.0.9·增援空缺阈值（作者 20261109）】全队杂兵空缺累计达此值→为空缺最多的
 ## 两位角色补充；0=禁用。自定义对战默认 10；剧情开局 data 应置 0（防空放能力），
 ## 玩家修改入口待剧情特定事件 flag 开放（后续版本）
@@ -431,6 +433,7 @@ func save_default_archive() -> void:
 		"contour_edge_px": contour_edge_px,
 		"bullet_sample_n": bullet_sample_n,
 		"preset_points": _points_to_json(preset_points),
+		"retreat_points": _points_to_json(retreat_points),
 		"priv_reinforce_gap": priv_reinforce_gap,
 		## 【对战预设 20261114（计划书：角色对战逻辑预设可被玩家保存）】
 		"player_team": player_team_default,
@@ -485,6 +488,12 @@ func load_default_archive() -> void:
 			var qa: Array = q
 			pp2.append(Vector2(clampf(float(qa[0]), 0.0, 400.0), clampf(float(qa[1]), 0.0, 400.0)))
 		preset_points = pp2
+	if data is Dictionary and data.has("retreat_points") and (data["retreat_points"] as Array).size() == 2:
+		var rp2: Array = []
+		for q2 in data["retreat_points"]:
+			var ra2: Array = q2
+			rp2.append(Vector2(clampf(float(ra2[0]), 0.0, 400.0), clampf(float(ra2[1]), 0.0, 400.0)))
+		retreat_points = rp2
 
 ## 统一场景跳转
 func goto_scene(res_path: String) -> void:
