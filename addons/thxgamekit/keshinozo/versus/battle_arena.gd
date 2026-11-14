@@ -804,6 +804,7 @@ func _spawn_drop(pos: Vector2, kind: String, amount: int, owner_side := -1) -> v
 		"kind": kind, "amount": amount, "frames": 1800, ## 30秒消失
 		"tex": _drop_tex.get(kind),
 		"owner": owner_side,        ## 掉落方 side（-1=双方可拾；>=0=该方禁拾仅对方可拣）
+		"grace": 30 if owner_side >= 0 else 0, ## 【m69】owner 掉落=1 秒拾取延迟
 	})
 
 ## 【早苗技能（策划；批复：神由态势卡自动选）】
@@ -1240,19 +1241,27 @@ func _update_drops() -> void:
 			var sp := maxf(v.length() - 0.05, 0.0)
 			d["pos"] += v.normalized() * minf(v.length(), sp + 0.05) ## 先按当前速位移
 			d["vel"] = v.normalized() * sp
+		## 【m69】owner 掉落=1 秒拾取延迟（30Hz 计）：近战释放瞬间贴脸敌就在
+		## 拾取半径内、灰化符卡落地同拍被收走=作者两次实测"没出现"的根因——
+		## 先落稳可见（散落物理照常），1 秒后才允许吸附/收集
+		var grace := int(d.get("grace", 0))
+		if grace > 0:
+			d["grace"] = grace - 1
+		var can_pick := grace <= 0
 		## 【批复 2026-10-14】双方可拾 + 吸附：40px 内吸向最近角色，<10px 收集
 		var nearest: BattleEntity = null
 		var nd := 1e9
-		for e in entities:
-			if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
-				if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
-					continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
-				if _res_banned(e):
-					continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
-				var dist: float = e.position.distance_to(d["pos"])
-				if dist < nd:
-					nd = dist
-					nearest = e
+		if can_pick:
+			for e in entities:
+				if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
+					if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
+						continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
+					if _res_banned(e):
+						continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
+					var dist: float = e.position.distance_to(d["pos"])
+					if dist < nd:
+						nd = dist
+						nearest = e
 		var picked := false
 		if nearest != null and nd < 40.0:
 			var pull: Vector2 = (nearest.position - d["pos"]).normalized()
@@ -1269,8 +1278,6 @@ func _update_drops() -> void:
 		if picked or d["frames"] <= 0:
 			drops.remove_at(i)
 		i -= 1
-
-## 按队伍顺序给最缺符卡的角色发符（位置序=策划"接收顺序"）
 func _grant_spell_ordered(side: int, n_cards: int) -> void:
 	var pool: Array = []
 	var ents: Array = player_ents if side == 0 else enemy_ents
