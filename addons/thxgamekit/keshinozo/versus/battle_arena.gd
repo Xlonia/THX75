@@ -1262,7 +1262,6 @@ func _update_drops() -> void:
 			var pull: Vector2 = (nearest.position - d["pos"]).normalized()
 			d["pos"] += pull * maxf(2.0, 12.0 - nd * 0.2)
 			if nd < 10.0:
-				print("[掉落·排查] 收集 kind=%s owner=%d by %s(side%d)" % [d["kind"], int(d.get("owner", -1)), nearest.chara_name(), nearest.side]) ## 【排查 m70·临时——定位后拆除】
 				if d["kind"] == "pp":
 					_redistribute_pp(nearest, d["amount"])
 				else:
@@ -1275,7 +1274,6 @@ func _update_drops() -> void:
 			drops.remove_at(i)
 		i -= 1
 func _grant_spell_ordered(side: int, n_cards: int) -> void:
-	print("[授予·排查] ordered side=%d n=%d" % [side, n_cards]) ## 【排查 m70·临时——定位后拆除】
 	var pool: Array = []
 	var ents: Array = player_ents if side == 0 else enemy_ents
 	for e in ents:
@@ -1290,7 +1288,6 @@ func _grant_spell_ordered(side: int, n_cards: int) -> void:
 		(pool[0] as BattleEntity).receive_spell()
 
 func _on_barrier_shattered(ent: BattleEntity) -> void:
-	print("[破阵·排查] %s 屏障碎→对侧+%d符" % [ent.chara_name(), SPELLS_ON_BARRIER_BREAK]) ## 【排查 m70·临时】
 	for i in SPELLS_ON_BARRIER_BREAK:
 		_grant_spell_random(1 - ent.side) ## 对方可接收角色+3符
 	if not ent.dead:
@@ -1315,7 +1312,6 @@ func _side_pp_hungry(side: int) -> Array:
 
 ## 对方可接收符卡角色随机其一 +1符（全满则无事发生——"溢出部分作为物品存储"未实装）
 func _grant_spell_random(side: int) -> void:
-	print("[授予·排查] random side=%d" % side) ## 【排查 m70·临时——定位后拆除】
 	var pool: Array = []
 	for e in entities:
 		if e is BattleEntity and e.side == side and e.can_receive_spell():
@@ -1341,7 +1337,6 @@ func _res_banned(ent: BattleEntity) -> bool:
 ## 一方掉落的资源不能被自己一方获取）；对方需实体到场拣取（最近敌有先机）
 func _on_main_spell_released(caster: BattleEntity) -> void:
 	_spawn_drop(caster.position, "spell_gray", 0, caster.side) ## 【m70】独立资源=对比度0符卡副本
-	print("[符卡m·排查] 掉落生成 owner=%d @ %s" % [caster.side, caster.position]) ## 【排查 m70·临时——定位后拆除】
 
 ## =============================================================
 ## 【符卡时间轴执行 20261114（m66·符卡与能力事件化①运行时）】
@@ -2313,6 +2308,7 @@ var _priv_panel := false        ## 杂兵面板（Tab 按住呼出）
 var _priv_tab_lock := false     ## 【锁 tab（作者释）】双击面板外区域→本次按住 Tab 失效；松开重按解锁
 var _ml_last := 0               ## 左键双击检测
 var _priv_sel := -1             ## 面板内滚轮选取序号
+var _priv_hover := -1           ## 【m72】面板卡片悬停行（-1=无）
 var _cmd_arm_b := false         ## B 点防待命（G 同款架构）
 var _cmd_point_b := Vector2.ZERO
 var _cmd_frames_b := 0
@@ -5316,11 +5312,21 @@ func _draw_priv_panel(onto: CanvasItem) -> void:
 		return
 	_priv_sel = clampi(_priv_sel, 0, list.size() - 1)
 	onto.draw_rect(Rect2(8, 300, 170, 24 + list.size() * 18), Color(0.05, 0.07, 0.12, 0.85))
+	## 【m72 悬停（作者 20261115）】面板杂兵名单卡片悬停高亮（悬停底色+亮字，
+	## 与选中黄色区分；悬停行=鼠标所在 18px 行带）
+	var mpv: Vector2 = get_global_mouse_position()
+	_priv_hover = -1
+	for i in list.size():
+		if Rect2(8, 328 + i * 18, 170, 18).has_point(mpv):
+			_priv_hover = i
 	onto.draw_string(ThemeDB.fallback_font, Vector2(14, 320), "── 杂兵(Tab) S退下 D万岁 ──（预备%d）" % int(_priv_reserve.get(sel, 0)),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.9, 1.0))
 	for i in list.size():
 		var pv: BattleEntity = list[i]
 		var col := Color(1, 0.9, 0.4) if i == _priv_sel else Color(0.75, 0.8, 0.9)
+		if i == _priv_hover and i != _priv_sel:
+			onto.draw_rect(Rect2(8, 328 + i * 18, 170, 18), Color(0.22, 0.45, 0.34, 0.55)) ## 悬停底色
+			col = Color(0.5, 1.0, 0.7)
 		var tag: String = "▲万岁" if int(pv.get_meta("banzai", 0)) > 0 else ""
 		onto.draw_string(ThemeDB.fallback_font, Vector2(14, 340 + i * 18),
 			"%d. %s %s HP%d" % [i, pv.chara_name(), tag, pv.hp[0]],
