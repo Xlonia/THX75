@@ -9,7 +9,7 @@ func _run() -> void:
 	var ok := true
 	var has_thxkit := root != null and root.has_node("THXKit")
 	print("[edittab] 无 autoload 环境（THXKit 在场=%s）" % str(has_thxkit))
-	var sc: GDScript = load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/scenario_editor.gd")
+	var sc: GDScript = load("res://addons/thx_gamekit/editor/scenario_editor.gd") if ResourceLoader.exists("res://addons/thx_gamekit/editor/scenario_editor.gd") else load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/scenario_editor.gd")
 	if sc == null:
 		print("EDTTAB_FAIL: scenario_editor 载入失败")
 		quit(1)
