@@ -247,6 +247,11 @@ var _ht_sprite: Sprite2D = null
 
 func _ready() -> void:
 	is_preview = (GameGlobals.arena_mode == "preview")
+	## 【0.0.9·角色流程 m74（语义 20261117）】部署侧 progess.gd=已有保存的
+	## 逻辑（编辑器 tab 修补产物）并入注册表，覆盖同名原生预设
+	if FileAccess.file_exists("res://gameAssetBase/progess.gd"):
+		for fl in CharFlowData.parse_gd(FileAccess.get_file_as_string("res://gameAssetBase/progess.gd")):
+			THXKit.char_flows[fl.flow_name] = fl
 	var usable := float(DisplayServer.window_get_size().y) - float(HUD_RESERVE)
 	SCALE = maxf(1.0, floor(usable / float(LOGICAL)))
 	_init_gpu()
@@ -423,6 +428,7 @@ func _spawn_side(rows: Array, side: int, as_player_side: bool) -> void:
 		## 【修复 20261005】开局 P 点/符卡：选人界面设置的 versus_start_pp 之前
 		## 从未赋给实体（作者报告"无论设置多少开局都是 0"的根因）
 		ent.pp = GameGlobals.versus_start_pp
+		ent.spell_cards = GameGlobals.versus_start_spell ## 【m74 作者 20261116】开局符卡个数
 		## 【批复 20261024/20261025d】自定义对战中每角色配置：逻辑列表（三步向导）/资源
 		var ccfg: Dictionary = GameGlobals.versus_chara_cfg.get(ent.chara_name(), {})
 		if not ccfg.is_empty():
@@ -1348,6 +1354,70 @@ func _on_main_spell_released(caster: BattleEntity) -> void:
 ## 新钩位（发射时/被消弹时/被击破时/被弹时）——届时只增钩子不改本框架。
 ## =============================================================
 var _spell_runs: Array = [] ## {ent, tl, start_frame, tick}
+
+## 【m74 角色流程执行器】按施放者位置+敌对侧选择器执行流程步骤
+## （reflex/inverse 首批——内核 BulletOps 纯函数；每步一次执行）
+func _run_char_flow(ent: BattleEntity, flow_name: String) -> void:
+	var flow: CharFlowData = THXKit.resolve_flow(flow_name)
+	if flow == null:
+		_toast("角色流程不存在：%s（morerule/progess 未定义）" % flow_name)
+		return
+	for st in flow.steps:
+		var sel: Dictionary = (st["sel"] as Dictionary).duplicate()
+		sel["side"] = 1 - ent.side ## 施放者敌对侧（文档 sel 不含 side）
+		var list: Array = BulletOps.select(bullets, ent.position, sel)
+		if list.is_empty():
+			continue
+		var done := 0
+		match String(st["op"]):
+			"reflex":
+				done = BulletOps.reflex(list)
+			"inverse":
+				var iev := _find_event(String(st["ev"]))
+				if iev != null:
+					done = BulletOps.inverse(list, iev)
+			"inversep":
+				## 【m74 scheme 989】弹幕实体替换为特定弹幕事件起点：
+				## 原弹按消弹纪律销毁（不入池）+新事件以当前位置为起点
+				var iev2 := _find_event(String(st["ev"]))
+				if iev2 != null:
+					for bl in list:
+						var pb: Bullet = bl
+						if not is_instance_valid(pb) or not pb.alive:
+							continue
+						var at: Vector2 = pb.pos
+						mh_release(pb)
+						pb.ev = null
+						pb.alive = false
+						bullets.erase(pb)
+						_spawn_event_copies(iev2, at, ent, null, {}, 0)
+						done += 1
+			"revolt":
+				## 【m74 scheme 997】发射者改为选择器1（=施放者 self），目标瞄准
+				## 选择器2（敌对侧随机角色）：冻结指向（C++ 兼容语义）
+				var cands: Array = []
+				for e10 in entities:
+					if e10 is BattleEntity and e10.side == 1 - ent.side and not e10.dead 							and e10.kind != BattleEntity.Kind.PRIVATE:
+						cands.append(e10)
+				var tgt: BattleEntity = cands[randi() % cands.size()] if cands.size() > 0 else null
+				for bl in list:
+					var pb2: Bullet = bl
+					if not is_instance_valid(pb2) or not pb2.alive:
+						continue
+					pb2.source_side = ent.side
+					if tgt != null:
+						pb2.frozen_speed = pb2.cur_speed()
+						pb2.frozen_dir = (tgt.position - pb2.pos).normalized()
+						pb2.frozen_ok = true
+						pb2._w_frozen_dir = Vector2.ZERO
+					done += 1
+			"inheritdamage":
+				var dev := _find_event(String(st["ev"]))
+				if dev != null:
+					done = BulletOps.inherit_damage(list, dev)
+		if done > 0:
+			print("[角色流程] %s %s → %d 弹" % [flow_name, st["op"], done])
+	_toast("角色流程 %s 执行（%s）" % [flow_name, flow.owner])
 var _spell_idx := {} ## 实体 instance_id→下一次释放的符卡序号（轮放）
 
 func _spell_timeline_run(ent: BattleEntity) -> float:
@@ -1359,6 +1429,9 @@ func _spell_timeline_run(ent: BattleEntity) -> float:
 		return 0.0 ## 无符卡时间轴=纯消弹域（调用方 5s 兜底）
 	ent.set_meta("spell_announce", String(tl.tl_name))
 	_spell_runs.append({"ent": ent, "tl": tl, "start_frame": time_frames, "tick": -1})
+	## 【m74 角色触发器（作者 20261116）】符卡启动流程（时间轴绑定，一次性）
+	if tl.flow_start != "":
+		_run_char_flow(ent, tl.flow_start)
 	return float(tl.ticks.keys().max()) * 0.1 + 0.1 ## 最后事件执行时刻（秒）
 
 ## 符卡时间轴逐 tick 推进（_physics_process 每帧调用；0.1s/tick=6 帧）
@@ -1380,8 +1453,16 @@ func _spell_runs_tick() -> void:
 		if tick <= int(run["tick"]):
 			continue
 		run["tick"] = tick
+		## 【m74 角色触发器】每事件帧流程（0.1s/事件帧=符卡每 tick）
+		if tl.flow_every != "":
+			_run_char_flow(ent, tl.flow_every)
 		for ev_name in tl.ticks.get(tick, []):
-			var ev := _find_event(String(ev_name).strip_edges())
+			var nm := String(ev_name).strip_edges()
+			## 【m74 角色流程】时间轴条目 flow:<流程名> = 执行该流程（非弹幕事件）
+			if nm.begins_with("flow:"):
+				_run_char_flow(ent, nm.trim_prefix("flow:"))
+				continue
+			var ev := _find_event(nm)
 			if ev != null:
 				_spawn_event_copies(ev, ent.position, ent, null, {}, 0)
 

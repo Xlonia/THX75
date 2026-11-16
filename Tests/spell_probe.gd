@@ -28,6 +28,7 @@ func _ready() -> void:
 	_run_a()
 	_run_b()
 	_run_c()
+	_run_d()
 func _fail(msg: String) -> void:
 	_fails += 1
 	print("SPELL_FAIL: ", msg)
@@ -122,6 +123,61 @@ func _enemy_spell_sum() -> int:
 		if e is BattleEntity and e.side == 1 and not e.dead:
 			s += int(e.spell_cards)
 	return s
+## D：m74 角色流程执行器（inversep 销毁+重生成 / revolt 策反+冻结指向）
+## 【引用纪律】不跨破坏性操作持有 Bullet 引用——以 instance_id 对
+## arena.bullets 成员断言
+func _run_d() -> void:
+	var pl = arena.player_leader
+	if pl == null:
+		return
+	var evd: DanmakuEventData = arena._find_event("demo_aimed")
+	if evd == null:
+		_fail("D 前置：无 demo_aimed")
+		return
+	var esrc: BattleEntity = null
+	for e in arena.entities:
+		if e is BattleEntity and e.side == 1 and not e.dead:
+			esrc = e
+			break
+	if esrc == null:
+		_fail("D 前置：无敌方实体")
+		return
+	var ids1: Array = []
+	for i in 3:
+		var eb := Bullet.new()
+		eb.setup(evd, pl.position + Vector2(24 + i * 14.0, 0), 1, esrc, arena, 0)
+		arena.bullets.append(eb)
+		ids1.append(eb.get_instance_id())
+	var flow := CharFlowData.new()
+	flow.flow_name = "probe_fl"
+	flow.steps = [{"op": "inversep", "sel": {"shape": "circle", "r": 90.0}, "ev": "demo_aimed", "every": 0}]
+	THXKit.char_flows["probe_fl"] = flow
+	arena._run_char_flow(pl, "probe_fl")
+	var remain := 0
+	for bl in arena.bullets:
+		if bl is Bullet and bl.alive and bl.get_instance_id() in ids1:
+			remain += 1
+	if remain != 0:
+		_fail("inversep 后种子弹仍存活在场（%d/3）" % remain)
+	if arena.bullets.size() < 3:
+		_fail("inversep 未生成新事件弹")
+	var ids2: Array = []
+	for i in 3:
+		var eb2 := Bullet.new()
+		eb2.setup(evd, pl.position + Vector2(24 + i * 14.0, 60.0), 1, esrc, arena, 0)
+		arena.bullets.append(eb2)
+		ids2.append(eb2.get_instance_id())
+	var flow2 := CharFlowData.new()
+	flow2.flow_name = "probe_revolt"
+	flow2.steps = [{"op": "revolt", "sel": {"shape": "circle", "r": 90.0}, "ev": "", "every": 0}]
+	THXKit.char_flows["probe_revolt"] = flow2
+	arena._run_char_flow(pl, "probe_revolt")
+	var conv := 0
+	for bl in arena.bullets:
+		if bl is Bullet and bl.alive and bl.get_instance_id() in ids2 and bl.source_side == 0 and bl.frozen_ok:
+			conv += 1
+	if conv != 3:
+		_fail("revolt 未策反（%d/3）" % conv)
 func _enemy_can_receive() -> bool:
 	for e in arena.entities:
 		if e is BattleEntity and e.side == 1 and not e.dead and e.can_receive_spell():

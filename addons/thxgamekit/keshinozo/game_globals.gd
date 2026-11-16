@@ -73,6 +73,7 @@ var ai_slow_debug := false ## 我方角色名列表（空=默认队伍）
 var versus_enemy_team: Array = []  ## 敌方角色名列表（空=默认队伍）
 var versus_privates_per_char := 5  ## 每角色杂兵数（demo 5×5）
 var versus_start_pp := 100        ## 决斗开始 P 点（作者批复#7：默认100）
+var versus_start_spell := 1       ## 【m74 作者 20261116】决斗开始符卡个数
 var versus_volley := "rotate"     ## "rotate"=轮射 / "salvo"=齐射
 var arena_mode := "versus"        ## "versus" / "preview"
 

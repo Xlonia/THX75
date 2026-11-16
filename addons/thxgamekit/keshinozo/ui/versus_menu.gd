@@ -8,6 +8,7 @@ extends Control
 var player_picks: Array[OptionButton] = []
 var enemy_picks: Array[OptionButton] = []
 var pp_spin: SpinBox
+var spell_spin: SpinBox ## 【m74 作者 20261116】开局符卡个数
 var volley_pick: OptionButton
 var _stress_check: CheckBox
 var _no_surr_check: CheckBox ## 【m67】拒不投降（本场双方投降禁用）
@@ -71,6 +72,11 @@ func _ready() -> void:
 	pp_spin.max_value = 500
 	pp_spin.value = GameGlobals.versus_start_pp
 	_add_labeled(cfg, "开局P点", pp_spin)
+	spell_spin = SpinBox.new()
+	spell_spin.min_value = 0
+	spell_spin.max_value = 10
+	spell_spin.value = GameGlobals.versus_start_spell
+	_add_labeled(cfg, "开局符卡", spell_spin)
 	## 【0.0.9·弹幕采样平滑（作者设计）】按性能手动开：每 N 帧算一次位置+中间帧平滑
 	var sample_pick := OptionButton.new()
 	for it in ["关闭（逐帧运算）", "每 2 帧采样", "每 3 帧采样", "每 4 帧采样", "每 5 帧采样"]:
@@ -416,6 +422,7 @@ func _on_start() -> void:
 	GameGlobals.versus_player_name = pteam[0]
 	GameGlobals.versus_enemy_name = eteam[0]
 	GameGlobals.versus_start_pp = int(pp_spin.value)
+	GameGlobals.versus_start_spell = int(spell_spin.value) ## 【m74】开局符卡个数
 	GameGlobals.versus_volley = "rotate" if volley_pick.selected == 0 else "salvo"
 	GameGlobals.bullet_sample_n = 1 + _sample_pick.selected ## 0=关（1）、2/3/4/5
 	GameGlobals.contour_edge_px = 8 * (_edge_pick.selected + 1) ## 8/16/24/32
