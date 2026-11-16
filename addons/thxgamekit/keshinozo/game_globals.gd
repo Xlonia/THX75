@@ -82,7 +82,9 @@ var editor_events: Array = [] ## 编辑器当前事件列表（@tool 化：强�
 var editor_textures: Dictionary = {}            ## 材质名 -> PackedByteArray（导入的材质）
 var editor_timelines: Array = []
 var mod_timelines: Dictionary = {}    ## mod 时间轴注册表（名→TimelineData）
-var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→TimelineData）                ## Array（能力/符卡时间轴，②期）
+var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→TimelineData）
+## 【m77 符卡】编辑器工作集（SpellData 列表——编辑器进程经 shim 共享）
+var editor_spells: Array = []                ## Array（能力/符卡时间轴，②期）
 var preview_event_name := ""                    ## 试炼场要发射的事件名
 
 func _ready() -> void:

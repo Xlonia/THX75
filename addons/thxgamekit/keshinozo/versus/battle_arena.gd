@@ -1353,86 +1353,177 @@ func _on_main_spell_released(caster: BattleEntity) -> void:
 ## ②预埋（作者问询 20261114）：反弹/就近消弹/亡计/被弹=本运行时的四个
 ## 新钩位（发射时/被消弹时/被击破时/被弹时）——届时只增钩子不改本框架。
 ## =============================================================
-var _spell_runs: Array = [] ## {ent, tl, start_frame, tick}
+var _spell_runs: Array = [] ## {ent, tl, start_frame, tick, svg, r, steps_tick}
+## 【m75 事件帧流程载体】非时间轴挂载（n 档能力等）：每事件帧执行 steps_tick
+var _flow_runs: Array = [] ## {ent, r, until, steps_tick, svg}
+var _spell_idx := {} ## 实体 instance_id→下一次释放的符卡序号（轮放）
 
 ## 【m74 角色流程执行器】按施放者位置+敌对侧选择器执行流程步骤
 ## （reflex/inverse 首批——内核 BulletOps 纯函数；每步一次执行）
+## 【m74 角色流程执行器】命名流程入口（morerule/progess 注册表）
 func _run_char_flow(ent: BattleEntity, flow_name: String) -> void:
 	var flow: CharFlowData = THXKit.resolve_flow(flow_name)
 	if flow == null:
 		_toast("角色流程不存在：%s（morerule/progess 未定义）" % flow_name)
 		return
 	for st in flow.steps:
-		var sel: Dictionary = (st["sel"] as Dictionary).duplicate()
-		sel["side"] = 1 - ent.side ## 施放者敌对侧（文档 sel 不含 side）
-		var list: Array = BulletOps.select(bullets, ent.position, sel)
-		if list.is_empty():
-			continue
-		var done := 0
-		match String(st["op"]):
-			"reflex":
-				done = BulletOps.reflex(list)
-			"inverse":
-				var iev := _find_event(String(st["ev"]))
-				if iev != null:
-					done = BulletOps.inverse(list, iev)
-			"inversep":
-				## 【m74 scheme 989】弹幕实体替换为特定弹幕事件起点：
-				## 原弹按消弹纪律销毁（不入池）+新事件以当前位置为起点
-				var iev2 := _find_event(String(st["ev"]))
-				if iev2 != null:
-					for bl in list:
-						var pb: Bullet = bl
-						if not is_instance_valid(pb) or not pb.alive:
-							continue
-						var at: Vector2 = pb.pos
-						mh_release(pb)
-						pb.ev = null
-						pb.alive = false
-						bullets.erase(pb)
-						_spawn_event_copies(iev2, at, ent, null, {}, 0)
-						done += 1
-			"revolt":
-				## 【m74 scheme 997】发射者改为选择器1（=施放者 self），目标瞄准
-				## 选择器2（敌对侧随机角色）：冻结指向（C++ 兼容语义）
-				var cands: Array = []
-				for e10 in entities:
-					if e10 is BattleEntity and e10.side == 1 - ent.side and not e10.dead 							and e10.kind != BattleEntity.Kind.PRIVATE:
-						cands.append(e10)
-				var tgt: BattleEntity = cands[randi() % cands.size()] if cands.size() > 0 else null
-				for bl in list:
-					var pb2: Bullet = bl
-					if not is_instance_valid(pb2) or not pb2.alive:
-						continue
-					pb2.source_side = ent.side
-					if tgt != null:
-						pb2.frozen_speed = pb2.cur_speed()
-						pb2.frozen_dir = (tgt.position - pb2.pos).normalized()
-						pb2.frozen_ok = true
-						pb2._w_frozen_dir = Vector2.ZERO
-					done += 1
-			"inheritdamage":
-				var dev := _find_event(String(st["ev"]))
-				if dev != null:
-					done = BulletOps.inherit_damage(list, dev)
-		if done > 0:
-			print("[角色流程] %s %s → %d 弹" % [flow_name, st["op"], done])
+		_exec_flow_step(ent, st, {})
 	_toast("角色流程 %s 执行（%s）" % [flow_name, flow.owner])
-var _spell_idx := {} ## 实体 instance_id→下一次释放的符卡序号（轮放）
 
-func _spell_timeline_run(ent: BattleEntity) -> float:
+## 【m75 步骤执行器（统一 op 分发——命名流程/伪节点图/古典挂载共用）】
+## run=符卡运行上下文（svg 注册表/r 半径；非符卡载体传 {}）
+func _exec_flow_step(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
+	var op := String(st.get("op", ""))
+	var params := String(st.get("params", ""))
+	match op:
+		"svgresign":
+			## 【scheme 1114】注册矢量图形（空=默认圆形），存活至符卡结束；
+			## 可作为选择器/消弹域——旧消弹机制的规范化形态
+			var r: float = float(run.get("r", 80.0))
+			run["svg"] = {"shape": "circle", "r": r, "no": int(_kv(params).get("序号", 0))}
+		"clean":
+			## 【作者 20261117】每事件帧消弹：svg 范围内敌方弹幕清除（10Hz）
+			var svgd: Dictionary = run.get("svg") if run.get("svg") is Dictionary else {}
+			var cr: float = float(svgd.get("r", float(run.get("r", 80.0))))
+			if cr <= 0.0:
+				cr = 80.0
+			_apply_clean(ent, cr)
+			_run_sel_op(ent, st, run) ## params 带 sel:/ev: 时续走选择器操作
+		"reflex", "inverse", "inversep", "revolt", "inheritdamage":
+			_run_sel_op(ent, st, run)
+		_:
+			pass
+
+## 参数文本框解析（键=值 对）
+func _kv(params: String) -> Dictionary:
+	var out := {}
+	for kv in params.split(","):
+		var pp := kv.split("=")
+		if pp.size() == 2:
+			out[pp[0].strip_edges()] = pp[1].strip_edges()
+	return out
+
+## clean：范围内敌方弹幕清除（消弹纪律不入池）+DDM/热区清+可视圆再武装
+func _apply_clean(ent: BattleEntity, r: float) -> void:
+	ent.clear_radius = maxf(ent.clear_radius, r)
+	ent.clear_frames = maxi(ent.clear_frames, 8) ## 可视圆维持（事件帧节拍再武装）
+	_clear_bullets_around(ent)
+
+## 选择器系操作（params 含 sel:/ev: 时解析，否则默认圆形=注册图形半径）
+func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
+	var op := String(st.get("op", ""))
+	var params := String(st.get("params", ""))
+	var sel: Dictionary = {}
+	var ev_name := String(st.get("ev", ""))
+	if params.contains("sel:") or params.contains("ev:"):
+		var ps := CharFlowData.parse_step(op + " | " + params)
+		sel = ps.get("sel", {})
+		if ev_name == "":
+			ev_name = String(ps.get("ev", ""))
+	if sel.is_empty():
+		sel = {"shape": "circle", "r": float(run.get("svg", {}).get("r", float(run.get("r", 120.0))))}
+	sel["side"] = 1 - ent.side ## 施放者敌对侧（文档 sel 不含 side）
+	var list: Array = BulletOps.select(bullets, ent.position, sel)
+	if list.is_empty():
+		return
+	var done := 0
+	match op:
+		"reflex":
+			done = BulletOps.reflex(list)
+		"inverse":
+			var iev := _find_event(ev_name)
+			if iev != null:
+				done = BulletOps.inverse(list, iev)
+		"inversep":
+			## 【scheme 989】弹幕实体替换为特定弹幕事件起点：
+			## 原弹按消弹纪律销毁（不入池）+新事件以当前位置为起点
+			var iev2 := _find_event(ev_name)
+			if iev2 != null:
+				for bl in list:
+					var pb: Bullet = bl
+					if not is_instance_valid(pb) or not pb.alive:
+						continue
+					var at: Vector2 = pb.pos
+					mh_release(pb)
+					pb.ev = null
+					pb.alive = false
+					bullets.erase(pb)
+					_spawn_event_copies(iev2, at, ent, null, {}, 0)
+					done += 1
+		"revolt":
+			## 【scheme 997】发射者改为选择器1（=施放者 self），目标瞄准
+			## 选择器2（敌对侧随机角色）：冻结指向（C++ 兼容语义）
+			var cands: Array = []
+			for e10 in entities:
+				if e10 is BattleEntity and e10.side == 1 - ent.side and not e10.dead and e10.kind != BattleEntity.Kind.PRIVATE:
+					cands.append(e10)
+			var tgt: BattleEntity = cands[randi() % cands.size()] if cands.size() > 0 else null
+			for bl in list:
+				var pb2: Bullet = bl
+				if not is_instance_valid(pb2) or not pb2.alive:
+					continue
+				pb2.source_side = ent.side
+				if tgt != null:
+					pb2.frozen_speed = pb2.cur_speed()
+					pb2.frozen_dir = (tgt.position - pb2.pos).normalized()
+					pb2.frozen_ok = true
+					pb2._w_frozen_dir = Vector2.ZERO
+				done += 1
+		"inheritdamage":
+			var dev := _find_event(ev_name)
+			if dev != null:
+				done = BulletOps.inherit_damage(list, dev)
+	if done > 0:
+		print("[角色流程] %s → %d 弹" % [op, done])
+func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
+	## tier_r=该档消弹半径（n80/s200/m500——svgresign 注册与 clean 用）
 	var idx := int(_spell_idx.get(ent.get_instance_id(), 0))
 	_spell_idx[ent.get_instance_id()] = idx + 1
 	var tl = GameGlobals.get_spell_timeline(ent.chara_name(), idx)
 	if tl == null or tl.ticks.is_empty():
+		## 无符卡时间轴=古典流程仍挂载（作者 20261117 规范化——svgresign+clean）
+		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
+			"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 		ent.set_meta("spell_announce", "")
-		return 0.0 ## 无符卡时间轴=纯消弹域（调用方 5s 兜底）
+		return 0.0
 	ent.set_meta("spell_announce", String(tl.tl_name))
-	_spell_runs.append({"ent": ent, "tl": tl, "start_frame": time_frames, "tick": -1})
+	## 【m77 符卡数据】解析符卡定义（编辑器工作集 → 内核 spell.csv 注册表）
+	var sp: SpellData = null
+	for esp in GameGlobals.editor_spells:
+		if esp is SpellData and esp.spell_name == tl.tl_name:
+			sp = esp
+			break
+	if sp == null:
+		sp = THXKit.resolve_spell(tl.tl_name)
+	_spell_runs.append({"ent": ent, "tl": tl, "start_frame": time_frames, "tick": -1,
+		"svg": {}, "r": tier_r, "spell": sp, "steps_tick": tl.steps_tick})
 	## 【m74 角色触发器（作者 20261116）】符卡启动流程（时间轴绑定，一次性）
 	if tl.flow_start != "":
 		_run_char_flow(ent, tl.flow_start)
+	var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
+	## 【m77 触发器优先级】符卡定义（spell.csv/编辑器）> 时间轴步骤 > 古典默认
+	if sp != null:
+		for st in sp.steps_start:
+			_exec_flow_step(ent, st, run0)
+		if sp.steps_tick.size() > 0:
+			run0["steps_tick"] = sp.steps_tick
+	## 【m75 古典流程挂载（作者 20261117）】spellstart=svgresign(,0)+
+	## spelltick=clean(,inspellrange)——消弹圆的规范化形态
+	_exec_flow_step(ent, {"op": "svgresign", "arg": "", "params": "序号=0"}, run0)
+	if tl.steps_tick.is_empty() and run0["steps_tick"].is_empty():
+		run0["steps_tick"] = [{"op": "clean", "arg": "", "params": "inspellrange"}]
 	return float(tl.ticks.keys().max()) * 0.1 + 0.1 ## 最后事件执行时刻（秒）
+
+## 【m77 spellfin】符卡结束流程（时长尽/时间轴播完/施放者死亡）
+func _exec_spellfin(run: Dictionary) -> void:
+	var sp: SpellData = run.get("spell")
+	if sp == null or sp.steps_fin.is_empty():
+		return
+	var ent: BattleEntity = run.get("ent")
+	if ent == null or not is_instance_valid(ent):
+		return
+	for st in sp.steps_fin:
+		_exec_flow_step(ent, st, run)
 
 ## 符卡时间轴逐 tick 推进（_physics_process 每帧调用；0.1s/tick=6 帧）
 func _spell_runs_tick() -> void:
@@ -1442,12 +1533,21 @@ func _spell_runs_tick() -> void:
 		var run: Dictionary = _spell_runs[i]
 		var ent: BattleEntity = run["ent"]
 		if ent == null or not is_instance_valid(ent) or ent.dead:
-			_spell_runs.remove_at(i) ## 释放者死亡=符卡中断
+			_exec_spellfin(run) ## 【m77】施放者死亡=符卡结束（中断流程照走）
+			_spell_runs.remove_at(i)
 			continue
 		var tl = run["tl"]
 		var last_tick := int(tl.ticks.keys().max())
 		var tick := int(time_frames - int(run["start_frame"])) / 6
-		if tick > last_tick:
+		## 【m77】生命周期分离：until_frame（m_span 消弹期）> 时间轴末帧——
+		## 时间轴事件播完即止，clean 步骤按 until_frame 续跑
+		if run.has("until_frame"):
+			if time_frames > int(run["until_frame"]):
+				_exec_spellfin(run) ## 【m77】符卡结束流程
+				_spell_runs.remove_at(i) ## 消弹期结束
+				continue
+		elif tick > last_tick:
+			_exec_spellfin(run) ## 【m77】符卡结束流程
 			_spell_runs.remove_at(i) ## 时间轴执行完毕
 			continue
 		if tick <= int(run["tick"]):
@@ -1456,6 +1556,11 @@ func _spell_runs_tick() -> void:
 		## 【m74 角色触发器】每事件帧流程（0.1s/事件帧=符卡每 tick）
 		if tl.flow_every != "":
 			_run_char_flow(ent, tl.flow_every)
+		## 【m75 伪节点图】每事件帧步骤（clean 等——每 6 帧=0.1s/事件帧）
+		for st in run.get("steps_tick", []):
+			_exec_flow_step(ent, st, run)
+		if tick > last_tick:
+			continue ## 时间轴事件已播完——步骤（clean）续跑到 until_frame
 		for ev_name in tl.ticks.get(tick, []):
 			var nm := String(ev_name).strip_edges()
 			## 【m74 角色流程】时间轴条目 flow:<流程名> = 执行该流程（非弹幕事件）
@@ -1465,6 +1570,21 @@ func _spell_runs_tick() -> void:
 			var ev := _find_event(nm)
 			if ev != null:
 				_spawn_event_copies(ev, ent.position, ent, null, {}, 0)
+
+## 【m75 事件帧流程载体 tick】n 档能力等非时间轴挂载：每事件帧（6 帧）执行
+func _flow_runs_tick() -> void:
+	if _flow_runs.is_empty():
+		return
+	for i in range(_flow_runs.size() - 1, -1, -1):
+		var run: Dictionary = _flow_runs[i]
+		var ent: BattleEntity = run["ent"]
+		if ent == null or not is_instance_valid(ent) or ent.dead or time_frames > int(run["until"]):
+			_flow_runs.remove_at(i) ## 到期/释放者死亡=载体结束
+			continue
+		if time_frames % 6 != 0:
+			continue ## 事件帧节拍（0.1s）
+		for st in run.get("steps_tick", []):
+			_exec_flow_step(ent, st, run)
 
 ## 试炼场发射器：每 0.5s 从顶部随机 x 发射当前编辑事件
 var preview_emit_interval := 0.5 ## 【可变探针】试炼场自动发射间隔（秒；emit= 启动参数可改）
@@ -1770,6 +1890,7 @@ func _physics_process(delta: float) -> void:
 		_player_input()
 		_ai_sides()
 		_spell_runs_tick() ## 【m66】主要符卡时间轴逐 tick 执行
+		_flow_runs_tick() ## 【m75】事件帧流程载体（n 档等）
 		if is_preview:
 			_preview_emitter(delta)
 			_preview_controls() ## 【批复 20261024】预览可控：方向键移动玩家
@@ -3119,7 +3240,10 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 			if ent.pp >= 25:
 				ent.pp -= 25
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 扣费后剩余P定时长
-				ent.apply_clear(80.0, clear_sec)
+				## 【m77】apply_clear 撤除（30Hz 域同步撤）——clean 载体全权负责
+				_flow_runs.append({"ent": ent, "r": 80.0,
+					"until": time_frames + int(clear_sec * 60.0),
+					"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
@@ -3128,7 +3252,10 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击（新二 245）
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
-				ent.apply_clear(200.0, clear_sec)
+				## 【m77】apply_clear 撤除（同上）
+				_flow_runs.append({"ent": ent, "r": 200.0,
+					"until": time_frames + int(clear_sec * 60.0),
+					"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 				ent.set_meta("released_kind", "s")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
@@ -3142,8 +3269,10 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
 				ent.spell_cards -= 1
 				ent.pp -= 100
-				var m_span: float = maxf(_spell_timeline_run(ent), 5.0)
-				ent.apply_clear(500.0, m_span)
+				var m_span: float = maxf(_spell_timeline_run(ent, 500.0), 5.0) ## 【m75】主符卡档半径 500
+				if _spell_runs.size() > 0:
+					_spell_runs[_spell_runs.size() - 1]["until_frame"] = time_frames + int(m_span * 60.0)
+				## 【m77】apply_clear 撤除（同上）——主符卡 clean 载体按 m_span 走
 				ent.set_meta("released_kind", "m")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
@@ -3396,11 +3525,9 @@ func _resolve_hits() -> void:
 			continue
 		if ent.immune_frames > 0:
 			continue ## 0.5秒减免：角色不参与所有DDM（作者批复）
-		if ent.clear_active():
-			## 【批复 2026-10-13】屏蔽改消除：范围内敌方弹幕持续消除（消弹特效）
-			## （消退计数在 _physics_process 主帧频——本函数 30Hz+免疫跳过，
-			## 在此递减会拖慢消退且免疫期暂停）
-			_clear_bullets_around(ent)
+		## 【m77 作者裁定 20261117】30Hz 持续消弹域撤除（调试干扰）——消弹
+		## 唯一路径=clean 流程（每事件帧 10Hz，见 _apply_clean）；本函数
+		## 保留被弹结算。旧版回溯=git 历史 m76 及以前。
 		## 【0.0.9·恢复 20261109】被弹结算主体——第五十二轮回退语义改动时 Edit
 		## 旧串匹配误删（约 55 行，角色完全不受伤）；从 battle_arena_20261109i
 		## 原样恢复（去掉已随抑制方案撤除的 clear_zone_reset 段）
