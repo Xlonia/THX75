@@ -1501,13 +1501,19 @@ func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
 	if tl.flow_start != "":
 		_run_char_flow(ent, tl.flow_start)
 	var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
-	## 【m78 作者裁定】古典默认已删——符卡定义（spell.csv/编辑器工作集）为
-	## 触发器流程的唯一来源；无定义=无流程（消弹等由数据驱动）
+	## 【m82 滞留修复（作者 20261117 弹数异常排查）】回退式挂载：
+	## 有符卡定义=严格按定义（m78 裁定保留）；**无定义=回退古典
+	## svgresign+clean**（m79 全删曾致释放后零消弹=1400+弹滞留真凶——
+	## 角色们尚无 spell.csv 数据，消弹断供）
 	if sp != null:
 		for st in sp.steps_start:
 			_exec_flow_step(ent, st, run0)
 		if sp.steps_tick.size() > 0:
 			run0["steps_tick"] = sp.steps_tick
+	else:
+		_exec_flow_step(ent, {"op": "svgresign", "arg": "", "params": "序号=0"}, run0)
+		if run0["steps_tick"].is_empty():
+			run0["steps_tick"] = [{"op": "clean", "arg": "", "params": "inspellrange"}]
 	return float(tl.ticks.keys().max()) * 0.1 + 0.1 ## 最后事件执行时刻（秒）
 
 ## 【m77 spellfin】符卡结束流程（时长尽/时间轴播完/施放者死亡）
