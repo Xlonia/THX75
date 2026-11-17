@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Tests/suppress_probe.gd" id="1_sup"]
+
+[node name="SuppressProbe" type="Node"]
+script = ExtResource("1_sup")

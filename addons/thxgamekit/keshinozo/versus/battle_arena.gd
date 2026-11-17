@@ -18,6 +18,10 @@ extends Node2D
 const LOGICAL := 400
 const HUD_RESERVE := 110
 const MAX_BULLETS := 8000 ## 性能护栏（超出批量驱逐最旧；0.0.9 C++ 化后性能余量提升）
+## 【m84 方案C（作者裁定 20261117）】弹幕阈值：总在场弹数≥此值时，高重复类
+## （repeat_freq>0）非豁免事件出生即"存活/重复减半"（_spawn_bullet 挂钩）。
+## 豁免=事件级 suppress_exempt（编辑器勾选框）。目标把峰值从 1400 压回 800 内。
+var bullet_suppress_at := 800
 
 var SCALE := 2.0
 var time_frames := 0
@@ -3871,6 +3875,14 @@ func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: Battl
 	b.pinned_dir = pinned
 	b.t_event = event_t
 	b.setup(ev, origin, src.side, src, self, depth, ctx, shared_target, shared_txy, setup_sp, setup_rp)
+	## 【m84 方案C（作者裁定 20261117：峰值打压护栏）】弹场过阈值时高重复类
+	## 非豁免弹幕出生即减半存活/重复——只影响新生弹（在场弹不突变=无视觉跳变）；
+	## 折半值取事件 compile() 预备档案（常量缓存/表达式一次乘法兜底）。
+	## 治本在数据侧重调（demo 数据为 repeat 语义修订前调校），此为运行时保底。
+	if bullets.size() >= bullet_suppress_at and not ev.suppress_exempt and (ev.sup_class or b.repeat_freq_now > 0):
+		var hr: float = ev.sup_half_range if ev.sup_half_range >= 0.0 else b.range_now * 0.5
+		b.range_now = maxf(hr, 30.0)
+		b.repeat_freq_now = ev.sup_half_freq if ev.sup_half_freq >= 0 else (b.repeat_freq_now >> 1)
 	b.spawn_src = src_tag ## 【谱系追踪】出生路径标签
 	b.tex_slot = _ddm_tex_slot(b.tex)
 	if b.tex_slot > 0:
@@ -4685,6 +4697,29 @@ func _refresh_hud() -> void:
 		fps_label.text = "FPS %.1f
 弹幕 %d(%d)" % [_fps_measured, _bullet_visible, bullets.size()]
 		fps_label.modulate = Color(1, 0.35, 0.3) if _fps_measured < 59.8 else Color(0.8, 1, 0.8)
+		## 【m84 幽灵弹构成分解（作者 20261117：计数常驻~2000 vs 志愿者截图
+		## 单方≤500）】弹数过 600 时加一行构成：我方/敌方 + 隐(pass)/场外/激光。
+		## 要点：我方法弹按方案一恒定灰白 α0.125 渲染——"渲染了但人眼数不到"，
+		## 我/敌两侧数一眼分清"多余的弹去哪了"。阈下零开销（不触发不扫描）。
+		if bullets.size() >= 600:
+			var s0 := 0
+			var s1 := 0
+			var hid := 0
+			var off := 0
+			var las := 0
+			for b2 in bullets:
+				var bl2: Bullet = b2
+				if bl2.source_side == 0:
+					s0 += 1
+				else:
+					s1 += 1
+				if bl2.ev.tag == DanmakuEventData.TAG_LASER:
+					las += 1
+				elif bl2.hidden_now:
+					hid += 1
+				elif not _in_field(bl2.pos):
+					off += 1
+			fps_label.text += "\n我%d 敌%d 隐%d 外%d 激%d" % [s0, s1, hid, off, las]
 	## 【批复】<20 帧：自动暂停并解释；玩家继续后本场不再自动暂停
 	## 【修复 2026-10-13】暖机豁免：启动期着色器编译的帧率骤降不触发自动暂停
 	## ——此前开局即冻结（tf 卡在 66）正是该误触发：作者看到的"弹幕原地消失"
