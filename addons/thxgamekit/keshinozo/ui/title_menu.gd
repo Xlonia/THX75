@@ -82,16 +82,16 @@ func _ready() -> void:
 	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	foot.position.y -= 30
 	add_child(foot)
-	## 【m79 内窗口调试（作者 20261117）】版本号上方的调试子窗口入口——
-	## 编辑器进程 --log-file 落盘，内嵌窗口轮询继承报错与消息
-	var dbg_b := Button.new()
-	dbg_b.text = "测试：内窗口调试"
-	dbg_b.focus_mode = Control.FOCUS_NONE
-	dbg_b.add_theme_font_size_override("font_size", 12)
-	dbg_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	dbg_b.position = Vector2(340, -58)
-	dbg_b.pressed.connect(_open_console_tail)
-	add_child(dbg_b)
+	## 【m81 作者 20261117】内窗口调试仅限编辑调试器环境（导出版不显示）
+	if OS.has_feature("editor"):
+		var dbg_b := Button.new()
+		dbg_b.text = "测试：内窗口调试"
+		dbg_b.focus_mode = Control.FOCUS_NONE
+		dbg_b.add_theme_font_size_override("font_size", 12)
+		dbg_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		dbg_b.position = Vector2(340, -58)
+		dbg_b.pressed.connect(_open_console_tail)
+		add_child(dbg_b)
 	## 【0.0.9·完成度一览（作者 20261109 要求④）】标题左下入口（复用 versus_menu 弹窗）
 	var done_b := Button.new()
 	done_b.text = "完成度一览"
@@ -145,7 +145,11 @@ func _on_menu(id: String) -> void:
 		"settings":
 			_open_settings()
 		"editor":
-			_open_editor_process()
+			## 【m81 作者 20261117】Shift+左键=内窗口启动；普通=独立进程
+			if Input.is_physical_key_pressed(KEY_SHIFT):
+				_open_editor_embedded()
+			else:
+				_open_editor_process()
 
 ## 【m68 设置（作者 20261114）】覆盖层面板（非场景切换——空转专案教训）；
 ## 键位改键+默认设置，持久化 user://keybinds.cfg（settings_menu.gd 实现）
@@ -164,6 +168,27 @@ func _open_settings() -> void:
 ## 为什么必须独立进程：同进程子窗口里的编辑器退出链会把宿主进程一起带走
 ## （get_tree().quit 语义），且子窗口 X 按钮=无保存提问直接销毁。
 ## 标题进程常驻不受影响=零空转；编辑器进程退出=关窗。保留 .bat 同路径。
+## 【m81 Shift+左键】编辑器=内窗口启动（同进程可拖动子窗口——调试环境，
+## 报错/消息直接出现在标题进程控制台；普通左键=独立进程）
+var _editor_embedded: Window = null
+func _open_editor_embedded() -> void:
+	if _editor_embedded != null and is_instance_valid(_editor_embedded):
+		_editor_embedded.grab_focus()
+		return
+	get_tree().root.gui_embed_subwindows = true
+	var w: Window = Window.new()
+	w.title = "THX075 弹幕编辑器（内窗口）"
+	w.size = Vector2i(1280, 800)
+	w.position = Vector2i(80, 60)
+	var ed: Control = (load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/danmaku_editor.gd") as GDScript).new()
+	ed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	w.add_child(ed)
+	w.close_requested.connect(func():
+		_editor_embedded = null
+		w.queue_free())
+	add_child(w)
+	_editor_embedded = w
+
 func _open_editor_process() -> void:
 	var godot_exe := OS.get_executable_path()
 	var project_dir := ProjectSettings.globalize_path("res://")
