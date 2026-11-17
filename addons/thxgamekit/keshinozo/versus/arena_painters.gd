@@ -7,9 +7,14 @@ extends Node2D
 var host: Node2D = null
 var draw_kind := "bullets"
 
+var last_draw_us := 0 ## 【m79 渲染侧性能】最近一次 _draw 耗时（µs——真窗口探针读）
+var draw_avg_us := 0.0
+var draw_n := 0
+
 func _draw() -> void:
 	if host == null:
 		return
+	var t0 := Time.get_ticks_usec()
 	match draw_kind:
 		"entities":
 			host.draw_entities(self)
@@ -21,6 +26,9 @@ func _draw() -> void:
 			host.draw_ddm_debug(self)
 		"contour":
 			host.draw_contour_lines(self) ## 【0.0.9·等高面】
+	last_draw_us = Time.get_ticks_usec() - t0
+	draw_avg_us = (draw_avg_us * draw_n + last_draw_us) / float(draw_n + 1)
+	draw_n += 1
 
 var _redraw_acc := 0
 func _physics_process(_delta: float) -> void:

@@ -50,8 +50,7 @@ func _run_a() -> void:
 		_fail("符卡未扣减（=%d）" % int(pl.spell_cards))
 	if int(pl.pp) != 0:
 		_fail("P 未扣减（=%d）" % int(pl.pp))
-	if pl.clear_radius <= 0.0:
-		_fail("全屏消弹域未生效")
+	## 【m77】消弹域=clean 流程首个事件帧武装（同步检查改为第 7 帧断言）
 	if pl.sit_cards.spell_ready:
 		_fail("装填未复位")
 	var para := false
@@ -196,6 +195,8 @@ func _process(_d: float) -> void:
 				alive = true
 		if not alive:
 			_fail("owner 掉落被掉落方角色拾取（禁拾规则失效）")
+	if _step == 7 and _pl != null and _pl.clear_radius <= 0.0:
+		_fail("全屏消弹域未在首个事件帧武装（clean 未执行）")
 	if _step == 380 and _pl != null and _pl.clear_radius != 0.0:
 		_fail("消弹域未消退（m68 修复失效——clear_frames 递减未生效）")
 	if _step == 90 and int(_run_dict.get("tick", -1)) >= 1:

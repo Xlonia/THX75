@@ -82,6 +82,16 @@ func _ready() -> void:
 	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	foot.position.y -= 30
 	add_child(foot)
+	## 【m79 内窗口调试（作者 20261117）】版本号上方的调试子窗口入口——
+	## 编辑器进程 --log-file 落盘，内嵌窗口轮询继承报错与消息
+	var dbg_b := Button.new()
+	dbg_b.text = "测试：内窗口调试"
+	dbg_b.focus_mode = Control.FOCUS_NONE
+	dbg_b.add_theme_font_size_override("font_size", 12)
+	dbg_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	dbg_b.position = Vector2(340, -58)
+	dbg_b.pressed.connect(_open_console_tail)
+	add_child(dbg_b)
 	## 【0.0.9·完成度一览（作者 20261109 要求④）】标题左下入口（复用 versus_menu 弹窗）
 	var done_b := Button.new()
 	done_b.text = "完成度一览"
@@ -110,6 +120,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_X, KEY_ESCAPE:
 				## 标题无上级可退——最小化提示（防误关）；未来主菜单→设定等层级用于返回
 				pass
+
+var _console_tail: Window = null ## 【m79】内窗口调试（编辑器日志继承）
+
+func _open_console_tail() -> void:
+	if _console_tail != null and is_instance_valid(_console_tail):
+		_console_tail.grab_focus()
+		return
+	get_tree().root.gui_embed_subwindows = true ## 内嵌=可拖动子窗口形态
+	var w: Window = load("res://addons/thxgamekit/kit/addons/thx_gamekit/editor/console_tail.gd").new()
+	w.log_path = ProjectSettings.globalize_path("user://thx_gamekit/editor_console.log")
+	w.position = Vector2i(120, 120)
+	add_child(w)
+	_console_tail = w
 
 func _on_menu(id: String) -> void:
 	match id:
@@ -145,8 +168,14 @@ func _open_editor_process() -> void:
 	var godot_exe := OS.get_executable_path()
 	var project_dir := ProjectSettings.globalize_path("res://")
 	var args := PackedStringArray(["--path", project_dir, "res://scenes/danmaku_editor.tscn"])
+	## 【m79 内窗口调试（作者 20261117）】编辑器进程控制台/报错落盘——
+	## 标题画面的「内窗口调试」轮询该文件继承全部消息与报错
+	var log_abs := ProjectSettings.globalize_path("user://thx_gamekit/editor_console.log")
+	DirAccess.make_dir_recursive_absolute(log_abs.get_base_dir())
+	args.append("--log-file")
+	args.append(log_abs)
 	var pid := OS.create_process(godot_exe, args)
 	if pid > 0:
-		print("[标题] 编辑器独立进程已启动 pid=%d" % pid)
+		print("[标题] 编辑器独立进程已启动 pid=%d（日志=%s）" % [pid, ProjectSettings.globalize_path("user://thx_gamekit/editor_console.log")])
 	else:
 		push_error("[标题] 编辑器独立进程启动失败")
