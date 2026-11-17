@@ -393,19 +393,23 @@ func _release_point(p: FirePoint) -> void:
 ## 【类型批复 20261019】rate/pattern 允许算式/命题——门时刻按火力点上下文求值
 func _gate(ev: DanmakuEventData, p: FirePoint = null) -> bool:
 	var ctx := {"field_t": 0.0, "field_phase": 1.0, "t": 0.0, "t_copy": 0.0, "t_r": 0.0,
-		"rate_roll": 0.0, "pattern_roll": 0.0, "rotate_id": 0.0, "r0": 0.0, "r1": 0.0, "n": 0.0}
+		"rate_roll": 0.0, "pattern_roll": 0.0, "rotate_id": 0.0, "r0": 0.0, "r1": 0.0, "n": 0.0,
+		"self_hitcool": 0.0}
 	if p != null:
 		if p.ctx != null:
 			for k in ["wpcs", "to_c", "main_lr", "sub_lr"]:
 				ctx[k] = float(p.ctx.get(k, 0))
-		if p.entity != null:
-			ctx["field_t"] = float(p.entity.get_meta("arena_time_sec", 0.0)) * 60.0
-			ctx["field_phase"] = float(p.entity.get_meta("arena_phase", 1))
-			ctx["self_x"] = p.entity.position.x
-			ctx["self_y"] = p.entity.position.y
-			ctx["self_ap"] = float(p.entity.ap)
-			ctx["self_pp"] = float(p.entity.pp)
-			ctx["self_normal"] = float(p.entity.normal_speed())
+			if p.entity != null:
+				ctx["field_t"] = float(p.entity.get_meta("arena_time_sec", 0.0)) * 60.0
+				ctx["field_phase"] = float(p.entity.get_meta("arena_phase", 1))
+				ctx["self_x"] = p.entity.position.x
+				ctx["self_y"] = p.entity.position.y
+				ctx["self_ap"] = float(p.entity.ap)
+				ctx["self_pp"] = float(p.entity.pp)
+				ctx["self_normal"] = float(p.entity.normal_speed())
+				## 【m88 被弹弹设】被弹冷却标记（rate/pattern 表达式可引用——
+				## "在被弹冷却时发射此类弹幕会赋予特别的效果"）
+				ctx["self_hitcool"] = 1.0 if p.entity.immune_frames > 0 else 0.0
 			## 【批复 20261019④】事件所有求值处经 get 系取状态——门上下文同样
 			## 注入目标快照（gettarget(x)→target_x 翻译链可见）
 			var arena := p.entity.get_parent()

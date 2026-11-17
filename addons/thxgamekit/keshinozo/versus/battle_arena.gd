@@ -1772,7 +1772,12 @@ func _rot_eval_ctx(src: BattleEntity, point, event_t: float = 0.0) -> Dictionary
 		"friendly_privates_collapse": 0.0, "friendly_chara_collapes": 0.0,
 		"enemy_privates_collapse": 0.0, "enemy_chara_collapes": 0.0,
 		"field_privates_collapse": 0.0, "field_chara_collapes": 0.0,
-		"self_x": origin.x, "self_y": origin.y}
+		"self_x": origin.x, "self_y": origin.y,
+		## 【m88 被弹弹设】被弹冷却标记（0/1——"在被弹冷却时发射此类弹幕会
+		## 赋予特别的效果"；作者 20261118：可用 get 类运算直接解决=暴露 ctx）
+		"self_hitcool": 0.0}
+	if src != null:
+		c["self_hitcool"] = 1.0 if src.immune_frames > 0 else 0.0
 	if point != null and point.ctx != null:
 		for k in ["wpcs", "to_c", "main_lr", "sub_lr"]:
 			c[k] = float(point.ctx.get(k, 0))
@@ -1823,7 +1828,7 @@ func _spawn_event_copies(ev: DanmakuEventData, origin: Vector2, src: BattleEntit
 			var pin: Vector2 = anchor_base if (ev.tag == DanmakuEventData.TAG_REGULAR and anchor_base != Vector2.ZERO) else Vector2.ZERO
 			if delay_step <= 0 or si == 0:
 				var b: Bullet = _spawn_rotated_copy(ev, origin, src, point, ang, rid, rolls, gen, carrier_left, pin,
-					event_t, shared_target, shared_txy, sp, rp, src_tag)
+					event_t, shared_target, shared_txy, sp, rp, src_tag, rctx) ## 【m88】hook_ctx 透传（就近消弹表达式求值）
 				if si == 0 and b != null and ev.tag == DanmakuEventData.TAG_REGULAR and anchor_base == Vector2.ZERO:
 					anchor_base = b.dir.rotated(-ang)
 					fired_any = b
@@ -1849,8 +1854,9 @@ func _spawn_event_copies(ev: DanmakuEventData, origin: Vector2, src: BattleEntit
 func _spawn_rotated_copy(ev: DanmakuEventData, origin: Vector2, src: BattleEntity, point,
 		ang: float, rid: int, rolls: Dictionary, gen: int, carrier: bool, pinned: Vector2 = Vector2.ZERO,
 		event_t := 0.0, shared_target: BattleEntity = null, shared_txy: Vector2 = Vector2.INF,
-		setup_sp: Dictionary = {}, setup_rp: Dictionary = {}, src_tag: String = "fire") -> Bullet:
-	var b := _spawn_bullet(ev, origin, gen, src, point, ang, rid, rolls, pinned, event_t, shared_target, shared_txy, setup_sp, setup_rp, src_tag)
+		setup_sp: Dictionary = {}, setup_rp: Dictionary = {}, src_tag: String = "fire",
+		hook_ctx: Dictionary = {}) -> Bullet:
+	var b := _spawn_bullet(ev, origin, gen, src, point, ang, rid, rolls, pinned, event_t, shared_target, shared_txy, setup_sp, setup_rp, src_tag, hook_ctx)
 	if b == null:
 		return null
 	if not carrier:
@@ -3265,6 +3271,7 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 		var ddx: float = bl.pos.x - qx
 		var ddy: float = bl.pos.y - qy
 		if ddx * ddx + ddy * ddy <= rr2:
+			_on_bullet_died(bl) ## 【m88 亡计弹设】被消弹=被迫消弹照走
 			## 【0.0.9·回收风暴修复 20261107】remove_at O(n) 搬迁——大规模消弹/
 			## 到期潮时 O(n²)（几百弹同帧回收=数十万次数组移动/帧）。
 			## 三处回收均倒序遍历→swap-remove O(1) 安全（换上来的尾段已处理）
@@ -3363,6 +3370,7 @@ func _clear_bullets_around(ent: BattleEntity) -> void:
 		var dx: float = bl.pos.x - px
 		var dy: float = bl.pos.y - py
 		if dx * dx + dy * dy <= r2:
+			_on_bullet_died(bl) ## 【m88 亡计弹设】被消弹域清除=被迫消弹照走
 			bullets[i] = bullets[bullets.size() - 1] ## 【回收风暴修复】swap-remove
 			bullets.pop_back()
 			_cleared_count += 1
@@ -3476,6 +3484,7 @@ func _bullet_updates(dt: float) -> void:
 			else:
 				alive_now = b.update(dt) ## 非 frozen：逐帧原运算（完全脱离采样）
 		if not alive_now:
+			_on_bullet_died(b) ## 【m88 亡计弹设】自然死亡（航程尽/出界销毁）照走
 			bullets[i] = bullets[bullets.size() - 1] ## 【回收风暴修复】swap-remove
 			bullets.pop_back()
 			_expired_count += 1
@@ -3884,7 +3893,8 @@ func mh_release(b: Bullet) -> void:
 func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: BattleEntity, point = null,
 		rot := 0.0, rid := 0, rolls: Dictionary = {}, pinned := Vector2.ZERO, event_t := 0.0,
 		shared_target: BattleEntity = null, shared_txy: Vector2 = Vector2.INF,
-		setup_sp: Dictionary = {}, setup_rp: Dictionary = {}, src_tag: String = "fire") -> Bullet:
+		setup_sp: Dictionary = {}, setup_rp: Dictionary = {}, src_tag: String = "fire",
+		hook_ctx: Dictionary = {}) -> Bullet:
 	if ev == null or depth > Bullet.MAX_DEPTH:
 		return null
 	## 【0.0.9·池满策略】满仓时批量驱逐最旧弹（每次腾 64 位），避免
@@ -3924,6 +3934,14 @@ func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: Battl
 	b.pinned_dir = pinned
 	b.t_event = event_t
 	b.setup(ev, origin, src.side, src, self, depth, ctx, shared_target, shared_txy, setup_sp, setup_rp)
+	## 【m88 特殊弹设四钩（0.0.9 计划书：反弹/就近消弹/亡计/被弹——m66 钩位
+	## 只增不改）】发射时钩：就近消弹（每段发射都触发）+反弹弹设（仅首发
+	## depth==0——防转化链）。被弹冷却=ctx 变量 self_hitcool（表达式侧使用）
+	var nc: int = ev.eval_nearclear(hook_ctx)
+	if nc > 0:
+		_special_nearclear(src.side, origin, float(nc))
+	if depth == 0 and ev.spawn_conv.strip_edges() != "":
+		_special_spawn_conv(origin, ev.spawn_conv, src)
 	## 【m84 方案C（作者裁定 20261117：峰值打压护栏）】弹场过阈值时高重复类
 	## 非豁免弹幕出生即减半存活/重复——只影响新生弹（在场弹不突变=无视觉跳变）；
 	## 折半值取事件 compile() 预备档案（常量缓存/表达式一次乘法兜底）。
@@ -3938,6 +3956,74 @@ func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: Battl
 		_upload_ddm_tex(b.tex_slot, b.tex)
 	bullets.append(b)
 	return b
+
+## 【m88 就近消弹】发射点近旁敌对弹清除（消弹纪律销毁不入池；亡计照走）
+func _special_nearclear(side: int, at: Vector2, r: float) -> void:
+	var r2: float = r * r
+	for ci in range(bullets.size() - 1, -1, -1):
+		var bl: Bullet = bullets[ci]
+		if bl.hidden_now or bl.source_side == side:
+			continue
+		var dx: float = bl.pos.x - at.x
+		var dy: float = bl.pos.y - at.y
+		if dx * dx + dy * dy <= r2:
+			_on_bullet_died(bl)
+			mh_release(bl)
+			bl.ev = null
+			bullets[ci] = bullets[bullets.size() - 1]
+			bullets.pop_back()
+
+## 【m88 反弹弹设】发射点近旁敌对弹转化为指定事件弹（转化位置=初始点、
+## 归属=发射者——"化为自己的弹幕+位置为初始点应用一个运动公式"；
+## gen=1 不再触发转化钩=防链式无限）
+func _special_spawn_conv(at: Vector2, spec: String, src: BattleEntity) -> void:
+	var parts := spec.split(",")
+	var cnev := _find_event(parts[0].strip_edges())
+	if cnev == null:
+		return
+	var r: float = float(parts[1].strip_edges()) if parts.size() >= 2 else 60.0
+	var r2: float = r * r
+	var fside: int = src.side if src != null else 0
+	for ci in range(bullets.size() - 1, -1, -1):
+		var bl: Bullet = bullets[ci]
+		if bl.hidden_now or bl.source_side == fside:
+			continue
+		var dx: float = bl.pos.x - at.x
+		var dy: float = bl.pos.y - at.y
+		if dx * dx + dy * dy <= r2:
+			var at2: Vector2 = bl.pos
+			_on_bullet_died(bl)
+			mh_release(bl)
+			bl.ev = null
+			bullets[ci] = bullets[bullets.size() - 1]
+			bullets.pop_back()
+			if src != null and not src.dead:
+				_spawn_event_copies(cnev, at2, src, null, {}, 1)
+
+## 【m88 亡计弹设】弹幕死亡（航程尽/出界销毁/被消弹）→ 原位释放 death_evs
+## （depth+1 防链式无限；释放者=原弹发射者，已死则同侧替补——杂兵被击破
+## 诅咒语义=发射者死了也要放）
+func _on_bullet_died(bl: Bullet) -> void:
+	if bl.ev == null:
+		return
+	var des: String = bl.ev.death_evs.strip_edges()
+	if des == "":
+		return
+	var at: Vector2 = bl.pos
+	var src = bl.source
+	if src == null or not is_instance_valid(src) or src.dead:
+		src = _fallback_side_ent(bl.source_side)
+	for nm in des.split(";", false):
+		var dev := _find_event(nm.strip_edges())
+		if dev != null and src != null and bl.depth + 1 <= Bullet.MAX_DEPTH:
+			_spawn_event_copies(dev, at, src, null, {}, bl.depth + 1)
+
+## 【m88】同侧存活替补（亡计释放源；无=返回 null 跳过）
+func _fallback_side_ent(side: int) -> BattleEntity:
+	for e in entities:
+		if e is BattleEntity and e.side == side and not e.dead:
+			return e
+	return null
 
 func spawn_event_by_name(event_name: String, at: Vector2, side: int, depth: int) -> void:
 	var ev := _find_event(event_name)
