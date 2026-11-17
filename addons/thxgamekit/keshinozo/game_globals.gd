@@ -85,6 +85,7 @@ var mod_timelines: Dictionary = {}    ## mod 时间轴注册表（名→Timeline
 var official_timelines: Dictionary = {} ## 官方时间轴注册表（名→TimelineData）
 ## 【m77 符卡】编辑器工作集（SpellData 列表——编辑器进程经 shim 共享）
 var editor_spells: Array = []                ## Array（能力/符卡时间轴，②期）
+var editor_clips: Array = []                 ## 【m86 片段】编辑器工作集（ClipData 列表——解析序=工作集>THXKit.clips）
 var preview_event_name := ""                    ## 试炼场要发射的事件名
 
 func _ready() -> void:
@@ -303,9 +304,9 @@ func get_slot_events(owner_name: String, slot: String, row: Dictionary = {}) -> 
 		var ev_name: String = nm.strip_edges()
 		if ev_name == "":
 			continue
-		## 【m85 片段化】槽位引用可为片段名（THXKit.clips 注册表展开其事件，
-		## 升 tick 平铺）或旧直引事件名（向后兼容）
-		var cdc = THXKit.clips.get(ev_name)
+		## 【m85 片段化】【m86 解析序=工作集>注册表】槽位引用可为片段名
+		## （展开其事件，升 tick 平铺）或旧直引事件名（向后兼容）
+		var cdc = _resolve_clip_any(ev_name)
 		if cdc != null:
 			for ent in cdc.flat_entries():
 				var ev_c = resolve_event_by_name(ent["name"])
@@ -332,7 +333,7 @@ func get_slot_entries(owner_name: String, slot: String, row: Dictionary = {}) ->
 		var ref: String = nm.strip_edges()
 		if ref == "":
 			continue
-		var cde = THXKit.clips.get(ref)
+		var cde = _resolve_clip_any(ref)
 		if cde != null:
 			for ent in cde.flat_entries():
 				var ev_c = resolve_event_by_name(ent["name"])
@@ -343,6 +344,13 @@ func get_slot_entries(owner_name: String, slot: String, row: Dictionary = {}) ->
 		if ev != null:
 			out.append({"tick": 0, "ev": ev})
 	return out
+
+## 【m86 片段引用统一解析】工作集（编辑器实时）→ THXKit.clips 注册表
+func _resolve_clip_any(ref: String):
+	for cd in editor_clips:
+		if cd is ClipData and cd.clip_name == ref:
+			return cd
+	return THXKit.clips.get(ref)
 
 ## 按事件名解析（编辑器工作集 → Mod → 官方）
 func resolve_event_by_name(ev_name: String):

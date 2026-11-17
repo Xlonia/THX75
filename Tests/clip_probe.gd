@@ -101,3 +101,16 @@ func _run_all() -> void:
 		_fail("G 齐射应放（不考虑 pattern）")
 	ev_s.pattern = old_pat
 	ev_s.pattern_specified = old_spec
+	## H. 宿主工作集解析优先（m86）：GameGlobals.editor_clips 同名片段压过注册表
+	var ws := ClipData.new()
+	ws.clip_name = "clip_ReisenA_main_demo_aimed"
+	ws.length_ticks = 99
+	ws.ticks = {0: ["demo_aimed"], 2: ["demo_aimed"]}
+	GameGlobals.editor_clips = [ws]
+	var ws_ents: Array = GameGlobals.get_slot_entries("ReisenA", DanmakuEventData.SLOT_MAIN)
+	if ws_ents.size() != 2 or int(ws_ents[0]["tick"]) != 0 or int(ws_ents[1]["tick"]) != 2:
+		_fail("H 工作集未压过注册表（n=%d）" % ws_ents.size())
+	GameGlobals.editor_clips = []
+	var rt_ents: Array = GameGlobals.get_slot_entries("ReisenA", DanmakuEventData.SLOT_MAIN)
+	if rt_ents.size() != 1 or int(rt_ents[0]["tick"]) != 0:
+		_fail("H 清空工作集后未回落注册表（n=%d）" % rt_ents.size())
