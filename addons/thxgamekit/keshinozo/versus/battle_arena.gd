@@ -5068,8 +5068,11 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 		if mm == null:
 			continue
 		var cnt := list.size()
+		## 【m83 审计修复①（豆包 20261117：涨一颗=重建缓冲+全量重写=超线性
+		## 驼峰 111ms 元凶）】容量分块增长：256 一档取整——上升段重建次数
+		## 从 O(n) 降到 O(n/256)；不缩容（缩容同样重建）
 		if cnt > mm.instance_count:
-			mm.instance_count = cnt ## 仅在数量增长时扩容（会重置缓冲，随后全量写）
+			mm.instance_count = ((cnt + 255) >> 8) << 8
 		for i in cnt:
 			var bl: Bullet = list[i]
 			var xf: Transform2D = bl.draw_transform() ## 【0.0.9·③】偏心中心（默认=(pos,rot) 逐位一致）
