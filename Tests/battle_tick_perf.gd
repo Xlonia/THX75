@@ -3,8 +3,8 @@ extends Node
 ## 【20261105·探针口径修正】默认改测真实默认队（1031f：作者真实场景=默认5v5；
 ## 此前恒开 stress_override=全事件 repeat+2/range×2 满仓高火力，读数与作者
 ## 实测不可比——探针偏差教训 1031c）。要复现历史满仓口径，把 STRESS 改 true。
-const STRESS := false
-const RUN_FRAMES := 900
+const STRESS := true
+const RUN_FRAMES := 2400
 var arena: Node2D
 var _step := 0
 var _phys: Array[float] = []
@@ -30,6 +30,9 @@ func _process(_d: float) -> void:
 	var t2 := Time.get_ticks_usec()
 	_phys.append(float(t1 - t0) / 1000.0)
 	_proc.append(float(t2 - t1) / 1000.0)
+	if _step % 300 == 0:
+		print("TELEM[%d] 弹=%d 流程载体=%d 符卡运行=%d" % [_step, arena.bullets.size(),
+			arena._flow_runs.size(), arena._spell_runs.size()])
 	if _step >= RUN_FRAMES:
 		_phys.sort()
 		_proc.sort()
