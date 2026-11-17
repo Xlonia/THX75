@@ -55,6 +55,8 @@ func _run_all() -> void:
 	if pl == null or en == null:
 		_fail("无领队")
 		return
+	if pl.sit_cards == null:
+		pl.sit_cards = SitCardSystem.new() ## 防御兜底（n/s 释放链 on_released 需要）
 	## A. 就近消弹
 	var ev_nc := _mk_ev("probe_nc")
 	ev_nc.nearclear = 80
@@ -122,3 +124,51 @@ func _run_all() -> void:
 	if float(c1["self_hitcool"]) != 1.0:
 		_fail("D 被弹冷却未置 1")
 	pl.immune_frames = 0
+	## E. 留空选择器=全场敌对弹（m90 scheme 修正：不再回退圆形）
+	var ev_iv = _mk_ev("probe_iv_base")
+	ev_iv.range_frames = 600
+	ev_iv.rotate_div = "2"
+	ev_iv.rotate_range = "0.5*pi"
+	arena._spawn_event_copies(ev_iv, Vector2(40.0, 40.0), en, null, {}, 0)
+	arena._spawn_event_copies(ev_iv, Vector2(360.0, 360.0), en, null, {}, 0)
+	var base_n := 0
+	for b0 in arena.bullets:
+		if b0.source_side == 1 and b0.ev != null and b0.ev.event_name == "probe_iv_base":
+			base_n += 1
+	if base_n < 2:
+		_fail("E 预置弹未展开（n=%d）" % base_n)
+	arena._run_sel_op(pl, {"op": "inverse", "params": "ev:demo_burst", "ev": ""}, {"svg": {}, "r": 80.0})
+	var conv := 0
+	for b in arena.bullets:
+		if b.source_side == 1 and b.ev != null and b.ev.event_name == "probe_iv_base" + "_conv":
+			conv += 1
+	if conv != 0:
+		_fail("E 不应发生（校验逻辑错）")
+	var conv2 := 0
+	for b1 in arena.bullets:
+		if b1.source_side == 1 and b1.ev != null and b1.ev.event_name == "demo_burst" \
+				and (b1.pos.distance_to(Vector2(40.0, 40.0)) < 30.0 or b1.pos.distance_to(Vector2(360.0, 360.0)) < 30.0):
+			conv2 += 1
+	if conv2 < 2:
+		_fail("E 留空选择器未达全场（近远角转化=%d，应≥2）" % conv2)
+	## F. 三档符卡挂载（m90：n=skill_evs / s=spell_s_evs / m=spell_evs）
+	pl.db["skill_evs"] = "spell_classical"
+	pl.db["spell_s_evs"] = "spell_classical"
+	var runs_n: int = arena._spell_runs.size()
+	arena._apply_release(pl, "n")
+	var ok_n := false
+	for r in arena._spell_runs:
+		if r["ent"] == pl and r.get("spell") != null and r["spell"].spell_name == "spell_classical":
+			ok_n = true
+	if not ok_n or arena._spell_runs.size() <= runs_n:
+		_fail("F 能力档纯定义挂载未发生")
+	pl.sit_cards.spell_ready = true
+	pl.spell_cards = 1
+	var runs_s: int = arena._spell_runs.size()
+	arena._apply_release(pl, "s")
+	var ok_s := false
+	for r2 in arena._spell_runs:
+		if r2["ent"] == pl and r2.get("spell") != null and r2["spell"].spell_name == "spell_classical":
+			ok_s = true
+	if not ok_s or arena._spell_runs.size() <= runs_s:
+		_fail("F 符卡档纯定义挂载未发生")

@@ -1458,7 +1458,11 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 		if ev_name == "":
 			ev_name = String(ps.get("ev", ""))
 	if sel.is_empty():
-		sel = {"shape": "circle", "r": float(run.get("svg", {}).get("r", float(run.get("r", 120.0))))}
+		## 【m90 scheme 修正（作者实测 20261118：希洛妮娅全留空→只出圆形+
+		## 弹幕反弹未发生）】弹幕选择器留空=全部弹幕个体（scheme 原文：
+		## "弹幕选择器留空则指向全部弹幕个体"）——不再回退圆形；圆范围=
+		## 显式 sel:shape=circle,r=N 才有
+		sel = {"shape": "all", "max_n": 4096}
 	sel["side"] = 1 - ent.side ## 施放者敌对侧（文档 sel 不含 side）
 	var list: Array = BulletOps.select(bullets, ent.position, sel)
 	if list.is_empty():
@@ -1471,6 +1475,8 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 			var iev := _find_event(ev_name)
 			if iev != null:
 				done = BulletOps.inverse(list, iev)
+			else:
+				_toast("%s 需要 ev:事件名（替换目标——如 ev:onami）" % op) ## 【m90 反馈】留空静默失败=作者排查盲区
 		"inversep":
 			## 【scheme 989】弹幕实体替换为特定弹幕事件起点：
 			## 原弹按消弹纪律销毁（不入池）+新事件以当前位置为起点
@@ -1510,37 +1516,70 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 			var dev := _find_event(ev_name)
 			if dev != null:
 				done = BulletOps.inherit_damage(list, dev)
+			else:
+				_toast("inheritdamage 需要 ev:事件名（伤害来源弹）") ## 【m90 反馈】
 	if done > 0:
 		print("[角色流程] %s → %d 弹" % [op, done])
+## 【m90 三档符卡（作者裁定：THX75 三符卡=能力/符卡/主要符卡——类似火力点
+## 分三栏选取修改）】列映射：n=skill_evs / s=spell_s_evs / m=spell_evs；
+## 纯定义挂载（m89 通路复用）——挂了定义→定义全权（含消弹与否由定义决定，
+## 古典兜底不再叠加）；返回=挂载成功
+var _skill_idx := {} ## 能力档轮放（instance_id→idx）
+var _spell_s_idx := {} ## 符卡档轮放
+
+func _mount_tier_spell(ent: BattleEntity, tier: String, tier_r: float, idx_in: int = -1) -> bool:
+	var col: String = {"n": "skill_evs", "s": "spell_s_evs", "m": "spell_evs"}.get(tier, "")
+	var names: PackedStringArray = String(ent.db.get(col, "")).split(";", false)
+	if names.is_empty():
+		return false
+	var idkey: int = ent.get_instance_id()
+	var idx: int = 0
+	## 【m90 修正】idx_in>=0=调用方已解析的序号（m 档：_spell_timeline_run
+	## 顶层已递增并按原 idx 解析时间轴——直接透传，防止读两次错位）；
+	## n/s=此处自管轮放序号
+	if idx_in >= 0:
+		idx = idx_in
+	else:
+		match tier:
+			"n":
+				idx = int(_skill_idx.get(idkey, 0))
+				_skill_idx[idkey] = idx + 1
+			"s":
+				idx = int(_spell_s_idx.get(idkey, 0))
+				_spell_s_idx[idkey] = idx + 1
+	if idx >= names.size():
+		return false
+	var raw_name: String = names[idx].strip_edges()
+	var sp0: SpellData = null
+	for esp in GameGlobals.editor_spells:
+		if esp is SpellData and esp.spell_name == raw_name:
+			sp0 = esp
+			break
+	if sp0 == null:
+		sp0 = THXKit.resolve_spell(raw_name)
+	if sp0 == null:
+		return false
+	var ptl := {"tl_name": sp0.spell_name, "ticks": {"0": []}, "flow_start": "", "flow_every": "", "steps_tick": []}
+	ent.set_meta("spell_announce", sp0.spell_name)
+	_spell_runs.append({"ent": ent, "tl": ptl, "start_frame": time_frames, "tick": -1,
+		"svg": {}, "r": tier_r, "spell": sp0, "steps_tick": [],
+		"until_frame": time_frames + 300}) ## 时长占位 5s（SpellData 无时长列）
+	var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
+	for st in sp0.steps_start:
+		_exec_flow_step(ent, st, run0)
+	run0["steps_tick"] = sp0.steps_tick if sp0.steps_tick.size() > 0 \
+		else [{"op": "clean", "arg": "", "params": "inspellrange"}] ## 古典兜底
+	return true
+
 func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
 	## tier_r=该档消弹半径（n80/s200/m500——svgresign 注册与 clean 用）
 	var idx := int(_spell_idx.get(ent.get_instance_id(), 0))
 	_spell_idx[ent.get_instance_id()] = idx + 1
 	var tl = GameGlobals.get_spell_timeline(ent.chara_name(), idx)
 	if tl == null:
-		## 【m89 纯定义符卡】无时间轴但 spell_evs[idx] 有符卡定义（spell.csv/
-		## 编辑器工作集）→ 纯定义挂载：steps_start 一次+steps_tick 每事件帧。
-		## 时长占位 5s（SpellData 无时长列——与"无时间轴=5s 占位"同规）
-		var names := String(ent.db.get("spell_evs", "")).split(";", false)
-		var raw_name: String = names[idx].strip_edges() if idx < names.size() else ""
-		var sp0: SpellData = null
-		for esp in GameGlobals.editor_spells:
-			if esp is SpellData and esp.spell_name == raw_name:
-				sp0 = esp
-				break
-		if sp0 == null:
-			sp0 = THXKit.resolve_spell(raw_name)
-		if sp0 != null:
-			var ptl := {"tl_name": sp0.spell_name, "ticks": {"0": []}, "flow_start": "", "flow_every": "", "steps_tick": []}
-			ent.set_meta("spell_announce", sp0.spell_name)
-			_spell_runs.append({"ent": ent, "tl": ptl, "start_frame": time_frames, "tick": -1,
-				"svg": {}, "r": tier_r, "spell": sp0, "steps_tick": [],
-				"until_frame": time_frames + 300})
-			var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
-			for st in sp0.steps_start:
-				_exec_flow_step(ent, st, run0)
-			run0["steps_tick"] = sp0.steps_tick if sp0.steps_tick.size() > 0 \
-				else [{"op": "clean", "arg": "", "params": "inspellrange"}] ## 古典兜底
+		## 【m89 纯定义符卡→m90 三档助手】无时间轴但 spell_evs[idx] 有符卡
+		## 定义（spell.csv/编辑器工作集）→ 纯定义挂载（_mount_tier_spell）
+		if _mount_tier_spell(ent, "m", tier_r, idx):
 			return 5.0
 		## 无定义=古典兜底（现状不变——svgresign+clean 挂 _flow_runs）
 		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
@@ -3332,10 +3371,13 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 			if ent.pp >= 25:
 				ent.pp -= 25
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 扣费后剩余P定时长
-				## 【m77】apply_clear 撤除（30Hz 域同步撤）——clean 载体全权负责
-				_flow_runs.append({"ent": ent, "r": 80.0,
-					"until": time_frames + int(clear_sec * 60.0),
-					"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+				## 【m90 三档符卡】能力档=skill_evs 定义优先（挂了→定义全权，
+				## 消弹与否由定义决定——古典兜底不再叠加）
+				if not _mount_tier_spell(ent, "n", 80.0):
+					## 【m77】apply_clear 撤除（30Hz 域同步撤）——clean 载体全权负责
+					_flow_runs.append({"ent": ent, "r": 80.0,
+						"until": time_frames + int(clear_sec * 60.0),
+						"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
@@ -3344,10 +3386,12 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击（新二 245）
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
-				## 【m77】apply_clear 撤除（同上）
-				_flow_runs.append({"ent": ent, "r": 200.0,
-					"until": time_frames + int(clear_sec * 60.0),
-					"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+				## 【m90 三档符卡】符卡档=spell_s_evs 定义优先（同能力档）
+				if not _mount_tier_spell(ent, "s", 200.0):
+					## 【m77】apply_clear 撤除（同上）
+					_flow_runs.append({"ent": ent, "r": 200.0,
+						"until": time_frames + int(clear_sec * 60.0),
+						"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 				ent.set_meta("released_kind", "s")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
@@ -4862,29 +4906,7 @@ func _refresh_hud() -> void:
 		fps_label.text = "FPS %.1f
 弹幕 %d(%d)" % [_fps_measured, _bullet_visible, bullets.size()]
 		fps_label.modulate = Color(1, 0.35, 0.3) if _fps_measured < 59.8 else Color(0.8, 1, 0.8)
-		## 【m84 幽灵弹构成分解（作者 20261117：计数常驻~2000 vs 志愿者截图
-		## 单方≤500）】弹数过 600 时加一行构成：我方/敌方 + 隐(pass)/场外/激光。
-		## 要点：我方法弹按方案一恒定灰白 α0.125 渲染——"渲染了但人眼数不到"，
-		## 我/敌两侧数一眼分清"多余的弹去哪了"。阈下零开销（不触发不扫描）。
-		if bullets.size() >= 600:
-			var s0 := 0
-			var s1 := 0
-			var hid := 0
-			var off := 0
-			var las := 0
-			for b2 in bullets:
-				var bl2: Bullet = b2
-				if bl2.source_side == 0:
-					s0 += 1
-				else:
-					s1 += 1
-				if bl2.ev.tag == DanmakuEventData.TAG_LASER:
-					las += 1
-				elif bl2.hidden_now:
-					hid += 1
-				elif not _render_in_field(bl2): ## 【m85 渲染界线】标签口径与渲染同界
-					off += 1
-			fps_label.text += "\n我%d 敌%d 隐%d 外%d 激%d" % [s0, s1, hid, off, las]
+		## 【m90 作者令】弹数构成分解行撤除（数弹幕探针不再开启——m84 调查任务已结）
 	## 【批复】<20 帧：自动暂停并解释；玩家继续后本场不再自动暂停
 	## 【修复 2026-10-13】暖机豁免：启动期着色器编译的帧率骤降不触发自动暂停
 	## ——此前开局即冻结（tf 卡在 66）正是该误触发：作者看到的"弹幕原地消失"
