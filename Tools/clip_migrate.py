@@ -35,9 +35,9 @@ def migrate(char_csv, clip_csv):
         out_rows.append(r)
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator='\n', quoting=csv.QUOTE_MINIMAL)
-    w.writerow(['clip_name', 'length', 'ticks'])
+    w.writerow(['clip_name', 'length', 'ticks', 'group'])
     for cn, cd, tk in clips:
-        w.writerow([cn, cd, json.dumps(tk, separators=(',', ':'))])
+        w.writerow([cn, cd, json.dumps(tk, separators=(',', ':')), 'legacy'])
     io.open(clip_csv, 'w', encoding='utf-8', newline='').write(buf.getvalue())
     with io.open(char_csv, 'w', encoding='utf-8-sig', newline='') as f:
         w2 = csv.writer(f, lineterminator=nl, quoting=csv.QUOTE_MINIMAL)

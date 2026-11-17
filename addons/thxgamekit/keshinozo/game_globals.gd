@@ -96,6 +96,11 @@ func _ready() -> void:
 	_CDB.DATA_BASE = "res://gameAssetBase"
 	_DTX.DATA_BASE = "res://gameAssetBase/shooting/danmaku16pxs" ## 材质根目录本身
 	_CTX.DATA_BASE = "res://Players/Battle/Chars"
+	## 【m87】部署片段并入内核注册表（早于战斗与编辑器——角色页绑定显示
+	## 与片段页工作集种子都依赖它；battle_arena._ready 的同并=幂等兜底）
+	if FileAccess.file_exists("res://gameAssetBase/danmaku_clip.csv"):
+		for cdm in ClipData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/danmaku_clip.csv")):
+			THXKit.clips[cdm.clip_name] = cdm
 	## 【宿主开关 20261113（作者令）】THX 系列特殊判定盒恒关→判定盒像素编辑禁用
 	## （编辑器按钮按不了）；内核裸本体默认开
 	THXKit.allow_hitbox_edit = false

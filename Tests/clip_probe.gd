@@ -114,3 +114,40 @@ func _run_all() -> void:
 	var rt_ents: Array = GameGlobals.get_slot_entries("ReisenA", DanmakuEventData.SLOT_MAIN)
 	if rt_ents.size() != 1 or int(rt_ents[0]["tick"]) != 0:
 		_fail("H 清空工作集后未回落注册表（n=%d）" % rt_ents.size())
+	## I. group 列往返+长度上限 256（m87：legacy 分组/解析 clamp）
+	var cdg := ClipData.new()
+	cdg.clip_name = "clip_g"
+	cdg.length_ticks = 300
+	cdg.group = "legacy"
+	cdg.add_event(0, "demo_aimed")
+	var gt := ClipData.save_csv([cdg])
+	var gb: Array = ClipData.parse_csv(gt)
+	if gb.size() != 1 or gb[0].group != "legacy" or gb[0].length_ticks != 256:
+		_fail("I group 往返/上限错（g=%s len=%d）" % [
+			str(gb[0].group) if gb.size() > 0 else "?", gb[0].length_ticks if gb.size() > 0 else -1])
+	## J. playclips 执行器：条目入 run 延时队列→倒计时到点出弹
+	var evp = arena._find_event("demo_aimed")
+	if evp == null:
+		_fail("J demo_aimed 未解析")
+		return
+	var run_j := {"ent": arena.player_leader, "tl": {"tl_name": "probe_tl", "ticks": {"0": []}, "flow_start": "", "flow_every": ""},
+		"start_frame": arena.time_frames, "tick": -1, "svg": {}, "r": 80.0, "steps_tick": []}
+	arena._spell_runs.append(run_j)
+	arena._exec_flow_step(arena.player_leader, {"op": "playclips", "arg": "clip_ReisenA_main_demo_aimed", "params": ""}, run_j)
+	var sched: Array = run_j.get("clip_sched", [])
+	if sched.size() != 1 or int(sched[0]["frames"]) != 0:
+		_fail("J 条目未入队（n=%d）" % sched.size())
+	else:
+		var n0: int = arena.bullets.size()
+		for fr in 8:
+			arena.time_frames += 1
+			arena._spell_runs_tick()
+		if arena.bullets.size() <= n0:
+			_fail("J 延时到点未出弹")
+	arena._spell_runs.erase(run_j)
+	## K. loopclips：run 登记+循环周期=片段长度（10 tick）
+	var run_k := {"ent": arena.player_leader, "tl": {"tl_name": "probe_tl", "ticks": {"0": []}, "flow_start": "", "flow_every": ""}, "start_frame": arena.time_frames,
+		"tick": -1, "svg": {}, "r": 80.0, "steps_tick": []}
+	arena._exec_flow_step(arena.player_leader, {"op": "loopclips", "arg": "clip_ReisenA_main_demo_aimed", "params": ""}, run_k)
+	if not run_k.has("loop_clip") or arena._clip_cycle_ticks(run_k["loop_clip"]) != 10:
+		_fail("K loopclips 登记/周期错")

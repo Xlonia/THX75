@@ -1400,8 +1400,36 @@ func _exec_flow_step(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void
 			_run_sel_op(ent, st, run) ## params 带 sel:/ev: 时续走选择器操作
 		"reflex", "inverse", "inversep", "revolt", "inheritdamage":
 			_run_sel_op(ent, st, run)
+		"playclips", "loopclips":
+			## 【m87 scheme 1124-1126】在该符卡上播放一次/循环播放独立于章节的
+			## 弹幕片段——条目按 tick 延时从释放者实时位置展开（run 死即随清）
+			var cn: String = String(st.get("arg", "")).strip_edges()
+			if cn == "":
+				cn = String(_kv(params).get("片段", ""))
+			var cdx: ClipData = THXKit.resolve_clip(cn)
+			if cdx == null:
+				_toast("片段不存在：%s（danmaku_clip.csv 未定义）" % cn)
+			elif op == "loopclips":
+				run["loop_clip"] = cdx
+				run["loop_next"] = -1 ## 首个处理到的 tick 立即起播
+			else:
+				_sched_clip_entries(run, cdx)
 		_:
 			pass
+
+## 【m87】片段条目入延时队列（run 作用域——符卡结束自动随清）
+func _sched_clip_entries(run: Dictionary, cdx: ClipData) -> void:
+	var sched: Array = run.get("clip_sched", [])
+	for e in cdx.flat_entries():
+		sched.append({"frames": int(e["tick"]) * 6, "name": String(e["name"])})
+	run["clip_sched"] = sched
+
+## 【m87】loopclips 循环周期（tick）：长度与最远 tick 取大
+func _clip_cycle_ticks(cdx: ClipData) -> int:
+	var mx := cdx.length_ticks
+	for k in cdx.ticks.keys():
+		mx = maxi(mx, int(k) + 1)
+	return maxi(1, mx)
 
 ## 参数文本框解析（键=值 对）
 func _kv(params: String) -> Dictionary:
@@ -1561,6 +1589,22 @@ func _spell_runs_tick() -> void:
 			_exec_spellfin(run) ## 【m77】符卡结束流程
 			_spell_runs.remove_at(i) ## 时间轴执行完毕
 			continue
+		## 【m87 playclips】片段条目每帧倒计时释放（释放者实时位置——
+		## 与时间轴事件同语义；run 随符卡结束被移除=队列自动随清）
+		var sched: Array = run.get("clip_sched", [])
+		for si in range(sched.size() - 1, -1, -1):
+			sched[si]["frames"] = int(sched[si]["frames"]) - 1
+			if int(sched[si]["frames"]) <= 0:
+				var sev := _find_event(String(sched[si]["name"]))
+				if sev != null:
+					_spawn_event_copies(sev, ent.position, ent, null, {}, 0)
+				sched.remove_at(si)
+		## 【m87 loopclips】循环：每到周期 tick 重排整段条目
+		if run.has("loop_clip"):
+			var lcd: ClipData = run["loop_clip"]
+			if tick >= int(run.get("loop_next", -1)):
+				_sched_clip_entries(run, lcd)
+				run["loop_next"] = tick + _clip_cycle_ticks(lcd)
 		if tick <= int(run["tick"]):
 			continue
 		run["tick"] = tick
