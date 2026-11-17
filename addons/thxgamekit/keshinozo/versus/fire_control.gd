@@ -36,6 +36,7 @@ class FirePoint:
 	var timer := 0.0
 	var locked := true
 	var events: Array = []
+	var entries: Array = [] ## 【m85 片段化】{tick:int, ev}——tick0 即发/tick>0 片段内延时
 	var entity: BattleEntity
 	var ctx: Dictionary = {}     ## 【20261003】火力点上下文直挂（发射零搜索）
 
@@ -46,6 +47,12 @@ var entity: BattleEntity
 var _bound_main: Array = []
 var _bound_rest: Array = []
 var _bound_sub: Array = []
+## 【m85 片段化（作者裁定 20261117）】条目式绑定（tick 感知）：main+rest 走
+## 主机节拍、sub 走僚机节拍——事件来源=片段展开（单弹幕片段迁移期）或旧直引
+var _entries_main: Array = []
+var _entries_sub: Array = []
+## 片段内延时事件（tick>0）：{frames, p, ev, rolls}——gate 已在片段释放时刻过
+var _clip_pend: Array = []
 var mode := "rotate"
 var weapon_points: Array = []
 var sub_points: Array = []      ## 双侧僚机（offset 已含左右侧镜像）
@@ -74,6 +81,10 @@ func setup(ent: BattleEntity) -> void:
 	_bound_main = GameGlobals.get_slot_events(name, DanmakuEventData.SLOT_MAIN)
 	_bound_rest = GameGlobals.get_slot_events(name, DanmakuEventData.SLOT_REST)
 	_bound_sub = GameGlobals.get_slot_events(name, DanmakuEventData.SLOT_SUB)
+	## 【m85 片段化】条目式（片段名→{tick,ev}；旧直引事件名=tick0 条目）
+	_entries_main = GameGlobals.get_slot_entries(name, DanmakuEventData.SLOT_MAIN) \
+		+ GameGlobals.get_slot_entries(name, DanmakuEventData.SLOT_REST)
+	_entries_sub = GameGlobals.get_slot_entries(name, DanmakuEventData.SLOT_SUB)
 	## 【20261020】编辑器新建事件可能未经"可行性检查"编译——战场兜底补编译
 	## （未编译事件 ex_* 全空：能出膛但参数全是默认值）
 	for ev in _bound_main + _bound_rest + _bound_sub:
@@ -157,6 +168,7 @@ func rebuild_points() -> void:
 		p.wpcs = _wpcs_of(rel, mpcs)
 		p.lr = -1 if rel < -0.25 else (1 if rel > 0.25 else 0)
 		p.events = _pool_for(main_events, rest_events)
+		p.entries = _entries_main ## 【m85 片段化】条目共享（只读）
 		p.set_meta("rank", 0) ## 占比名次占位（首要/次要渲染与分配细化在后续批）
 		weapon_points.append(p)
 	## 僚机火力点（左右各 spcs 个；每侧内部从里到外 wpcs=1..spcs）
@@ -169,6 +181,7 @@ func rebuild_points() -> void:
 			p.sub_lr = -1 if side_i == 0 else 1
 			p.lr = -1 if side_i == 0 else 1 ## 相对角色也是左/右
 			p.events = sub_events.duplicate()
+			p.entries = _entries_sub ## 【m85 片段化】条目共享（只读）
 			sub_points.append(p)
 	## 【B1·火力占比（策划：首要进位/次要去尾）】主机前 para_cnt 点标记"首要"，
 	## 轮射解锁顺序：首要 → 次要 → 其余（get_index 越小越先解锁）
@@ -298,6 +311,17 @@ func process(delta: float, arena_time_sec: float, arena_phase: int) -> void:
 	_frame_count += 1
 	if _frame_count % POI_UPDATE_FRAMES == 0:
 		_update_all_poi() ## 内部推进逐档游标（批复#3：收回波浪）
+	## 【m85 片段内延时事件】tick>0 的条目延时释放（gate 已在片段释放时刻过；
+	## 点位所属部位失效/角色死亡=丢弃，与即时发射同语义）
+	for pi in range(_clip_pend.size() - 1, -1, -1):
+		var pe: Dictionary = _clip_pend[pi]
+		pe["frames"] = int(pe["frames"]) - 1
+		if int(pe["frames"]) > 0:
+			continue
+		_clip_pend.remove_at(pi)
+		var pp: FirePoint = pe["p"]
+		if pp != null and _part_alive(pp.part) and not entity.dead:
+			fired.emit(pp, pe["ev"], pe["rolls"])
 	_tick_acc += delta
 	while _tick_acc >= TICK_RATE:
 		_tick_acc -= TICK_RATE
@@ -348,11 +372,17 @@ func _points_of_part(part: int) -> Array:
 	return weapon_points if part == BattleEntity.PART_WEAPON else sub_points
 
 func _release_point(p: FirePoint) -> void:
-	if p.events.is_empty():
+	## 【m85 片段化】按条目释放：tick=0 即发；tick>0 入 pend 延时（片段内时序）
+	if p.entries.is_empty():
 		return
-	for ev in p.events:
+	for e in p.entries:
+		var ev: DanmakuEventData = e["ev"]
 		if _gate(ev, p):
-			fired.emit(p, ev, last_rolls.duplicate())
+			if int(e["tick"]) == 0:
+				fired.emit(p, ev, last_rolls.duplicate())
+			else:
+				_clip_pend.append({"frames": int(e["tick"]) * 6, "p": p,
+					"ev": ev, "rolls": last_rolls.duplicate()})
 
 ## 概率/规律门（批复#11）：
 ##   rate 命题：randf()<=rate；pattern 命题：池累加>=1 时减一（命题真）
@@ -394,7 +424,8 @@ func _gate(ev: DanmakuEventData, p: FirePoint = null) -> bool:
 	if ev.rate_specified:
 		rate_ok = rr <= ev.eval_rate(ctx)
 	var pat_ok := true
-	if ev.pattern_specified:
+	## 【m85 齐射只过 rate 不过 pattern（作者裁定 20261117）】轮射照旧双门
+	if ev.pattern_specified and mode != "salvo":
 		var roll := float(_pattern_rolls.get(ev.event_name, 0.0)) + ev.eval_pattern(ctx)
 		if roll >= 1.0:
 			roll -= 1.0 ## 命题为真时减一

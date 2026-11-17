@@ -303,9 +303,45 @@ func get_slot_events(owner_name: String, slot: String, row: Dictionary = {}) -> 
 		var ev_name: String = nm.strip_edges()
 		if ev_name == "":
 			continue
+		## 【m85 片段化】槽位引用可为片段名（THXKit.clips 注册表展开其事件，
+		## 升 tick 平铺）或旧直引事件名（向后兼容）
+		var cdc = THXKit.clips.get(ev_name)
+		if cdc != null:
+			for ent in cdc.flat_entries():
+				var ev_c = resolve_event_by_name(ent["name"])
+				if ev_c != null:
+					out.append(ev_c)
+			continue
 		var ev = resolve_event_by_name(ev_name)
 		if ev != null:
 			out.append(ev)
+	return out
+
+## 【m85 片段感知槽位解析（火力点用）】条目 {tick:int, ev}——tick0 即发/
+## tick>0 片段内延时（6 帧/tick）；解析序=片段 → 编辑器工作集 → mod → 官方
+func get_slot_entries(owner_name: String, slot: String, row: Dictionary = {}) -> Array:
+	var out: Array = []
+	if row.is_empty():
+		row = _CDB.get_by_name(owner_name)
+	if row.is_empty():
+		return out
+	var col: String = {"main": "main_evs", "sub": "sub_evs", "rest": "rest_evs"}.get(slot, "")
+	if col == "":
+		return out
+	for nm in String(row.get(col, "")).split(";", false):
+		var ref: String = nm.strip_edges()
+		if ref == "":
+			continue
+		var cde = THXKit.clips.get(ref)
+		if cde != null:
+			for ent in cde.flat_entries():
+				var ev_c = resolve_event_by_name(ent["name"])
+				if ev_c != null:
+					out.append({"tick": int(ent["tick"]), "ev": ev_c})
+			continue
+		var ev = resolve_event_by_name(ref)
+		if ev != null:
+			out.append({"tick": 0, "ev": ev})
 	return out
 
 ## 按事件名解析（编辑器工作集 → Mod → 官方）

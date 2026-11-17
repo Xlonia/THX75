@@ -256,6 +256,11 @@ func _ready() -> void:
 	if FileAccess.file_exists("res://gameAssetBase/progess.gd"):
 		for fl in CharFlowData.parse_gd(FileAccess.get_file_as_string("res://gameAssetBase/progess.gd")):
 			THXKit.char_flows[fl.flow_name] = fl
+	## 【m85 片段化】部署侧 danmaku_clip.csv 并入内核注册表（同 progess 约定：
+	## 部署数据覆盖/补充本体侧——火力点配置已从直引弹幕改为单弹幕片段）
+	if FileAccess.file_exists("res://gameAssetBase/danmaku_clip.csv"):
+		for cdm in ClipData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/danmaku_clip.csv")):
+			THXKit.clips[cdm.clip_name] = cdm
 	var usable := float(DisplayServer.window_get_size().y) - float(HUD_RESERVE)
 	SCALE = maxf(1.0, floor(usable / float(LOGICAL)))
 	_init_gpu()
@@ -1690,7 +1695,7 @@ func bullet_census() -> Dictionary:
 			d["laser"] += 1
 		elif bl.hidden_now:
 			d["hidden"] += 1
-		elif not _in_field(bl.pos):
+		elif not _render_in_field(bl): ## 【m85 渲染界线】census 口径与渲染同界
 			d["offfield"] += 1
 			var k: String = bl.ev.event_name + "/oob" + str(bl.ev.oob_mode)
 			by_ev[k] = int(by_ev.get(k, 0)) + 1
@@ -4717,7 +4722,7 @@ func _refresh_hud() -> void:
 					las += 1
 				elif bl2.hidden_now:
 					hid += 1
-				elif not _in_field(bl2.pos):
+				elif not _render_in_field(bl2): ## 【m85 渲染界线】标签口径与渲染同界
 					off += 1
 			fps_label.text += "\n我%d 敌%d 隐%d 外%d 激%d" % [s0, s1, hid, off, las]
 	## 【批复】<20 帧：自动暂停并解释；玩家继续后本场不再自动暂停
@@ -5065,6 +5070,14 @@ func picked_entity() -> BattleEntity:
 func _in_field(p: Vector2, margin: float = 24.0) -> bool:
 	return p.x > -margin and p.x < 400.0 + margin and p.y > -margin and p.y < 400.0 + margin
 
+## 【m85 渲染界线（作者裁定 20261117）】中心±(200+素材大小*弹幕缩放规格*0.5)
+## ——界外弹**关闭渲染但不销毁**（防"溢出就消弹"；oob 销毁语义独立不变）。
+## draw_radius=素材半尺寸*缩放=所见即所判的弹圆半径，与判定口径同源。
+func _render_in_field(bl: Bullet) -> bool:
+	var hb: float = bl.draw_radius
+	return bl.pos.x > -hb and bl.pos.x < 400.0 + hb \
+		and bl.pos.y > -hb and bl.pos.y < 400.0 + hb
+
 ## 激光：任一采样点入界即画（整条出界才裁）
 func _laser_in_field(bl: Bullet) -> bool:
 	for pt in bl.laser_samples:
@@ -5085,7 +5098,7 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 		var bl: Bullet = b
 		if bl.hidden_now or bl.ev.tag == DanmakuEventData.TAG_LASER:
 			continue
-		if not _in_field(bl.pos, bl.draw_radius): ## 【所见即所判】弹圆压边即画（与 stamp 同口径）
+		if not _render_in_field(bl): ## 【m85 渲染界线】中心±(200+素材*缩放*0.5)——界外关闭渲染不销毁
 			continue
 		_bullet_visible += 1
 		## 【方案一 20261030d→1031d 修正】我方法弹始终灰白高透明渲染
