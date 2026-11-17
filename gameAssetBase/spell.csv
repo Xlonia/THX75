@@ -1,0 +1,2 @@
+spell_name,spellstart,spellfin,spelltick
+spell_classical,"[{""op"":""svgresign"",""arg"":"""",""params"":""序号=0""}]",,"[{""op"":""clean"",""arg"":"""",""params"":""inspellrange""}]"

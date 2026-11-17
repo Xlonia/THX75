@@ -101,6 +101,11 @@ func _ready() -> void:
 	if FileAccess.file_exists("res://gameAssetBase/danmaku_clip.csv"):
 		for cdm in ClipData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/danmaku_clip.csv")):
 			THXKit.clips[cdm.clip_name] = cdm
+	## 【m89】部署符卡并入内核注册表（spell_classical 等部署侧符卡——
+	## 角色页分配/纯定义挂载依赖）
+	if FileAccess.file_exists("res://gameAssetBase/spell.csv"):
+		for spm in SpellData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/spell.csv")):
+			THXKit.spell_cards[spm.spell_name] = spm
 	## 【宿主开关 20261113（作者令）】THX 系列特殊判定盒恒关→判定盒像素编辑禁用
 	## （编辑器按钮按不了）；内核裸本体默认开
 	THXKit.allow_hitbox_edit = false

@@ -1517,8 +1517,38 @@ func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
 	var idx := int(_spell_idx.get(ent.get_instance_id(), 0))
 	_spell_idx[ent.get_instance_id()] = idx + 1
 	var tl = GameGlobals.get_spell_timeline(ent.chara_name(), idx)
-	if tl == null or tl.ticks.is_empty():
-		## 无符卡时间轴=古典流程仍挂载（作者 20261117 规范化——svgresign+clean）
+	if tl == null:
+		## 【m89 纯定义符卡】无时间轴但 spell_evs[idx] 有符卡定义（spell.csv/
+		## 编辑器工作集）→ 纯定义挂载：steps_start 一次+steps_tick 每事件帧。
+		## 时长占位 5s（SpellData 无时长列——与"无时间轴=5s 占位"同规）
+		var names := String(ent.db.get("spell_evs", "")).split(";", false)
+		var raw_name: String = names[idx].strip_edges() if idx < names.size() else ""
+		var sp0: SpellData = null
+		for esp in GameGlobals.editor_spells:
+			if esp is SpellData and esp.spell_name == raw_name:
+				sp0 = esp
+				break
+		if sp0 == null:
+			sp0 = THXKit.resolve_spell(raw_name)
+		if sp0 != null:
+			var ptl := {"tl_name": sp0.spell_name, "ticks": {"0": []}, "flow_start": "", "flow_every": "", "steps_tick": []}
+			ent.set_meta("spell_announce", sp0.spell_name)
+			_spell_runs.append({"ent": ent, "tl": ptl, "start_frame": time_frames, "tick": -1,
+				"svg": {}, "r": tier_r, "spell": sp0, "steps_tick": [],
+				"until_frame": time_frames + 300})
+			var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
+			for st in sp0.steps_start:
+				_exec_flow_step(ent, st, run0)
+			run0["steps_tick"] = sp0.steps_tick if sp0.steps_tick.size() > 0 \
+				else [{"op": "clean", "arg": "", "params": "inspellrange"}] ## 古典兜底
+			return 5.0
+		## 无定义=古典兜底（现状不变——svgresign+clean 挂 _flow_runs）
+		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
+			"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+		ent.set_meta("spell_announce", "")
+		return 0.0
+	if tl.ticks.is_empty():
+		## 时间轴在但无 tick=古典流程仍挂载（作者 20261117 规范化——svgresign+clean）
 		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
 			"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
 		ent.set_meta("spell_announce", "")
