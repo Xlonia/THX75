@@ -1501,17 +1501,13 @@ func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
 	if tl.flow_start != "":
 		_run_char_flow(ent, tl.flow_start)
 	var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
-	## 【m77 触发器优先级】符卡定义（spell.csv/编辑器）> 时间轴步骤 > 古典默认
+	## 【m78 作者裁定】古典默认已删——符卡定义（spell.csv/编辑器工作集）为
+	## 触发器流程的唯一来源；无定义=无流程（消弹等由数据驱动）
 	if sp != null:
 		for st in sp.steps_start:
 			_exec_flow_step(ent, st, run0)
 		if sp.steps_tick.size() > 0:
 			run0["steps_tick"] = sp.steps_tick
-	## 【m75 古典流程挂载（作者 20261117）】spellstart=svgresign(,0)+
-	## spelltick=clean(,inspellrange)——消弹圆的规范化形态
-	_exec_flow_step(ent, {"op": "svgresign", "arg": "", "params": "序号=0"}, run0)
-	if tl.steps_tick.is_empty() and run0["steps_tick"].is_empty():
-		run0["steps_tick"] = [{"op": "clean", "arg": "", "params": "inspellrange"}]
 	return float(tl.ticks.keys().max()) * 0.1 + 0.1 ## 最后事件执行时刻（秒）
 
 ## 【m77 spellfin】符卡结束流程（时长尽/时间轴播完/施放者死亡）
