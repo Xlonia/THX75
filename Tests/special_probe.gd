@@ -172,3 +172,19 @@ func _run_all() -> void:
 			ok_s = true
 	if not ok_s or arena._spell_runs.size() <= runs_s:
 		_fail("F 符卡档纯定义挂载未发生")
+	## I. 【m95】弹幕选择器函数链（radius(120) 解析+链式约束）
+	var dsel: Dictionary = BulletOps.parse_dsel("radius(120).older(30)")
+	if str(dsel.get("shape", "")) != "circle" or float(dsel.get("r", 0)) != 120.0 			or float(dsel.get("t_min", 0)) != 30.0:
+		_fail("I 弹幕函数链解析错（%s）" % str(dsel))
+	## I2. iterate=敌侧遍历（固定返回类型环境——作者 20261118 语义）
+	var it0: Array = EntityOps.resolve("iterate(hp>>0)", pl, arena)
+	var en_ok := true
+	for e9 in it0:
+		if int(e9.get("side")) != 1:
+			en_ok = false
+	if it0.is_empty() or not en_ok:
+		_fail("I2 iterate 未限定敌侧（n=%d）" % it0.size())
+	## I3. geniterate(命题,类型)=跨类型显式（private 类型可取）
+	var gi: Array = EntityOps.resolve("geniterate(hp>>0,private)", pl, arena)
+	if gi.is_empty():
+		_fail("I3 geniterate private 类型未取到杂兵")

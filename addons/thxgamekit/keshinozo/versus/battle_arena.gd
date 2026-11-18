@@ -1476,7 +1476,11 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 	var params := String(st.get("params", ""))
 	var sel: Dictionary = {}
 	var ev_name := String(st.get("ev", ""))
-	if params.contains("sel:") or params.contains("ev:"):
+	## 【m95 弹幕选择器函数化（作者裁定：全部函数化）】函数链优先——
+	## radius(120).older(30) 等（沿 C++/GDScript 方法链标点）；sel: 旧式兼容
+	if params.contains("("):
+		sel = BulletOps.parse_dsel(params)
+	elif params.contains("sel:") or params.contains("ev:"):
 		var ps := CharFlowData.parse_step(op + " | " + params)
 		sel = ps.get("sel", {})
 		if ev_name == "":
@@ -1485,7 +1489,7 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 		## 【m90 scheme 修正（作者实测 20261118：希洛妮娅全留空→只出圆形+
 		## 弹幕反弹未发生）】弹幕选择器留空=全部弹幕个体（scheme 原文：
 		## "弹幕选择器留空则指向全部弹幕个体"）——不再回退圆形；圆范围=
-		## 显式 sel:shape=circle,r=N 才有
+		## 显式 radius(120) 才有
 		sel = {"shape": "all", "max_n": 4096}
 	sel["side"] = 1 - ent.side ## 施放者敌对侧（文档 sel 不含 side）
 	var list: Array = BulletOps.select(bullets, ent.position, sel)
