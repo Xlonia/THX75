@@ -3385,6 +3385,8 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 		var ddy: float = bl.pos.y - qy
 		if ddx * ddx + ddy * ddy <= rr2:
 			_on_bullet_died(bl) ## 【m88 亡计弹设】被消弹=被迫消弹照走
+			if bl.ev != null and bl.ev.tag == DanmakuEventData.TAG_NODES_B:
+				_nodesb_alive -= 1
 			## 【0.0.9·回收风暴修复 20261107】remove_at O(n) 搬迁——大规模消弹/
 			## 到期潮时 O(n²)（几百弹同帧回收=数十万次数组移动/帧）。
 			## 三处回收均倒序遍历→swap-remove O(1) 安全（换上来的尾段已处理）
@@ -3481,6 +3483,8 @@ func _clear_bullets_around(ent: BattleEntity) -> void:
 		var dy: float = bl.pos.y - py
 		if dx * dx + dy * dy <= r2:
 			_on_bullet_died(bl) ## 【m88 亡计弹设】被消弹域清除=被迫消弹照走
+			if bl.ev != null and bl.ev.tag == DanmakuEventData.TAG_NODES_B:
+				_nodesb_alive -= 1
 			bullets[i] = bullets[bullets.size() - 1] ## 【回收风暴修复】swap-remove
 			bullets.pop_back()
 			_cleared_count += 1
@@ -3595,6 +3599,8 @@ func _bullet_updates(dt: float) -> void:
 				alive_now = b.update(dt) ## 非 frozen：逐帧原运算（完全脱离采样）
 		if not alive_now:
 			_on_bullet_died(b) ## 【m88 亡计弹设】自然死亡（航程尽/出界销毁）照走
+			if b.ev != null and b.ev.tag == DanmakuEventData.TAG_NODES_B:
+				_nodesb_alive -= 1
 			bullets[i] = bullets[bullets.size() - 1] ## 【回收风暴修复】swap-remove
 			bullets.pop_back()
 			_expired_count += 1
@@ -3610,7 +3616,10 @@ func _bullet_updates(dt: float) -> void:
 			continue
 		b._prev_pos = b.pos
 		if not b.hidden_now: ## 【高危修复】hidden 弹不入哈希（不参与判定）
-			bullet_hash.insert(b)
+			## 【m96 审计 P1】哈希单写：cpp 启用=消费端全走 C++ 查询，GD 哈希
+			## 仅作扩展未注册回退——不再每弹双写
+			if not (bullet_hash_cpp_enabled and bullet_hash_cpp != null):
+				bullet_hash.insert(b)
 			if bullet_hash_cpp != null:
 				## 【审计 Top2】ref_id=bullets 当帧下标（swap-remove 仅帧尾回收——当帧稳定）
 				bullet_hash_cpp.insert(b.pos.x, b.pos.y, b.hit_radius(), i, b.source_side, b.ev.is_phy)
@@ -3645,9 +3654,12 @@ func _bullet_updates(dt: float) -> void:
 ## 【NodesB 对撞互推（作者 20261020：弹幕推弹幕）】对撞命题为真的 NodesB
 ## 两两接触：位置分离到刚接触 + 法向速度对交换（弹性系数 0.5，近似推动）。
 ## 每帧两两检测上限 64 参与者（作者对节点类性能的既定警告），30Hz 足够。
+## 【m96 审计 P1】NodesB 存活计数——0 时跳过全表扫（漏减失败=多扫一次，无回归）
+var _nodesb_alive := 0
+
 func _resolve_nodesb_clash() -> void:
 	var parts: Array = []
-	if time_frames % 2 == 0:
+	if time_frames % 2 == 0 and _nodesb_alive > 0:
 		var ctx := {}
 		for b in bullets:
 			var bl: Bullet = b
@@ -4065,6 +4077,8 @@ func _spawn_bullet(ev: DanmakuEventData, origin: Vector2, depth: int, src: Battl
 	if b.tex_slot > 0:
 		_upload_ddm_tex(b.tex_slot, b.tex)
 	bullets.append(b)
+	if ev.tag == DanmakuEventData.TAG_NODES_B:
+		_nodesb_alive += 1
 	return b
 
 ## 【m88 就近消弹】发射点近旁敌对弹清除（消弹纪律销毁不入池；亡计照走）
@@ -5309,6 +5323,10 @@ func _laser_in_field(bl: Bullet) -> bool:
 ## 每弹每帧 3 次 → 1 次（bullet_runtime 颜色缓存命中间隔内已零成本）
 var _by_tex: Dictionary = {}
 var _bullet_visible := 0 ## 【0.0.9】可渲染弹幕数（draw_bullet_mm 顺便统计→fps_label）
+## 【m96 审计§7 验证仪表（探针开关 probe_mm_stats，默认关）】纹理碎片/
+## 大尺寸弹两条推断的直接数据：_by_tex 纹理种数/实例数/size_mul>4 弹数
+var _mm_stat_acc := 0
+
 func draw_bullet_mm(onto: CanvasItem) -> void:
 	_by_tex.clear()
 	_bullet_visible = 0
@@ -5355,21 +5373,35 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 			## 平方距+命中即停（增显只看 40px 内，无需精确最近）
 			if _live_ent_pos_dirty:
 				_live_ent_pos.clear()
+				## 【m96 审计 P1】32px 分桶接线（原 A6 死代码激活）——每弹只查
+				## 3×3 邻格（96px 覆盖 40px 查询半径），1200 弹×全表扫 → 每弹常数
+				_live_ent_bucket.clear()
 				for e2 in entities:
 					if e2 is BattleEntity and not (e2 as BattleEntity).dead:
-						_live_ent_pos.append((e2 as BattleEntity).position)
+						var ep0: Vector2 = (e2 as BattleEntity).position
+						_live_ent_pos.append(ep0)
+						var k0 := Vector2i(int(ep0.x) >> 5, int(ep0.y) >> 5)
+						if not _live_ent_bucket.has(k0):
+							_live_ent_bucket[k0] = []
+						(_live_ent_bucket[k0] as Array).append(ep0)
 				_live_ent_pos_dirty = false
 			var dmin := 99999.0
 			var bx: float = bl.pos.x
 			var by: float = bl.pos.y
-			for ep in _live_ent_pos:
-				var dx2: float = ep.x - bx
-				var dy2: float = ep.y - by
-				var d4: float = dx2 * dx2 + dy2 * dy2
-				if d4 < dmin:
-					dmin = d4
-					if d4 < 1600.0:
-						break
+			## 3×3 邻格查询（32px 格，96px 覆盖 ≥ 40px 查询半径）
+			var cx0 := int(bx) >> 5
+			var cy0 := int(by) >> 5
+			for gx in range(cx0 - 1, cx0 + 2):
+				for gy in range(cy0 - 1, cy0 + 2):
+					var arr2: Array = _live_ent_bucket.get(Vector2i(gx, gy), [])
+					for ep in arr2:
+						var dx2: float = ep.x - bx
+						var dy2: float = ep.y - by
+						var d4: float = dx2 * dx2 + dy2 * dy2
+						if d4 < dmin:
+							dmin = d4
+							if d4 < 1600.0:
+								break
 			if dmin < 1600.0:
 				var boost: float = 2560.0 / maxf(sqrt(dmin), 4.0)
 				sat_extra = boost
@@ -5394,6 +5426,16 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 				mm.set_instance_transform_2d(i, Transform2D(0, Vector2(-9999, -9999)))
 		_mm_last_cnt[tex] = cnt
 		onto.draw_multimesh(mm, tex)
+	## 【m96 审计§7】验证仪表（1Hz 打印——probe_mm_stats 开时）
+	if bool(THXKit.scenario_cfg.get("probe_mm_stats", false)):
+		var big := 0
+		for b7 in bullets:
+			if (b7 as Bullet).size_mul > 4.0:
+				big += 1
+		_mm_stat_acc += 1
+		if _mm_stat_acc >= 60:
+			_mm_stat_acc = 0
+			print("[MM统计] 纹理种=%d 实例=%d size_mul>4=%d" % [_by_tex.size(), _bullet_visible, big])
 
 	## 【方案一 20261030d】轨道层已删——灰白本形取代"白轨道"职责
 
@@ -5401,7 +5443,7 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 ## MultiMesh 缓存（材质 → MM 实例池）+ 每材质上一帧实例数（增量停靠用）
 var _dir16: Array[Vector2] = [] ## 【审计#15】16 方向单位向量（cos/sin 预计算）
 var _live_ent_pos: Array[Vector2] = [] ## 【审计#1】活实体位置缓存（draw 侧）
-var _live_ent_bucket: Dictionary = {} ## 【审计A6】32px 分桶（增显近邻查询）
+var _live_ent_bucket: Dictionary = {} ## 【审计A6→m96 接线】48px 分桶（增显近邻查询 3×3 邻域）
 var _live_ent_pos_dirty := true
 const _LASER_KEY := "__laser__" ## 【22b 20261102d】激光线段 MM 缓存键
 var _laser_mm: MultiMesh = null
