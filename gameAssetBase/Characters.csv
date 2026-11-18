@@ -1,27 +1,27 @@
 Name,Cruise,Normal,Determine,Defend,Mag,Phy,ID,Team,Main_Cd,Sub_Cd,Weapon_Muti,main_y,sub_x,sub_y,main_poi_x,main_poi_y,sub_poi_x,sub_poi_y,main_para_rat,main_seco_rat,sub_para_rat,Char_Raid,Char_Allfire,Char_Blitz,Char_Cover,Char_Elast,Char_Delay,Char_Feint,NameZH,NameJP,NameEN,,,,,,,,,,,,,,,,,,,,,,,,,,main_evs,sub_evs,rest_evs,skill_evs,spell_evs,spell_s_evs
-MarisaA,6,3,4,2,1,0,0,1,4,2,2.0,-2,0,0,(to_c+1)*wpcs,4+wpcs,(to_c+1)*wpcs,4+wpcs,0.4,.4,0.7,0.6,0.6,0.2,0.2,0.8,1.0,0.0,雾雨魔理沙,霧雨魔理沙,Marisa Kirisame,,,,,,,,,,,,,,,,,,,,,,,,,,,clip_MarisaA_sub_demo_missile,,,spell_classical,
-MarisaB,6,3,4,2,1,0,0,1,6,3,2.0,2,-2,0,1+.5*wpcs,1,1+.5*wpcs,1,0.3,.2,0.3,0.6,0.6,0.2,0.2,0.8,1.0,0.0,雾雨魔理沙,霧雨魔理沙,Marisa Kirisame,,,,,,,,,,,,,,,,,,,,,,,,,,,clip_MarisaB_sub_demo_ring,,,spell_classical,
-ReimuA,3,2,3,1,1,0,0,2,6,4,3.0,2,-2,0,2*to_c+1,1,2*to_c+1,1,0.3,.2,0.2,0.0,0.2,0.7,0.8,0.2,1.0,0.0,博丽灵梦,博麗霊夢,Reimu Hakurei,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReimuA_main_spell_reimu,,,,spell_classical,
-ReimuB,3,2,3,1,1,0,0,2,4,2,2.0,2,-2,0,3+.5*wpcs,1,3+.5*wpcs,1,0.5,0.3,0.7,0.0,0.2,0.7,0.8,0.2,1.0,0.0,博丽灵梦,博麗霊夢,Reimu Hakurei,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReimuB_main_spell_reimu,,,,spell_classical,
-ReisenA,3,2,3,1,0,1,0,3,10,4,2.0,5,0,0,3+2*to_c,0,3+2*to_c,0,0.5,0.3,0.7,0.0,2.0,0.2,0.2,0.2,0.0,1.0,铃仙·优昙华院·因幡,鈴仙・優曇華院・因幡,Reisen Udongein Inaba,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReisenA_main_demo_aimed,,,,spell_classical,
-ReisenB,3,2,3,1,0,1,0,3,8,4,2,5,0,0,2*to_c+wpcs,0,2*to_c+wpcs,0,.2,0.3,0.3,0,2,0.2,0.2,0.2,0,1,铃仙·优昙华院·因幡,鈴仙・優曇華院・因幡,Reisen Udongein Inaba,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Nitori,4,2,2,0,0,1,1,1,8,2,2.0,5,0,0,4,-1,2,-1,0.3,0.3,0.5,0.2,0.4,0.4,0.2,0.2,0.0,1.0,河城荷取,河城荷取,Nitori Kawashiro,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Nitori_main_demo_youshio1,,,,spell_classical,
-Suika,4,2,3,1,1,0,1,2,8,4,2,2,-2,0,4,2,2,2,.2,0.3,0.3,0.2,0.5,0.2,0.2,0.2,1,0,伊吹萃香,伊吹萃香,Suika Ibuki,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Rumia,3,2,3,0,1,0,1,3,8,4,3.0,2,-2,0,4,2,2,2,0.2,.5,0.3,0.0,0.2,0.2,0.2,0.2,1.0,0.0,露米娅,ルミア,Rumia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Rumia_main_player_nerai0,,,,spell_classical,
-Alice,4,2,3,0,1,0,2,1,5,3,2,2,-2,0,4,2,2,2,.1,.7,.5,0.5,0.2,0,0.2,0.2,1,0,爱丽丝·玛格特罗伊德,アリス・マーガトロイド,Alice Magatroid,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Aya,12,3,3,0,1,0,2,2,4,2,1,2,-2,0,2*to_c+2,2,2*to_c+2,2,0.3,.5,.4,1,0.2,0.2,0.2,1,1,0,射命丸文,射命丸文,Aya Shameimaru,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Eirin,4,2,3,1,1,1,2,3,8,4,3,4,0,0,4,2,2,2,0.3,0.3,0.3,0.2,0.2,0.5,0.8,0.2,0,1,八意永琳,八意永琳,Eirin Yagokoro,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Youshio,9,3,3,0,0,1,3,1,10,6,4.0,4,0,0,(to_c+1)*wpcs,0,(to_c+1)*wpcs,0,0.2,.6,0.3,2.0,0.2,0.2,0.2,1.0,0.0,1.0,晚汐,夜汐,Ioznoxlna,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Youshio_main_Youshio2,clip_Youshio_sub_demo_youshio1,,,spell_classical,
-Patchouli,3,2,4,1,1,0,3,1,8,4,3,2,-4,0,4,2,2,2,0.3,.5,.4,0,0.2,0.7,0.2,0.2,1,0,帕秋莉·诺蕾姬,パチュリー・ノーレッジ,Patchouli Knowledge,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Yuka,3,2,1,1,1,0,3,1,10,4,4,2,-4,0,4,3+wpcs,2,3+wpcs,.2,.6,0.3,0,2,0.2,0.2,0.2,1,0,风见幽香,風見幽香,Yuka Kazami,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Sanae,5,2,3,0,1,0,3,2,6,4,2.0,2,-4,0,4,2,2,2,0.3,.5,0.3,0.2,0.2,0.5,0.2,0.2,1.0,0.0,东风谷早苗,東風谷早苗,Sanae Kochiya,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Sanae_main_spell_sanae,,,,spell_classical,
-Enisuel,6,3,2,0,1,1,3,3,4,2,1.0,4,2,0,2+wpcs+to_c,-2-wpcs,2+wpcs+to_c,-2-wpcs,0.3,0.3,0.3,0.5,0.2,0.2,0.2,0.5,0.0,1.0,叶妮雪尔米娜,エニソゥエルミナ,Enisuelmin,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Enisuel_main_onami,,,,spell_classical,
-Renko,4,2,3,1,0,1,4,1,8,4,3,4,2,0,4,0,2,0,0.3,0.3,0.3,0.2,0.2,0.2,0.8,0.2,0,1,宇佐见莲子,宇佐見蓮子,Renko Usami,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Yukari,3,2,2,0,1,1,4,2,10,6,4,4,2,0,4,0,2,0,0.3,.5,0.3,0,0.5,0.2,0.2,0.2,0.5,0.5,八云紫,八雲紫,Yukari Yakumo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Keine,4,2,3,1,1,1,4,2,10,6,4,4,2,0,3,-1,1,-1,0.3,0.3,0.3,0.2,0.2,0.5,0.8,0.2,0.5,0.5,上白泽慧音,上白沢慧音,Keine Kamishirazawa,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Ringo,3,2,3,1,0,1,4,3,8,10,1,4,2,0,4,-2,2,-2,.2,.5,0.3,0,0.4,0.2,0.2,0.2,0,1,铃瑚,鈴瑚,Ringo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Xlonia,5,3,1,0,1,1,5,3,10,6,4.0,4,2,0,2+wpcs,-2,2+wpcs,-2,0.3,0.3,0.3,0.25,0.5,0.7,0.2,0.5,0.5,0.5,希洛妮娅,シロニア,Xlonia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Xlonia_main_sonic_wave_like0,,,,xlonia_verses,
-Remilna,8,2,2,1,1,0,5,3,6,2,1.0,2,-4,0,2*to_c+2,2,2*to_c+2,2,0.3,0.3,0.3,1.0,0.2,0.2,0.2,0.8,1.0,0.0,釉怜冠姬,釉怜カンヒメ,Remilna Lyuszlizia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Remilna_main_tama_sector,,,,spell_classical,
-Hearn,4,2,2,0,1,0,6,1,8,4,3,2,-4,0,4,2,2,2,0.3,0.3,0.3,0.2,0.4,0.2,0.2,0.2,1,0,玛艾露贝莉·赫恩,マエリベリー・ハーン,Mainreveria Hearn,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Ran,4,2,5,1,1,1,6,2,6,2,2,4,0,0,4,1-wpcs,2,1-wpcs,0.3,0.3,0.3,0.2,0.2,0.2,0.2,0.2,0.5,0.5,八云蓝,八雲藍,Ran Yakumo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
-Seiran,4,2,3,1,0,1,6,3,6,3,2,2,-4,0,4,-2,2,-2,0.3,0.3,0.3,0.2,0.5,0.2,0.2,0.2,0,1,清兰,清蘭,Seiran,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical,
+MarisaA,6,3,4,2,1,0,0,1,4,2,2.0,-2,0,0,(to_c+1)*wpcs,4+wpcs,(to_c+1)*wpcs,4+wpcs,0.4,.4,0.7,0.6,0.6,0.2,0.2,0.8,1.0,0.0,雾雨魔理沙,霧雨魔理沙,Marisa Kirisame,,,,,,,,,,,,,,,,,,,,,,,,,,,clip_MarisaA_sub_demo_missile,,spell_classical_n,spell_classical,spell_classical_s
+MarisaB,6,3,4,2,1,0,0,1,6,3,2.0,2,-2,0,1+.5*wpcs,1,1+.5*wpcs,1,0.3,.2,0.3,0.6,0.6,0.2,0.2,0.8,1.0,0.0,雾雨魔理沙,霧雨魔理沙,Marisa Kirisame,,,,,,,,,,,,,,,,,,,,,,,,,,,clip_MarisaB_sub_demo_ring,,spell_classical_n,spell_classical,spell_classical_s
+ReimuA,3,2,3,1,1,0,0,2,6,4,3.0,2,-2,0,2*to_c+1,1,2*to_c+1,1,0.3,.2,0.2,0.0,0.2,0.7,0.8,0.2,1.0,0.0,博丽灵梦,博麗霊夢,Reimu Hakurei,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReimuA_main_spell_reimu,,,spell_classical_n,spell_classical,spell_classical_s
+ReimuB,3,2,3,1,1,0,0,2,4,2,2.0,2,-2,0,3+.5*wpcs,1,3+.5*wpcs,1,0.5,0.3,0.7,0.0,0.2,0.7,0.8,0.2,1.0,0.0,博丽灵梦,博麗霊夢,Reimu Hakurei,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReimuB_main_spell_reimu,,,spell_classical_n,spell_classical,spell_classical_s
+ReisenA,3,2,3,1,0,1,0,3,10,4,2.0,5,0,0,3+2*to_c,0,3+2*to_c,0,0.5,0.3,0.7,0.0,2.0,0.2,0.2,0.2,0.0,1.0,铃仙·优昙华院·因幡,鈴仙・優曇華院・因幡,Reisen Udongein Inaba,,,,,,,,,,,,,,,,,,,,,,,,,,clip_ReisenA_main_demo_aimed,,,spell_classical_n,spell_classical,spell_classical_s
+ReisenB,3,2,3,1,0,1,0,3,8,4,2,5,0,0,2*to_c+wpcs,0,2*to_c+wpcs,0,.2,0.3,0.3,0,2,0.2,0.2,0.2,0,1,铃仙·优昙华院·因幡,鈴仙・優曇華院・因幡,Reisen Udongein Inaba,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Nitori,4,2,2,0,0,1,1,1,8,2,2.0,5,0,0,4,-1,2,-1,0.3,0.3,0.5,0.2,0.4,0.4,0.2,0.2,0.0,1.0,河城荷取,河城荷取,Nitori Kawashiro,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Nitori_main_demo_youshio1,,,spell_classical_n,spell_classical,spell_classical_s
+Suika,4,2,3,1,1,0,1,2,8,4,2,2,-2,0,4,2,2,2,.2,0.3,0.3,0.2,0.5,0.2,0.2,0.2,1,0,伊吹萃香,伊吹萃香,Suika Ibuki,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Rumia,3,2,3,0,1,0,1,3,8,4,3.0,2,-2,0,4,2,2,2,0.2,.5,0.3,0.0,0.2,0.2,0.2,0.2,1.0,0.0,露米娅,ルミア,Rumia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Rumia_main_player_nerai0,,,spell_classical_n,spell_classical,spell_classical_s
+Alice,4,2,3,0,1,0,2,1,5,3,2,2,-2,0,4,2,2,2,.1,.7,.5,0.5,0.2,0,0.2,0.2,1,0,爱丽丝·玛格特罗伊德,アリス・マーガトロイド,Alice Magatroid,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Aya,12,3,3,0,1,0,2,2,4,2,1,2,-2,0,2*to_c+2,2,2*to_c+2,2,0.3,.5,.4,1,0.2,0.2,0.2,1,1,0,射命丸文,射命丸文,Aya Shameimaru,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Eirin,4,2,3,1,1,1,2,3,8,4,3,4,0,0,4,2,2,2,0.3,0.3,0.3,0.2,0.2,0.5,0.8,0.2,0,1,八意永琳,八意永琳,Eirin Yagokoro,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Youshio,9,3,3,0,0,1,3,1,10,6,4.0,4,0,0,(to_c+1)*wpcs,0,(to_c+1)*wpcs,0,0.2,.6,0.3,2.0,0.2,0.2,0.2,1.0,0.0,1.0,晚汐,夜汐,Ioznoxlna,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Youshio_main_Youshio2,clip_Youshio_sub_demo_youshio1,,spell_classical_n,spell_classical,spell_classical_s
+Patchouli,3,2,4,1,1,0,3,1,8,4,3,2,-4,0,4,2,2,2,0.3,.5,.4,0,0.2,0.7,0.2,0.2,1,0,帕秋莉·诺蕾姬,パチュリー・ノーレッジ,Patchouli Knowledge,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Yuka,3,2,1,1,1,0,3,1,10,4,4,2,-4,0,4,3+wpcs,2,3+wpcs,.2,.6,0.3,0,2,0.2,0.2,0.2,1,0,风见幽香,風見幽香,Yuka Kazami,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Sanae,5,2,3,0,1,0,3,2,6,4,2.0,2,-4,0,4,2,2,2,0.3,.5,0.3,0.2,0.2,0.5,0.2,0.2,1.0,0.0,东风谷早苗,東風谷早苗,Sanae Kochiya,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Sanae_main_spell_sanae,,,spell_classical_n,spell_classical,spell_classical_s
+Enisuel,6,3,2,0,1,1,3,3,4,2,1.0,4,2,0,2+wpcs+to_c,-2-wpcs,2+wpcs+to_c,-2-wpcs,0.3,0.3,0.3,0.5,0.2,0.2,0.2,0.5,0.0,1.0,叶妮雪尔米娜,エニソゥエルミナ,Enisuelmin,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Enisuel_main_onami,,,spell_classical_n,spell_classical,spell_classical_s
+Renko,4,2,3,1,0,1,4,1,8,4,3,4,2,0,4,0,2,0,0.3,0.3,0.3,0.2,0.2,0.2,0.8,0.2,0,1,宇佐见莲子,宇佐見蓮子,Renko Usami,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Yukari,3,2,2,0,1,1,4,2,10,6,4,4,2,0,4,0,2,0,0.3,.5,0.3,0,0.5,0.2,0.2,0.2,0.5,0.5,八云紫,八雲紫,Yukari Yakumo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Keine,4,2,3,1,1,1,4,2,10,6,4,4,2,0,3,-1,1,-1,0.3,0.3,0.3,0.2,0.2,0.5,0.8,0.2,0.5,0.5,上白泽慧音,上白沢慧音,Keine Kamishirazawa,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Ringo,3,2,3,1,0,1,4,3,8,10,1,4,2,0,4,-2,2,-2,.2,.5,0.3,0,0.4,0.2,0.2,0.2,0,1,铃瑚,鈴瑚,Ringo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Xlonia,5,3,1,0,1,1,5,3,10,6,4.0,4,2,0,2+wpcs,-2,2+wpcs,-2,0.3,0.3,0.3,0.25,0.5,0.7,0.2,0.5,0.5,0.5,希洛妮娅,シロニア,Xlonia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Xlonia_main_sonic_wave_like0,,,spell_classical_n,xlonia_verses,spell_classical_s
+Remilna,8,2,2,1,1,0,5,3,6,2,1.0,2,-4,0,2*to_c+2,2,2*to_c+2,2,0.3,0.3,0.3,1.0,0.2,0.2,0.2,0.8,1.0,0.0,釉怜冠姬,釉怜カンヒメ,Remilna Lyuszlizia,,,,,,,,,,,,,,,,,,,,,,,,,,clip_Remilna_main_tama_sector,,,spell_classical_n,spell_classical,spell_classical_s
+Hearn,4,2,2,0,1,0,6,1,8,4,3,2,-4,0,4,2,2,2,0.3,0.3,0.3,0.2,0.4,0.2,0.2,0.2,1,0,玛艾露贝莉·赫恩,マエリベリー・ハーン,Mainreveria Hearn,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Ran,4,2,5,1,1,1,6,2,6,2,2,4,0,0,4,1-wpcs,2,1-wpcs,0.3,0.3,0.3,0.2,0.2,0.2,0.2,0.2,0.5,0.5,八云蓝,八雲藍,Ran Yakumo,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s
+Seiran,4,2,3,1,0,1,6,3,6,3,2,2,-4,0,4,-2,2,-2,0.3,0.3,0.3,0.2,0.5,0.2,0.2,0.2,0,1,清兰,清蘭,Seiran,,,,,,,,,,,,,,,,,,,,,,,,,,,,,spell_classical_n,spell_classical,spell_classical_s

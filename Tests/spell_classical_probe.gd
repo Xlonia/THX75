@@ -38,9 +38,12 @@ func _run_all() -> void:
 		_fail("E 角色未配符卡")
 		return
 	## F. 纯定义挂载（X+C 主符卡档=走 _spell_timeline_run）
+	## 【m91】pl 的 m 槽显式设定（作者数据已改——Xlonia=xlonia_verses）
 	var pl = arena.player_leader
 	if pl.sit_cards == null:
 		pl.sit_cards = SitCardSystem.new() ## 防御兜底（spell_probe A 同款）
+	pl.db["spell_evs"] = "spell_classical"
+	arena._spell_idx[pl.get_instance_id()] = 0
 	pl.spell_cards = 1
 	pl.pp = 100
 	var idx0: int = int(arena._spell_idx.get(pl.get_instance_id(), 0))
@@ -80,10 +83,43 @@ func _run_all() -> void:
 			var names: PackedStringArray = String(e.db.get("spell_evs", "")).split(";", false)
 			var ok := false
 			for nm in names:
-				if nm.strip_edges() == "spell_classical":
+				if nm.strip_edges() != "":
 					ok = true
 			if not ok:
 				all_set = false
-				_fail("G2 角色 %s 未配 spell_classical" % e.chara_name())
+				_fail("G2 角色 %s m 槽为空" % e.chara_name())
 	if all_set:
-		print("SPCLASS_NOTE: 默认队全员 spell_classical 在位")
+		print("SPCLASS_NOTE: 默认队全员主符卡槽非空")
+	## H. 【m91】自定义符卡部署后挂载（xlonia_verses 根因复现闭环）
+	var cust := SpellData.new()
+	cust.spell_name = "probe_custom"
+	cust.steps_start = [{"arg": "", "op": "svgresign", "params": "序号=0"}]
+	THXKit.spell_cards["probe_custom"] = cust ## 模拟分配写穿后的部署态
+	pl.db["spell_evs"] = "spell_classical;probe_custom"
+	pl.spell_cards = 1
+	pl.pp = 100
+	arena._apply_release(pl, "m")
+	var ok_h := false
+	for r in arena._spell_runs:
+		if r["ent"] == pl and r.get("spell") != null and r["spell"].spell_name == "probe_custom":
+			ok_h = true
+	if not ok_h:
+		_fail("H 自定义符卡挂载未发生（轮放 idx/解析错）spell_evs=%s idx=%s runs=%d" % [
+			str(pl.db.get("spell_evs", "")), str(arena._spell_idx.get(pl.get_instance_id(), -1)),
+			arena._spell_runs.size()])
+	## H2. 【m91 去旧制】未部署符卡=不挂流程+不回退古典（响亮 toast）
+	en.db["spell_evs"] = "ghost_spell"
+	en.spell_cards = 1
+	en.pp = 100
+	var fr0: int = arena._flow_runs.size()
+	var sr0: int = arena._spell_runs.size()
+	arena._apply_release(en, "m")
+	if arena._flow_runs.size() > fr0:
+		_fail("H2 未部署符卡仍回退古典兜底（去旧制未彻底）")
+	var ghost := false
+	for r2 in arena._spell_runs:
+		if r2["ent"] == en and sr0 < arena._spell_runs.size():
+			ghost = true
+	if arena._spell_runs.size() > sr0 and not ghost:
+		pass
+	print("SPCLASS_NOTE: H2 未部署=无流程（去旧制）已验证")

@@ -392,6 +392,9 @@ func _make_painter(node_name: String, kind: String) -> Node2D:
 	n.set_script(load("res://addons/thxgamekit/keshinozo/versus/arena_painters.gd"))
 	n.host = self
 	n.draw_kind = kind
+	## 【m91 探针开关（作者令：探针页开关，下次启动生效）】绘制层计时默认开
+	## （维持现行为）；探针页关→下次启动起不再计时
+	n.timing_enabled = bool(THXKit.scenario_cfg.get("probe_draw_timing", true))
 	world.add_child(n)
 	return n
 
@@ -1558,6 +1561,7 @@ func _mount_tier_spell(ent: BattleEntity, tier: String, tier_r: float, idx_in: i
 	if sp0 == null:
 		sp0 = THXKit.resolve_spell(raw_name)
 	if sp0 == null:
+		_toast("符卡 %s 未部署——符卡页新建后「导出为官方数据」，或重新分配一次（自动落盘）" % raw_name) ## 【m91 去旧制】失败响亮
 		return false
 	var ptl := {"tl_name": sp0.spell_name, "ticks": {"0": []}, "flow_start": "", "flow_every": "", "steps_tick": []}
 	ent.set_meta("spell_announce", sp0.spell_name)
@@ -1581,15 +1585,14 @@ func _spell_timeline_run(ent: BattleEntity, tier_r: float = 200.0) -> float:
 		## 定义（spell.csv/编辑器工作集）→ 纯定义挂载（_mount_tier_spell）
 		if _mount_tier_spell(ent, "m", tier_r, idx):
 			return 5.0
-		## 无定义=古典兜底（现状不变——svgresign+clean 挂 _flow_runs）
-		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
-			"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+		## 【m91 去旧制】无定义=不挂任何弹幕流程（槽位空=仅游戏机制；名字解析
+		## 失败=上方 toast 响亮提示）——古典兜底撤除
 		ent.set_meta("spell_announce", "")
 		return 0.0
 	if tl.ticks.is_empty():
-		## 时间轴在但无 tick=古典流程仍挂载（作者 20261117 规范化——svgresign+clean）
-		_flow_runs.append({"ent": ent, "r": tier_r, "until": time_frames + 300,
-			"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+		## 【m91 去旧制】时间轴空壳=按名解析定义纯挂载（不再古典兜底）
+		if _mount_tier_spell(ent, "m", tier_r, idx):
+			return 5.0
 		ent.set_meta("spell_announce", "")
 		return 0.0
 	ent.set_meta("spell_announce", String(tl.tl_name))
@@ -2525,7 +2528,7 @@ func _consume_pending_samples() -> void:
 	_fam_pending = []
 	## —— 态势十六点性能检测：控制台周期输出（作者批复要求）——
 	_heat_print_acc += 0.1
-	if _heat_print_acc >= 10.0 and OS.get_environment("TH75_DEBUG_PRINT") == "1":
+	if _heat_print_acc >= 10.0 and (OS.get_environment("TH75_DEBUG_PRINT") == "1" 			or bool(THXKit.scenario_cfg.get("probe_heat_stats", false))): ## 【m91 探针开关】
 		## 【0.0.9·运行探针优化（作者批"实时检测影响运行"）】周期控制台 print
 		## 在 Windows console 下是阻塞 IO（每 10 秒一次也可能 ms 级卡顿）——
 		## 默认关闭；需采集时设 TH75_DEBUG_PRINT=1
@@ -3371,13 +3374,9 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 			if ent.pp >= 25:
 				ent.pp -= 25
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 扣费后剩余P定时长
-				## 【m90 三档符卡】能力档=skill_evs 定义优先（挂了→定义全权，
-				## 消弹与否由定义决定——古典兜底不再叠加）
-				if not _mount_tier_spell(ent, "n", 80.0):
-					## 【m77】apply_clear 撤除（30Hz 域同步撤）——clean 载体全权负责
-					_flow_runs.append({"ent": ent, "r": 80.0,
-						"until": time_frames + int(clear_sec * 60.0),
-						"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+				## 【m90 三档符卡→m91 去旧制】能力档=skill_evs 定义全权
+				## （未配=仅游戏机制；解析失败=上方 toast）——古典兜底撤除
+				_mount_tier_spell(ent, "n", 80.0)
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
@@ -3386,12 +3385,8 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击（新二 245）
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
-				## 【m90 三档符卡】符卡档=spell_s_evs 定义优先（同能力档）
-				if not _mount_tier_spell(ent, "s", 200.0):
-					## 【m77】apply_clear 撤除（同上）
-					_flow_runs.append({"ent": ent, "r": 200.0,
-						"until": time_frames + int(clear_sec * 60.0),
-						"steps_tick": [{"op": "clean", "arg": "", "params": "inspellrange"}], "svg": {}})
+				## 【m90 三档符卡→m91 去旧制】符卡档=spell_s_evs 定义全权（同能力档）
+				_mount_tier_spell(ent, "s", 200.0)
 				ent.set_meta("released_kind", "s")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
