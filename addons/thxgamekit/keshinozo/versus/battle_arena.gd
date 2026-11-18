@@ -2323,7 +2323,8 @@ func _heatmap_tick() -> void:
 		var jobs := []
 		for mp in ["He0", "He1"]: ## 【0.0.9】Hr 改 Hv 派生（ Hp 独立印章保留）
 			jobs.append([fam_maps.NAMES.find(mp), fam_pts.get(mp, PackedFloat32Array())])
-		fam_maps.advance_batch(jobs)
+		if bool(THXKit.scenario_cfg.get("probe_fam_contour", true)): ## 【m92 探针开关】族图 GPU 推进
+			fam_maps.advance_batch(jobs)
 	## —— 采样点收集：存活角色实体，各采"本侧威胁图"（1d/2d/5d 三圈16点 + 自身中心=49点/实体）——
 	## 【P1 修复 20261015】第49点=实体位置：_sit_tick 的 Ht/Hd 位置值改从本批读出
 	## 写入 ht_at/hd_at meta（原先 _sit_tick 每实体每帧做 1+8 次 GPU 同步回读）
@@ -3302,6 +3303,12 @@ func _ent_tick_sit(delta: float) -> void:
 		## spike 治理改走审计 C3（消弹 hash 化）+RET 轮转（已做，保持）
 		for ent: BattleEntity in entities:
 			if ent.dead or ent.kind == BattleEntity.Kind.PRIVATE or ent == emitter_ent or ent.sit_cards == null:
+				continue
+			## 【m92 接管语义（作者 20261118：完全接管并非完全接管——角色依然
+			## 会自动放符卡）】玩家领队被完全接管（东方正作射击操作）时态势卡
+			## 自动释放停摆——n/s 交由玩家手动（X 瞬发/X+C 主符卡），抽卡照旧
+			if ent == player_leader and take_over:
+				ent.current_sit_card = ""
 				continue
 			var replaced: String = ent.sit_cards.release_tick(phase)
 			if replaced != "":

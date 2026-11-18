@@ -90,6 +90,16 @@ var preview_event_name := ""                    ## 试炼场要发射的事件�
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
+		## 【m92 编辑器态装载部署 spell/clip（作者 20261118：重启后符卡页
+		## 看不到 xlonia_verses/classical——角色页下拉同盲）】编辑器主屏
+		## （THXGameKit tab）的符卡列表/分配下拉需要部署数据源。
+		## 只读两份小表+并入注册表（幂等；不触数据基址/场景构建）
+		if FileAccess.file_exists("res://gameAssetBase/danmaku_clip.csv"):
+			for cdm in ClipData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/danmaku_clip.csv")):
+				THXKit.clips[cdm.clip_name] = cdm
+		if FileAccess.file_exists("res://gameAssetBase/spell.csv"):
+			for spm in SpellData.parse_csv(FileAccess.get_file_as_string("res://gameAssetBase/spell.csv")):
+				THXKit.spell_cards[spm.spell_name] = spm
 		return ## 编辑器态不构建/不覆盖（数据基址=运行时推送）
 	## 【0.0.9·宿主数据覆盖 20261111】THXGameKit 内核默认读自己 data/；
 	## THX75 的数据在 gameAssetBase——宿主 _ready 覆盖三个数据基址
