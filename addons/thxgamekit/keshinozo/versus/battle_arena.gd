@@ -1417,6 +1417,27 @@ func _exec_flow_step(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void
 				run["loop_next"] = -1 ## 首个处理到的 tick 立即起播
 			else:
 				_sched_clip_entries(run, cdx)
+		"danmaku":
+			## 【m93 scheme 角色对弹幕操作①】danmaku(选择器1=发射者，选择器2=
+			## 目标，弹幕事件选择器)：在该角色上释放一个弹幕事件，对其目标发射。
+			## 动作发出者=**施法者**（符卡流程的角色操作永远以她本身为锚——
+			## 作者 20261118 语义确认：希洛妮娅的符卡不该发生在别人身上）。
+			## arg=事件名；params=定位器（空=敌侧随机角色）
+			var dev: DanmakuEventData = _find_event(String(st.get("arg", "")).strip_edges())
+			if dev == null:
+				_toast("danmaku 需要事件名（arg=弹幕事件）——%s 未解析" % String(st.get("arg", "")))
+			else:
+				var cands2: Array = EntityOps.resolve(params, ent, self)
+				if cands2.is_empty():
+					for e11 in entities:
+						if e11 is BattleEntity and e11.side == 1 - ent.side and not e11.dead and e11.kind != BattleEntity.Kind.PRIVATE:
+							cands2.append(e11)
+				if cands2.is_empty():
+					_toast("danmaku 无可选目标（敌侧无存活角色）")
+				else:
+					var tgt2: BattleEntity = cands2[randi() % cands2.size()]
+					_spawn_event_copies(dev, ent.position, ent, null, {}, 0,
+						{}, {}, 0.0, tgt2)
 		_:
 			pass
 
@@ -1497,12 +1518,16 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 					_spawn_event_copies(iev2, at, ent, null, {}, 0)
 					done += 1
 		"revolt":
-			## 【scheme 997】发射者改为选择器1（=施放者 self），目标瞄准
-			## 选择器2（敌对侧随机角色）：冻结指向（C++ 兼容语义）
-			var cands: Array = []
-			for e10 in entities:
-				if e10 is BattleEntity and e10.side == 1 - ent.side and not e10.dead and e10.kind != BattleEntity.Kind.PRIVATE:
-					cands.append(e10)
+			## 【scheme 997→m93 定位器】发射者改为选择器1（=施法者 self），
+			## 目标瞄准选择器2：定位器字符串（closet/enemies/random/iterate(命题)…
+			## ——EntityOps.resolve；留空=敌侧随机（旧语义兼容））。冻结指向+
+			## **共享目标锚同步**（gettarget 系 revolt 后指向新锁定——作者实测
+			## xlonia_verses：从敌方身上发射/打向敌方的根因=锚未随策反更新）
+			var cands: Array = EntityOps.resolve(String(st.get("params", "")).strip_edges(), ent, self)
+			if cands.is_empty():
+				for e10 in entities:
+					if e10 is BattleEntity and e10.side == 1 - ent.side and not e10.dead and e10.kind != BattleEntity.Kind.PRIVATE:
+						cands.append(e10)
 			var tgt: BattleEntity = cands[randi() % cands.size()] if cands.size() > 0 else null
 			for bl in list:
 				var pb2: Bullet = bl
@@ -1514,6 +1539,11 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 					pb2.frozen_dir = (tgt.position - pb2.pos).normalized()
 					pb2.frozen_ok = true
 					pb2._w_frozen_dir = Vector2.ZERO
+					## 【m93 锚同步】共享目标/缓存目标=策反后锁定者（gettarget 系
+					## 表达式自此读新目标——弹幕不再"回头打"策反前目标）
+					pb2._shared_target = tgt
+					pb2._target_cached = tgt
+					pb2._target_refresh_cd = 30
 				done += 1
 		"inheritdamage":
 			var dev := _find_event(ev_name)
