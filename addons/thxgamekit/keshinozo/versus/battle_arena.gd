@@ -5352,16 +5352,23 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 		if mm == null:
 			continue
 		var cnt := list.size()
-		## 【m83 审计修复①（豆包 20261117：涨一颗=重建缓冲+全量重写=超线性
-		## 驼峰 111ms 元凶）】容量分块增长：256 一档取整——上升段重建次数
-		## 从 O(n) 降到 O(n/256)；不缩容（缩容同样重建）
+		## 【m96-A 审计 P0②（作者批）】容量高水位预分配（512 一档，不缩容）+
+		## **visible_instance_count 每帧**——实例数波动零缓冲重建；数据经
+		## **MultiMesh.buffer 批写**（每纹理一次赋值替代每实例 2 次跨语言调用）
 		if cnt > mm.instance_count:
-			mm.instance_count = ((cnt + 255) >> 8) << 8
+			mm.instance_count = ((cnt + 511) >> 9) << 9
+		var cap: int = mm.instance_count
+		if int(_mm_buf_cap.get(tex, 0)) != cap:
+			var b0 := PackedFloat32Array()
+			b0.resize(cap * 12) ## stride=12：8 变换（行主 vec4）+4 色（mm_layout_probe 实测定版）
+			mm.buffer = b0
+			_mm_buf_cap[tex] = cap
+		var data := PackedFloat32Array()
+		data.resize(cap * 12)
 		for i in cnt:
 			var bl: Bullet = list[i]
 			var xf: Transform2D = bl.draw_transform() ## 【0.0.9·③】偏心中心（默认=(pos,rot) 逐位一致）
 			xf = xf.scaled_local(Vector2(bl.size_mul, bl.size_mul))
-			mm.set_instance_transform_2d(i, xf)
 			var rc: Array = bl.render_color_alpha() ## 【定值预计算】static 弹零计算
 			var mc: Color = rc[0]
 			## 【近弹增显 20261026（作者 0.0.8 点子）】参与 DDM（pass 否）的弹幕
@@ -5417,13 +5424,21 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 			if bl.source_side == 0 and (not bl.ev.is_phy or not bl.beyond_mask()):
 				mc2 = Color(0.75, 0.75, 0.78, 0.125)
 				a_final = 0.125
-			mm.set_instance_color(i, Color(mc2.r, mc2.g, mc2.b, a_final))
-		## 缩容时只把"多出来的"实例挪到屏外一次（增量停靠）——
-		## 旧版（注释备查）：每帧把 [cnt, instance_count) 全部重写，
-		## 弹幕数波动时每帧多达成百上千次 set_instance_transform_2d。
-		if cnt < _mm_last_cnt.get(tex, 0):
-			for i in range(cnt, _mm_last_cnt[tex]):
-				mm.set_instance_transform_2d(i, Transform2D(0, Vector2(-9999, -9999)))
+			## 【m96-A】批写（布局=mm_layout_probe 实测定版 stride 12：
+			## f0=X.x f1=Y.x f3=O.x f4=X.y f5=Y.y f7=O.y f8-11=RGBA）
+			var base := i * 12
+			data[base] = xf.x.x
+			data[base + 1] = xf.y.x
+			data[base + 3] = xf.origin.x
+			data[base + 4] = xf.x.y
+			data[base + 5] = xf.y.y
+			data[base + 7] = xf.origin.y
+			data[base + 8] = mc2.r
+			data[base + 9] = mc2.g
+			data[base + 10] = mc2.b
+			data[base + 11] = a_final
+		mm.buffer = data ## 【m96-A】每纹理一次赋值（增量停靠/屏外挪移旧制随批写作废）
+		mm.visible_instance_count = cnt
 		_mm_last_cnt[tex] = cnt
 		onto.draw_multimesh(mm, tex)
 	## 【m96 审计§7】验证仪表（1Hz 打印——probe_mm_stats 开时）
@@ -5508,6 +5523,7 @@ func _ddm_tex_slot(tex: Texture2D) -> int:
 
 var _mm_cache: Dictionary = {}
 var _mm_last_cnt: Dictionary = {}
+var _mm_buf_cap: Dictionary = {} ## 【m96-A】每纹理 buffer 高水位（512 档）
 ## 【22b 20261031f·管线预热】发射风暴帧的 114-162ms 尖峰=新弹幕纹理
 ## 首次渲染的 Vulkan 管线编译（主线程阻塞）。战场建立时把全事件纹理
 ## 各画一帧屏外实例 → 运行期零首次编译。
