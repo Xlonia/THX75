@@ -1,0 +1,10 @@
+{
+  "bullet_clear": true,
+  "canvas_h": 400.0,
+  "canvas_w": 400.0,
+  "hitbox_edit": true,
+  "probe_draw_timing": true,
+  "probe_heat_stats": false,
+  "special_hitbox": false,
+  "heat_split": false
+}
