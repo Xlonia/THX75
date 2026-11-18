@@ -266,6 +266,7 @@ func _ready() -> void:
 	_init_gpu()
 	_build_world()
 	_build_hud()
+	_bake_arc_texes() ## 【m96-D】初始化期弧贴图烘焙（作者令：初始化阶段处理好）
 	_sample_n = GameGlobals.bullet_sample_n ## 【采样平滑】进战前锁定（初始化完成）
 	## 【0.0.9·物理驱动模式（作者批 20261108）】默认=渲染帧驱动（工作期调试同款：
 	## set_physics_process(false)+每渲染帧手动调恰一次——引擎 catch-up 多 tick
@@ -2389,8 +2390,20 @@ func _heatmap_tick() -> void:
 	## 本拍全部提交（Ht/Hv 步进+族图印章+DDM）≈6ms。0.1s 旧数据符合策划态势语义。
 	_consume_pending_samples()
 	## 各侧实体分别采各自威胁图：Ht 逐侧 dispatch；fam 四图并批一次提交
+	## 【m96-C 分摊（作者提案：每 6 帧必须同时算出的结果分摊到不同场合+缓冲）】
+	## heat_split 开（默认关）：三窗轮转 0=HT侧0 / 1=HT侧1 / 2=FAM——
+	## 每窗尖峰 ~1/3（侧0 回读 6ms 主导），各源刷新 0.2s→0.3s（AI 态势
+	## 本为 0.1s 旧近似；是否接受此语义变化=数据呈报后作者裁定）
+	var heat_split := bool(THXKit.scenario_cfg.get("heat_split", false))
+	var hm_phase := -1
+	if heat_split:
+		_hm_tick_i += 1
+		hm_phase = _hm_tick_i % 3
+
 	var fam_sides := []
 	for side in 2:
+		if heat_split and side != hm_phase:
+			continue ## 【m96-C】非本轮窗口的侧不采样不分摊
 		var side_pts := PackedVector2Array()
 		var side_ents: Array = []
 		for i in _sample_entities.size():
@@ -2418,6 +2431,8 @@ func _heatmap_tick() -> void:
 					_compute_hcs_hct(e4)
 		else:
 			_apply_ht_vals(ht.sample(side_pts), side_ents) ## CPU 降级立即生效
+		if heat_split and hm_phase != 2:
+			continue ## 【m96-C】FAM 只在 phase=2 窗口采样分摊
 		fam_sides.append({
 			"pts": side_pts,
 			"maps": ["He%d" % side, "Hd%d" % side, "Hr%d" % side, "Hp%d" % side, "Ha%d" % side],
@@ -2429,6 +2444,7 @@ func _heatmap_tick() -> void:
 		_fam_pending = fam_sides
 
 ## —— 采样延迟一拍（P1 修复 20261015）：本拍 dispatch，下一拍开头回读消费 ——
+var _hm_tick_i := 0 ## 【m96-C】分摊轮转计数（0=HT侧0 / 1=HT侧1 / 2=FAM）
 var _ht_pending := {}  ## side -> side_ents
 var _fam_pending := [] ## fam_sides
 ## 【22b 20261031·修复#2】回读延迟两拍（原一拍）：batch_read 的 fence 在
@@ -2487,20 +2503,39 @@ func _apply_ht_vals(vals: PackedInt32Array, side_ents: Array) -> void:
 		ent.set_meta("ht_at", vals[vi] if vi < vals.size() else 0)
 		vi += 1
 
+## 【m96-C 分摊前置仪表】每源回读耗时（HT 侧0/侧1/FAM 批读——1Hz 均值，
+## probe_heat_stats 门控）：分摊方案的数据依据
+var _c_us_ht := [0.0, 0.0]
+var _c_us_fam := 0.0
+var _c_n := 0
+
 func _consume_pending_samples() -> void:
 	## 消费两拍前的 pending（此时其 GPU 提交早已排空，fence≈0）
 	for side in _ht_pending2:
 		var ht: HeatmapField = ht_side[side]
 		if ht != null and ht.ok:
+			var t0 := Time.get_ticks_usec()
 			_apply_ht_vals(ht.sample_read(), _ht_pending2[side])
+			if bool(THXKit.scenario_cfg.get("probe_heat_stats", false)):
+				_c_us_ht[side] = (_c_us_ht[side] * _c_n + (Time.get_ticks_usec() - t0)) / (_c_n + 1)
 	_ht_pending2 = _ht_pending
 	_ht_pending = {}
+	## 【m96-C】仪表打印前移（FAM 空帧早退曾挡住 HT 侧的计量——分摊后
+	## FAM 空帧是常态）
+	if bool(THXKit.scenario_cfg.get("probe_heat_stats", false)):
+		_c_n += 1
+		if _c_n % 10 == 0:
+			print("[回读分摊] HT侧0=%.2fms HT侧1=%.2fms FAM批读=%.2fms（均值/拍）" % [
+				_c_us_ht[0] / 1000.0, _c_us_ht[1] / 1000.0, _c_us_fam / 1000.0])
 	if _fam_pending2.is_empty() and _fam_pending.is_empty():
 		return
 	var spin2 := TAU / 32.0 * float(time_frames % 2)
 	var multi: Dictionary = {}
 	if not _fam_pending2.is_empty():
+		var t1 := Time.get_ticks_usec()
 		multi = fam_maps.batch_read()
+		if bool(THXKit.scenario_cfg.get("probe_heat_stats", false)):
+			_c_us_fam = (_c_us_fam * _c_n + (Time.get_ticks_usec() - t1)) / (_c_n + 1)
 	for sd in _fam_pending2:
 		var sfx: String = str(sd["side"])
 		var side_ents: Array = sd["ents"]
@@ -4985,6 +5020,53 @@ Shift+S 同意 / Shift+W 拒绝
 ## =============================================================
 ## 绘制（painters 回调）
 ## =============================================================
+## 【m96-D（作者令：初始化阶段处理好）】圆环弧预烘焙——16/24/48 段三种
+## 规格烘焙成 256px 圆环描边贴图（初始化一次），运行期 draw_texture_rect
+## 替代 draw_arc（数千条线段图元 → 每弧 1 个四边形图元；颜色用 modulate）
+var _arc_texes: Dictionary = {} ## 段数 → 弧贴图（白环，draw 时 modulate 上色）
+
+func _bake_arc_texes() -> void:
+	for seg_i in [16, 24, 48]:
+		var seg: int = seg_i
+		var sz := 256
+		var img := Image.create(sz, sz, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0, 0, 0, 0))
+		var cx := sz / 2.0
+		for a in seg:
+			var a0: float = TAU * a / seg
+			var a1: float = TAU * (a + 1) / seg
+			## 弦近似弧（描边宽 2px：圆环带 r∈[sz/2-2, sz/2)）
+			var steps := 8
+			for st in steps:
+				var t0: float = a0 + (a1 - a0) * st / steps
+				var t1: float = a0 + (a1 - a0) * (st + 1) / steps
+				for rr_v in [sz / 2.0 - 1.0, sz / 2.0 - 2.0]:
+					var rr: float = rr_v
+					var p0: Vector2 = Vector2(cx, cx) + Vector2(cos(t0), sin(t0)) * rr
+					var p1: Vector2 = Vector2(cx, cx) + Vector2(cos(t1), sin(t1)) * rr
+					_img_line(img, p0, p1, Color.WHITE)
+		var t := ImageTexture.create_from_image(img)
+		_arc_texes[seg] = t
+
+func _img_line(img: Image, pa: Vector2, pb: Vector2, col: Color) -> void:
+	## 像素线（无抗锯齿——描边弧用）
+	var steps := int(ceil(pa.distance_to(pb)))
+	for i in steps + 1:
+		var pt := pa.lerp(pb, float(i) / maxf(steps, 1))
+		var x := int(pt.x)
+		var y := int(pt.y)
+		if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height():
+			img.set_pixel(x, y, col)
+
+func _draw_ring(onto: CanvasItem, at: Vector2, radius: float, seg: int, col: Color, width: float = 1.0) -> void:
+	## 弧贴图绘制（烘焙环直径 256 → 缩放到 2*radius；width>1=环加粗微缩）
+	var t: Texture2D = _arc_texes.get(seg)
+	if t == null:
+		onto.draw_arc(at, radius, 0, TAU, seg, col, width) ## 兜底（烘焙前调用）
+		return
+	var d := radius * 2.0
+	onto.draw_texture_rect(t, Rect2(at.x - radius, at.y - radius, d, d), false, col)
+
 func draw_entities(onto: CanvasItem) -> void:
 	for ent in entities:
 		if ent is not BattleEntity or ent == emitter_ent:
@@ -5000,7 +5082,7 @@ func draw_entities(onto: CanvasItem) -> void:
 		if ent == picked_entity():
 			col = Color(1.0, 0.85, 0.2)
 		var r: float = ent.judge_radius()
-		onto.draw_arc(ent.position, r, 0, TAU, 16, col, 1.0)
+		_draw_ring(onto, ent.position, r, 16, col)
 		## 【0.0.9·角色贴图（作者 20261109）】有材质的角色画精灵（图集循环播放，
 		## 纹理上方对朝向：rot=facing.angle()+π/2）；判定点弧圈保留（所见即所判）
 		## 【批复 20261020】朝向仅角色：杂兵无朝向概念，不画刻线
@@ -5019,16 +5101,16 @@ func draw_entities(onto: CanvasItem) -> void:
 				onto.draw_texture_rect_region(ct["tex"], Rect2(-ct["fw"] / 2.0, -ct["fh"] / 2.0, ct["fw"], ct["fh"]), reg, mcol)
 				onto.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if ent.ap > 0 and ent.kind != BattleEntity.Kind.PRIVATE:
-			onto.draw_arc(ent.position, ent.barrier_radius(), 0, TAU, 24, col.darkened(0.4), 1.0)
+			_draw_ring(onto, ent.position, ent.barrier_radius(), 24, col.darkened(0.4))
 		if ent.is_player:
-			onto.draw_arc(ent.position, 6.0, 0, TAU, 16, Color.WHITE, 0.5)
+			_draw_ring(onto, ent.position, 6.0, 16, Color.WHITE)
 		if _show_pick and ent == picked_entity():
-			onto.draw_arc(ent.position, r + 4.0, 0, TAU, 24, Color(1, 0.95, 0.4), 1.5)
+			_draw_ring(onto, ent.position, r + 4.0, 24, Color(1, 0.95, 0.4))
 		## 【批复】消弹范围圆形指示（透明度随剩余时间衰减）
 		if ent.clear_active():
 			var ca: float = clampf(float(ent.clear_frames) / 60.0, 0.15, 0.6)
 			onto.draw_circle(ent.position, ent.clear_radius, Color(0.4, 0.8, 1.0, ca * 0.18))
-			onto.draw_arc(ent.position, ent.clear_radius, 0, TAU, 48, Color(0.4, 0.8, 1.0, ca), 1.5)
+			_draw_ring(onto, ent.position, ent.clear_radius, 48, Color(0.4, 0.8, 1.0, ca))
 	## P点/符卡掉落物绘制（材质 pp.PNG/spell.PNG；闪烁提示将消失）
 	for d in drops:
 		if d["tex"] == null:
@@ -5120,7 +5202,10 @@ func draw_bullets(onto: CanvasItem) -> void:
 	## 【22b 20261102d·激光 MM 化（遗留清单）】逐段 draw_line（每激光
 	## ~400 条×~1µs）→ 线段 MultiMesh（1 draw call）：单位白 quad 拉伸
 	## 对齐每段（pos=段中点、旋转=段向、缩放=段长×宽）
-	var laser_segs: Array = [] ## [mid, dir_angle, seglen, width, color]
+	## 【m96-E（作者令：更简便的绘制算法+GPU 大规模轻量化）】中间 laser_segs
+	## 数组全撤（每段 5 元 Array 分配归零）——采样点直算段参数直填 buffer
+	## （与弹幕 MM 同法：每帧一次赋值+visible_instance_count）
+	var lcnt := 0
 	for b in bullets:
 		var bl: Bullet = b
 		if bl.hidden_now or bl.ev.tag != DanmakuEventData.TAG_LASER:
@@ -5137,28 +5222,58 @@ func draw_bullets(onto: CanvasItem) -> void:
 		if own_side_invis:
 			c = Color(1, 1, 1, 0.3) ## 纯白半透明轨道
 			w = 1.5
-		for i in bl.laser_samples.size() - 1:
-			var pa: Vector2 = bl.laser_samples[i]
-			var pb: Vector2 = bl.laser_samples[i + 1]
+		var samples: PackedVector2Array = bl.laser_samples
+		for i in samples.size() - 1:
+			var pa: Vector2 = samples[i]
+			var pb: Vector2 = samples[i + 1]
 			var seg: Vector2 = pb - pa
-			if seg.length_squared() < 0.01:
+			var seglen := seg.length()
+			if seglen < 0.1:
 				continue
-			laser_segs.append([(pa + pb) * 0.5, seg.angle(), seg.length(), w, c])
-	if laser_segs.size() > 0:
-		var lmm := _get_laser_mm()
-		if laser_segs.size() > lmm.instance_count:
-			lmm.instance_count = laser_segs.size()
-		for li in laser_segs.size():
-			var sd: Array = laser_segs[li]
-			var xf := Transform2D(sd[1], sd[0])
-			xf = xf.scaled_local(Vector2(sd[2], sd[3]))
-			lmm.set_instance_transform_2d(li, xf)
-			lmm.set_instance_color(li, sd[4])
-		var last_l: int = int(_mm_last_cnt.get(_LASER_KEY, 0))
-		if laser_segs.size() < last_l:
-			for i2 in range(laser_segs.size(), last_l):
-				lmm.set_instance_transform_2d(i2, Transform2D(0, Vector2(-9999, -9999)))
-		_mm_last_cnt[_LASER_KEY] = laser_segs.size()
+			var ang: float = seg.angle()
+			var cos_a: float = cos(ang)
+			var sin_a: float = sin(ang)
+			var mid := (pa + pb) * 0.5
+			## 行主 vec4 直填（同弹幕 MM 布局）：X 基=(cos,sin)*len Y 基=(-sin,cos)*w
+			var bx: float = cos_a * seglen
+			var by: float = sin_a * seglen
+			var lx: float = -sin_a * w
+			var ly: float = cos_a * w
+			var base := lcnt * 12
+			while _laser_data.size() < base + 12:
+				_laser_data.resize((base + 12) * 2)
+			_laser_data[base] = bx
+			_laser_data[base + 1] = lx
+			_laser_data[base + 3] = mid.x
+			_laser_data[base + 4] = by
+			_laser_data[base + 5] = ly
+			_laser_data[base + 7] = mid.y
+			_laser_data[base + 8] = c.r
+			_laser_data[base + 9] = c.g
+			_laser_data[base + 10] = c.b
+			_laser_data[base + 11] = c.a
+			lcnt += 1
+	var lmm := _get_laser_mm()
+	if lcnt > lmm.instance_count:
+		lmm.instance_count = ((lcnt + 511) >> 9) << 9
+	var lcap: int = lmm.instance_count
+	if int(_mm_buf_cap.get(_LASER_KEY, 0)) != lcap:
+		var lb0 := PackedFloat32Array()
+		lb0.resize(lcap * 12)
+		lmm.buffer = lb0
+		_mm_buf_cap[_LASER_KEY] = lcap
+	## 尾段清零（零矩阵=退化四边形不渲染）+尺寸归一（buffer 长度须恰为 cap×12）
+	var need := lcap * 12
+	if _laser_data.size() < need:
+		_laser_data.resize(need)
+	for fi in range(lcnt * 12, need):
+		_laser_data[fi] = 0.0
+	if _laser_data.size() > need:
+		_laser_data.resize(need)
+	lmm.buffer = _laser_data
+	lmm.visible_instance_count = lcnt
+	_mm_last_cnt[_LASER_KEY] = lcnt
+	if lcnt > 0:
 		onto.draw_multimesh(lmm, _laser_tex())
 	## 我方法弹的白色前向粒子轨道（只有轨道、没有弹幕本体；敌方法弹同物弹正常显示）
 	## 【22b 20261030】我方法弹白色前向轨道的逐弹 draw_line 已移除：
@@ -5524,6 +5639,7 @@ func _ddm_tex_slot(tex: Texture2D) -> int:
 var _mm_cache: Dictionary = {}
 var _mm_last_cnt: Dictionary = {}
 var _mm_buf_cap: Dictionary = {} ## 【m96-A】每纹理 buffer 高水位（512 档）
+var _laser_data := PackedFloat32Array() ## 【m96-E】激光段直填 buffer（跨帧复用零分配）
 ## 【22b 20261031f·管线预热】发射风暴帧的 114-162ms 尖峰=新弹幕纹理
 ## 首次渲染的 Vulkan 管线编译（主线程阻塞）。战场建立时把全事件纹理
 ## 各画一帧屏外实例 → 运行期零首次编译。
