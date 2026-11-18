@@ -18,3 +18,4 @@ aiTest_patch_*.py
 *.tmp
 # thxp 引用格式资源目录（作者 20261114：本地产物不入库；范例/示例文件特别指出的除外）
 projectdata/
+gameAssetBase/thx_kernel_cfg.json
