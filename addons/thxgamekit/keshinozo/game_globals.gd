@@ -566,6 +566,109 @@ func load_default_archive() -> void:
 			rp2.append(Vector2(clampf(float(ra2[0]), 0.0, 400.0), clampf(float(ra2[1]), 0.0, 400.0)))
 		retreat_points = rp2
 
+## =============================================================
+## 【对战存档（0.0.9 模拟/测试/调试存档第一片，作者 20261120）】
+## 本版本只存/读：角色阵容（我方+敌方名表）+角色对战逻辑
+## （versus_chara_cfg 全量=logics 三步向导/杂兵排布/资源 pp·spell）。
+## 能力因素（弹幕伤害倍乘/弹幕速度/技能/角色逻辑）随后续批次进
+## versus_chara_cfg 即自动随存档走，格式不用再改。
+## 文件=user://battlesaves/*.thxb（JSON 明文——存档编辑器后续直接改它）。
+## 读取=整体替换当前对战配置（斗蛐蛐复现口径：档内是什么就是什么）。
+## =============================================================
+const BATTLE_SAVE_DIR := "user://battlesaves"
+const BATTLE_SAVE_KIND := "thx_battle_save_v1"
+
+## 存档（阵容由菜单当前选人传入；对战逻辑取 GameGlobals.versus_chara_cfg 现值）
+## 返回 ""=成功，否则错误说明。
+func save_battle_save(fname: String, player_team: Array, enemy_team: Array) -> String:
+	var clean := fname.strip_edges().get_file()
+	if clean == "":
+		return "文件名为空"
+	if not clean.ends_with(".thxb"):
+		clean += ".thxb"
+	var err := DirAccess.make_dir_recursive_absolute(BATTLE_SAVE_DIR)
+	if err != OK:
+		return "建目录失败：%d" % err
+	var payload := {
+		"kind": BATTLE_SAVE_KIND,
+		"version": 1,
+		"saved_at": Time.get_datetime_string_from_system().replace("T", " "),
+		"player_team": [],
+		"enemy_team": [],
+		"chara_cfg": {},
+	}
+	for n in player_team:
+		payload["player_team"].append(str(n))
+	for n2 in enemy_team:
+		payload["enemy_team"].append(str(n2))
+	payload["chara_cfg"] = versus_chara_cfg.duplicate(true)
+	var f := FileAccess.open(String(BATTLE_SAVE_DIR).path_join(clean), FileAccess.WRITE)
+	if f == null:
+		return "写盘失败：%d" % FileAccess.get_open_error()
+	f.store_string(JSON.stringify(payload, "\t"))
+	f.close()
+	return ""
+
+## 读档：整体替换 versus_player_team/enemy_team/versus_chara_cfg。
+## 返回 ""=成功，否则错误说明（坏档不半改——校验全过才应用）。
+func load_battle_save(fname: String) -> String:
+	var clean := fname.strip_edges().get_file()
+	if clean == "":
+		return "文件名为空"
+	if not clean.ends_with(".thxb"):
+		clean += ".thxb"
+	var path := String(BATTLE_SAVE_DIR).path_join(clean)
+	if not FileAccess.file_exists(path):
+		return "存档不存在：%s" % clean
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return "读盘失败：%d" % FileAccess.get_open_error()
+	var data = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (data is Dictionary):
+		return "非 JSON 或已损坏"
+	if str(data.get("kind", "")) != BATTLE_SAVE_KIND:
+		return "不是对战存档（kind=%s）" % str(data.get("kind", "?"))
+	var pt = data.get("player_team", null)
+	var et = data.get("enemy_team", null)
+	var cc = data.get("chara_cfg", null)
+	if not (pt is Array) or not (et is Array) or not (cc is Dictionary):
+		return "结构缺项（player_team/enemy_team/chara_cfg）"
+	var pt2: Array = []
+	for n in pt:
+		pt2.append(str(n))
+	var et2: Array = []
+	for n2 in et:
+		et2.append(str(n2))
+	var cc2: Dictionary = {}
+	for k in cc:
+		if cc[k] is Dictionary:
+			cc2[str(k)] = (cc[k] as Dictionary).duplicate(true)
+	versus_player_team = pt2
+	versus_enemy_team = et2
+	versus_chara_cfg = cc2
+	return ""
+
+## 列出现有对战存档（按修改时间新→旧）：[{name, path, mtime}]
+func list_battle_saves() -> Array:
+	var out: Array = []
+	if not DirAccess.dir_exists_absolute(BATTLE_SAVE_DIR):
+		return out
+	var da := DirAccess.open(BATTLE_SAVE_DIR)
+	if da == null:
+		return out
+	da.list_dir_begin()
+	var fn := da.get_next()
+	while fn != "":
+		if not da.current_is_dir() and fn.ends_with(".thxb"):
+			var p := String(BATTLE_SAVE_DIR).path_join(fn)
+			out.append({"name": fn, "path": p,
+				"mtime": FileAccess.get_modified_time(p)})
+		fn = da.get_next()
+	da.list_dir_end()
+	out.sort_custom(func(a, b): return int(a["mtime"]) > int(b["mtime"]))
+	return out
+
 ## 统一场景跳转
 func goto_scene(res_path: String) -> void:
 	## 【手动切场景撤销 20261114】回 change_scene_to_file（作者指令——m54 手动版
