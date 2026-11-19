@@ -1042,6 +1042,65 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 func _pick_side_target(_side: int):
 	return null ## 占位（轮盘目标由 _wheel_target 持有）
 
+## =============================================================
+## 【m100 角色前锋（scheme 24-30 行；作者 20261120 批次开工）】
+## 花费资源邀请**非队伍核心角色**与队伍内特定一位角色位置重合保护目标；
+## 前锋原速忽略（不动）；带 5 名自带杂兵，杂兵败后用前锋库存杂兵；
+## 晚汐-风见幽香-帕秋莉不能互相作为前锋；只能召唤三个队伍之外的角色；
+## 25 结界破损自动离场；结界半径=目标角色大 1。
+## =============================================================
+const VANGUARD_EXCLUDE := ["Youshio", "Yuka", "Patchouli"] ## 互斥三角色（scheme 27）
+var _vanguards: Array = [] ## 前锋实体列表（离场时清理）
+
+func _vanguard_excluded(row: Dictionary) -> bool:
+	return VANGUARD_EXCLUDE.has(String(row.get("Name", "")))
+
+func _can_vanguard(sel: BattleEntity) -> bool:
+	return sel != null and not sel.dead and sel.kind == BattleEntity.Kind.PLAYER and sel.side == 0
+
+func _do_vanguard(sel: BattleEntity, row: Dictionary) -> void:
+	## 资源门：与召唤同费（25P）
+	if sel.pp < 25:
+		_toast("指令失败：%s P点不足（前锋需 25，当前 %d）" % [sel.chara_name(), sel.pp])
+		return
+	if _vanguard_excluded(row):
+		_toast("指令失败：%s 不能作为前锋（晚汐/幽香/帕秋莉互斥）" % row.get("NameZH", row.get("Name", "?")))
+		return
+	var ne := BattleEntity.new()
+	ne.setup(row, 0, BattleEntity.Kind.PLAYER, true)
+	ne.sit_cards = SitCardSystem.new()
+	ne.position = sel.position ## 位置重合保护目标
+	ne.set_meta("vanguard_for", sel.get_instance_id())
+	ne.set_meta("vanguard", true)
+	ne.ap = 25
+	## 结界半径=目标角色大 1（scheme 30）
+	ne.set_meta("vanguard_barrier_plus", 1)
+	player_ents.append(ne)
+	entities.append(ne)
+	var fc := FireControl.new()
+	fc.setup(ne)
+	fc.fired.connect(_on_fire)
+	fire_controls.append(fc)
+	_connect_economy(ne)
+	## 5 名自带杂兵（前锋库存杂兵=privates.csv 循环）
+	for j in 5:
+		_spawn_private_for(ne)
+	sel.pp -= 25
+	_vanguards.append(ne)
+	_toast("角色前锋：%s 与 %s 重合保护（结界25+1）" % [ne.chara_name(), sel.chara_name()])
+	print("[前锋] %s 上场保护 %s（P=%d 剩余）" % [ne.chara_name(), sel.chara_name(), sel.pp])
+
+func _vanguard_tick() -> void:
+	## 结界破损自动离场（scheme 29）：ap<=0 即撤（离场不释放能力——同召唤语义）
+	for i in range(_vanguards.size() - 1, -1, -1):
+		var v = _vanguards[i]
+		if not is_instance_valid(v) or v.dead:
+			_vanguards.remove_at(i)
+			continue
+		if int(v.ap) <= 0:
+			v.dead = true ## 离场（25 结界破损——scheme 29）
+			_vanguards.remove_at(i)
+
 ## 右下面板（新二 87 行）：H 在"特定角色详细状态"与"决斗机控热键展示"间切换
 func _br_cycle() -> void:
 	_br_page = (_br_page + 1) % 3 ## 0 关 / 1 角色状态 / 2 热键
@@ -2080,6 +2139,7 @@ func _physics_process(delta: float) -> void:
 		_ai_sides()
 		_spell_runs_tick() ## 【m66】主要符卡时间轴逐 tick 执行
 		_flow_runs_tick() ## 【m75】事件帧流程载体（n 档等）
+		_vanguard_tick() ## 【m100 角色前锋】结界破损自动离场（每帧轻量）
 		if is_preview:
 			_preview_emitter(delta)
 			_preview_controls() ## 【批复 20261024】预览可控：方向键移动玩家
@@ -3407,6 +3467,12 @@ func _ent_tick_sit(delta: float) -> void:
 			## 释放判定（能力/符卡出卡即放；n=能力 s=次级符卡）
 			if ent.current_sit_card == "n" or ent.current_sit_card == "s":
 				_apply_release(ent, ent.current_sit_card)
+			elif ent.current_sit_card == "e":
+				## 【m100 应急符卡（scheme 324）】Sl=0 绝路强制交符卡——
+				## 不消耗符卡/P、不等装填（应急态）；释放走主要符卡档
+				if ent.spell_cards < 1:
+					ent.spell_cards += 1 ## 应急特例：无符卡也强制交（保障绝路反应）
+				_apply_release(ent, "m", true)
 			var tac: Dictionary = ent.sit_cards.check_tactic(ent.db)
 			ent.current_tactic = tac.get("name", "")
 			## 【号召点（③期）】命中战术的角色广播号召（队友 AI 向其引力靠拢）
@@ -3422,7 +3488,7 @@ func _ent_tick_sit(delta: float) -> void:
 
 ## 释放效果（策划：能力80px·0.5s / 次级符卡200px·1s / 主要符卡全屏·5s）
 ## 消耗：能力25P / 次级符卡1张 / 主要符卡1张+100P（本批 n=能力、s=次级；主要符卡随符卡设置实装）
-func _apply_release(ent: BattleEntity, kind: String) -> void:
+func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false) -> void:
 	## 【批复 2026-10-13】不论能力/符卡/主要符卡：释放即消除范围内弹幕
 	## 能力 80px / 次级符卡 200px（主要符卡=全屏，随符卡数据实装）
 	## 【m66】能力80 / 次级符卡200 / 主要符卡=全屏（策划：500px 覆盖全场——
@@ -3495,7 +3561,8 @@ func _apply_release(ent: BattleEntity, kind: String) -> void:
 			## 【0.0.9·主要符卡实装 20261114（m66）】策划：1张+100P·全屏·5s 起步；
 			## 时长=符卡时间轴最后事件执行时刻（无时间轴=5s 占位）；
 			## 消弹=全场（rr2=INF）；最接近敌方+1符（_on_main_spell_released 接线）
-			if ent.spell_cards >= 1 and ent.pp >= 100:
+			## 【m100 应急符卡】emergency=应急态：跳过资源门（无符卡/P 也强制交）
+			if emergency or (ent.spell_cards >= 1 and ent.pp >= 100):
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
 				ent.spell_cards -= 1
 				ent.pp -= 100

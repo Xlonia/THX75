@@ -60,6 +60,12 @@ func release_tick(phase: int) -> String:
 		skill_ready = true
 	if not spell_ready and spell_load_t >= 30.0:
 		spell_ready = true
+	## 【应急符卡（scheme 324，m100）：Sl=0=所有寻路均失败→强制交符卡
+	## 直接顶替马上要打出来的下一张态势卡——pending 机制复用（e 类），
+	## 不经比率骰（强制），不消耗符卡资源（应急无 UI 色条=战地应急态）】
+	if SL <= 0.0 and pending_kind == "":
+		pending_kind = "e"
+		pending_tries = 10 ## 末帧位=下拍顶替直接成立
 	## 替换推进（申请成功后 1 秒内每 0.1s 尝试换掉下一张；比率+随机>1，末帧 Nf/Df）
 	if pending_kind != "":
 		pending_tries += 1

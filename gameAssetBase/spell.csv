@@ -1,4 +1,5 @@
 spell_name,spellstart,spellfin,spelltick
-spell_classical,"[{""arg"":"""",""op"":""svgresign"",""params"":""\u5e8f\u53f7=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
-spell_classical_n,"[{""arg"":"""",""op"":""svgresign"",""params"":""\u5e8f\u53f7=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
-spell_classical_s,"[{""arg"":"""",""op"":""svgresign"",""params"":""\u5e8f\u53f7=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
+spell_classical,"[{""arg"":"""",""op"":""svgresign"",""params"":""序号=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
+spell_classical_n,"[{""arg"":"""",""op"":""svgresign"",""params"":""序号=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
+spell_classical_s,"[{""arg"":"""",""op"":""svgresign"",""params"":""序号=0""}]",,"[{""arg"":"""",""op"":""clean"",""params"":""inspellrange""}]"
+xlonia_verses,,,"[{""arg"":"""",""op"":""inverse"",""params"":""ev:sonic_wave_like_spellxlonia""},{""arg"":"""",""op"":""inversep"",""params"":""ev:sonic_wave_like_spellxlonia""},{""arg"":"""",""op"":""inheritdamage"",""params"":""ev:sonic_wave_like_spellxlonia""},{""arg"":"""",""op"":""revolt"",""params"":""""}]"
