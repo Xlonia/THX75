@@ -609,14 +609,17 @@ func save_battle_save(fname: String, player_team: Array, enemy_team: Array) -> S
 	f.close()
 	return ""
 
-## 读档：整体替换 versus_player_team/enemy_team/versus_chara_cfg。
+## 读档：按范围应用（side="all" 整体替换 / "player" 仅我方阵容+其角色配置 /
+## "enemy" 仅敌方——作者 20261120 二裁：对同一敌人但我方情况不同做比较）。
 ## 返回 ""=成功，否则错误说明（坏档不半改——校验全过才应用）。
-func load_battle_save(fname: String) -> String:
+func load_battle_save(fname: String, side: String = "all") -> String:
 	var clean := fname.strip_edges().get_file()
 	if clean == "":
 		return "文件名为空"
 	if not clean.ends_with(".thxb"):
 		clean += ".thxb"
+	if side not in ["all", "player", "enemy"]:
+		return "范围参数错误：%s" % side
 	var path := String(BATTLE_SAVE_DIR).path_join(clean)
 	if not FileAccess.file_exists(path):
 		return "存档不存在：%s" % clean
@@ -644,9 +647,92 @@ func load_battle_save(fname: String) -> String:
 	for k in cc:
 		if cc[k] is Dictionary:
 			cc2[str(k)] = (cc[k] as Dictionary).duplicate(true)
-	versus_player_team = pt2
-	versus_enemy_team = et2
-	versus_chara_cfg = cc2
+	if side == "player":
+		var old_p: Array = versus_player_team.duplicate()
+		versus_player_team = pt2
+		_apply_side_cfg(old_p, pt2, cc2)
+	elif side == "enemy":
+		var old_e: Array = versus_enemy_team.duplicate()
+		versus_enemy_team = et2
+		_apply_side_cfg(old_e, et2, cc2)
+	else:
+		versus_player_team = pt2
+		versus_enemy_team = et2
+		versus_chara_cfg = cc2
+	return ""
+
+## 侧范围配置替换（逻辑跟着阵容走）：旧阵容名不在新阵容→cfg 条目清掉
+## （换人=旧逻辑不残留）；新阵容名→用档内 cfg 覆盖（档内无该名条目则清掉
+## 现状残留）；另一侧 cfg 条目不动。同名镜像（同角色双侧）按阵容为准——
+## 战场本来同名角色就共享同名配置（arena 按 chara_name 取 cfg）。
+func _apply_side_cfg(old_team: Array, new_team: Array, cc2: Dictionary) -> void:
+	for n in old_team:
+		var nm := str(n)
+		if nm != "" and not new_team.has(nm):
+			versus_chara_cfg.erase(nm)
+	for n2 in new_team:
+		var nm2 := str(n2)
+		if nm2 == "":
+			continue
+		if cc2.has(nm2):
+			versus_chara_cfg[nm2] = (cc2[nm2] as Dictionary).duplicate(true)
+		else:
+			versus_chara_cfg.erase(nm2)
+
+## 从任意路径导入对战存档进固定文件夹（系统资源浏览器选中后调用）：
+## 校验 kind→复制进 BATTLE_SAVE_DIR（重名自动加时间戳后缀防覆盖）。
+func import_battle_save(src: String) -> String:
+	if not FileAccess.file_exists(src):
+		return "文件不存在：%s" % src
+	var f := FileAccess.open(src, FileAccess.READ)
+	if f == null:
+		return "读盘失败：%d" % FileAccess.get_open_error()
+	var text := f.get_as_text()
+	f.close()
+	var data = JSON.parse_string(text)
+	if not (data is Dictionary) or str(data.get("kind", "")) != BATTLE_SAVE_KIND:
+		return "不是对战存档（.thxb）"
+	var err := DirAccess.make_dir_recursive_absolute(BATTLE_SAVE_DIR)
+	if err != OK:
+		return "建目录失败：%d" % err
+	var base := src.get_file()
+	var dest := String(BATTLE_SAVE_DIR).path_join(base)
+	if FileAccess.file_exists(dest):
+		var stem := base.trim_suffix(".thxb")
+		dest = String(BATTLE_SAVE_DIR).path_join("%s_导入%s.thxb" % [stem,
+			Time.get_datetime_string_from_system().replace(":", "").replace("-", "").replace("T", "_").replace(" ", "_").left(14)])
+	var f2 := FileAccess.open(dest, FileAccess.WRITE)
+	if f2 == null:
+		return "写盘失败：%d" % FileAccess.get_open_error()
+	f2.store_string(text)
+	f2.close()
+	return ""
+
+## 导出：把固定文件夹里的存档复制到任意路径（系统资源浏览器——分享通道）。
+func export_battle_save(fname: String, dest: String) -> String:
+	var clean := fname.strip_edges().get_file()
+	if clean == "":
+		return "文件名为空"
+	if not clean.ends_with(".thxb"):
+		clean += ".thxb"
+	var src := String(BATTLE_SAVE_DIR).path_join(clean)
+	if not FileAccess.file_exists(src):
+		return "存档不存在：%s" % clean
+	var d := dest.strip_edges()
+	if d == "":
+		return "导出路径为空"
+	if d.get_extension() != "thxb":
+		d += ".thxb"
+	var f := FileAccess.open(src, FileAccess.READ)
+	if f == null:
+		return "读盘失败：%d" % FileAccess.get_open_error()
+	var text := f.get_as_text()
+	f.close()
+	var f2 := FileAccess.open(d, FileAccess.WRITE)
+	if f2 == null:
+		return "写盘失败：%d" % FileAccess.get_open_error()
+	f2.store_string(text)
+	f2.close()
 	return ""
 
 ## 列出现有对战存档（按修改时间新→旧）：[{name, path, mtime}]

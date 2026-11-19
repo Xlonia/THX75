@@ -141,20 +141,18 @@ func _ready() -> void:
 	var keys_b := Button.new()
 	keys_b.text = "键位一览"
 	keys_b.pressed.connect(_show_key_bindings)
-	## 【0.0.9 对战存档（作者 20261120）】阵容+对战逻辑 存/读（.thxb，user://battlesaves）
-	var bsave_b := Button.new()
-	bsave_b.text = "对战存档：保存"
-	bsave_b.pressed.connect(_open_battle_save)
-	var bload_b := Button.new()
-	bload_b.text = "对战存档：读取"
-	bload_b.pressed.connect(_open_battle_load)
+	## 【0.0.9 对战存档（作者 20261120 二裁）】列表优先统一入口（读取/保存/
+	## 导入导出——固定文件夹 user://battlesaves；导入导出=系统资源浏览器）
+	var barch_b := Button.new()
+	barch_b.text = "对战存档…"
+	barch_b.pressed.connect(_open_battle_archive)
 	## 【0.0.9·按钮两列（作者 20261110）】除开始/返回外两按钮一行，防纵向超界
 	var btn_grid := GridContainer.new()
 	btn_grid.columns = 2
 	btn_grid.add_theme_constant_override("h_separation", 12)
 	btn_grid.add_theme_constant_override("v_separation", 6)
 	root.add_child(btn_grid)
-	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b, bsave_b, bload_b]:
+	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b, barch_b]:
 		btn_grid.add_child(b2)
 		(b2 as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var go := Button.new()
@@ -333,8 +331,8 @@ func _open_chara_cfg(pick: OptionButton, page: String) -> void:
 	dlg.popup_centered()
 
 ## =============================================================
-## 【0.0.9 对战存档（作者 20261120）】保存=当前选人+versus_chara_cfg → .thxb；
-## 读取=应用存档阵容+对战逻辑（整体替换）并回填选人界面。
+## 【0.0.9 对战存档】保存=当前选人+versus_chara_cfg → .thxb；
+## 读取=按范围应用存档阵容+对战逻辑并回填选人界面。
 ## 存档含本版可改的能力因素：角色逻辑（三步向导列表）/杂兵排布/资源 pp·spell；
 ## 后续批次（伤害倍乘/弹幕速度/技能）进 versus_chara_cfg 即自动随档。
 ## =============================================================
@@ -347,46 +345,62 @@ func _battle_lineup() -> Array:
 		en.append(str(pk.get_item_metadata(pk.selected)) if pk.selected >= 0 else "")
 	return [pn, en]
 
-func _open_battle_save() -> void:
-	var dlg := FileDialog.new()
-	dlg.title = "对战存档：保存"
-	dlg.access = FileDialog.ACCESS_FILESYSTEM
-	dlg.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	dlg.current_dir = ProjectSettings.globalize_path(GameGlobals.BATTLE_SAVE_DIR)
-	dlg.current_file = "对决_%s.thxb" % Time.get_datetime_string_from_system().replace(":", "").replace("-", "").replace("T", "_").replace(" ", "_").left(15)
-	dlg.filters = ["*.thxb ; 对战存档"]
-	dlg.file_selected.connect(func(p: String):
-		var arr := _battle_lineup()
-		var err: String = GameGlobals.save_battle_save(p, arr[0], arr[1])
-		print("[对战存档] %s" % ("已保存：%s（阵容+对战逻辑）" % p if err == "" else "保存失败：" + err))
-		dlg.queue_free())
-	dlg.canceled.connect(func(): dlg.queue_free())
-	get_parent().add_child(dlg)
-	dlg.popup_centered(Vector2i(560, 420))
-
-func _open_battle_load() -> void:
+## 【0.0.9 对战存档（作者 20261120 二裁）】统一存档列表（大部分游戏范式）：
+## 固定文件夹 user://battlesaves 的列表=读取与保存第一入口（选条目回填存档名=
+## 覆盖保存；读取范围可分侧——同一敌人但我方情况不同做比较）；系统资源浏览器
+## （use_native_dialog）导入/导出=分享与外部备份通道。
+func _open_battle_archive() -> void:
 	var dlg := AcceptDialog.new()
-	dlg.title = "对战存档：读取（阵容+对战逻辑）"
+	dlg.title = "对战存档（阵容+对战逻辑）"
 	var box := VBoxContainer.new()
 	dlg.add_child(box)
 	var list := ItemList.new()
-	list.custom_minimum_size = Vector2(440, 240)
+	list.custom_minimum_size = Vector2(460, 220)
 	box.add_child(list)
 	var detail := Label.new()
 	detail.text = "（选中查看阵容摘要）"
 	detail.add_theme_font_size_override("font_size", 11)
 	box.add_child(detail)
+	var namerow := HBoxContainer.new()
+	box.add_child(namerow)
+	var nl := Label.new()
+	nl.text = "存档名"
+	namerow.add_child(nl)
+	var name_e := LineEdit.new()
+	name_e.custom_minimum_size = Vector2(280, 0)
+	name_e.text = "对决_%s" % Time.get_datetime_string_from_system().replace(":", "").replace("-", "").replace("T", "_").replace(" ", "_").left(15)
+	namerow.add_child(name_e)
+	var rangerow := HBoxContainer.new()
+	box.add_child(rangerow)
+	var rl := Label.new()
+	rl.text = "读取范围"
+	rangerow.add_child(rl)
+	var range_pick := OptionButton.new()
+	for it in ["双方整体", "仅我方（阵容+逻辑）", "仅敌方（阵容+逻辑）"]:
+		range_pick.add_item(it)
+	rangerow.add_child(range_pick)
 	var row := HBoxContainer.new()
 	box.add_child(row)
-	var refresh_b := Button.new()
-	refresh_b.text = "刷新"
-	var del_b := Button.new()
-	del_b.text = "删除"
+	var save_b := Button.new()
+	save_b.text = "保存（覆盖同名）"
 	var load_b := Button.new()
 	load_b.text = "读取并应用"
-	row.add_child(refresh_b)
-	row.add_child(del_b)
+	var del_b := Button.new()
+	del_b.text = "删除"
+	var refresh_b := Button.new()
+	refresh_b.text = "刷新"
+	row.add_child(save_b)
 	row.add_child(load_b)
+	row.add_child(del_b)
+	row.add_child(refresh_b)
+	var row2 := HBoxContainer.new()
+	box.add_child(row2)
+	var imp_b := Button.new()
+	imp_b.text = "从系统资源浏览器导入"
+	var exp_b := Button.new()
+	exp_b.text = "导出到系统资源浏览器"
+	row2.add_child(imp_b)
+	row2.add_child(exp_b)
 	var del_armed := [false] ## 两次点击确认删除（防误删）
 	var fill := func():
 		list.clear()
@@ -403,6 +417,7 @@ func _open_battle_load() -> void:
 		var saves: Array = GameGlobals.list_battle_saves()
 		if idx >= saves.size():
 			return
+		name_e.text = str(saves[idx]["name"]).trim_suffix(".thxb")
 		var f := FileAccess.open(str(saves[idx]["path"]), FileAccess.READ)
 		if f == null:
 			detail.text = "（无法读取该档）"
@@ -426,43 +441,97 @@ func _open_battle_load() -> void:
 			var ck: Dictionary = cc[k]
 			lgc += (ck.get("logics", []) as Array).size()
 		detail.text = "我方[%s]　敌方[%s]　角色配置%d项·逻辑%d条" % [" ".join(pn), " ".join(en), cc.size(), lgc])
-	refresh_b.pressed.connect(fill)
-	del_b.pressed.connect(func():
+	save_b.pressed.connect(func():
+		var arr := _battle_lineup()
+		var err: String = GameGlobals.save_battle_save(name_e.text, arr[0], arr[1])
+		if err == "":
+			print("[对战存档] 已保存：%s.thxb（阵容+对战逻辑）" % name_e.text.strip_edges().get_file())
+			fill.call()
+		else:
+			detail.text = "保存失败：%s" % err
+			print("[对战存档] 保存失败：" + err))
+	load_b.pressed.connect(func():
 		var sel := list.get_selected_items()
 		if sel.is_empty():
+			detail.text = "（先选中要读取的存档）"
+			return
+		var saves: Array = GameGlobals.list_battle_saves()
+		if sel[0] >= saves.size():
+			return
+		var scope: String = ["all", "player", "enemy"][range_pick.selected]
+		var err: String = GameGlobals.load_battle_save(str(saves[sel[0]]["name"]), scope)
+		if err != "":
+			detail.text = "读取失败：%s" % err
+			print("[对战存档] 读取失败：" + err)
+			return
+		if scope != "enemy":
+			_set_team(player_picks, GameGlobals.versus_player_team, 0)
+			for i5 in player_picks.size():
+				_refresh_pick_tex(0, i5)
+		if scope != "player":
+			_set_team(enemy_picks, GameGlobals.versus_enemy_team, 1)
+			for i6 in enemy_picks.size():
+				_refresh_pick_tex(1, i6)
+		var tag: String = ["双方", "仅我方", "仅敌方"][range_pick.selected]
+		print("[对战存档] 已读取并应用（%s）：%s（选人界面已回填，可继续微调后开始决斗）" % [tag, str(saves[sel[0]]["name"])])
+		dlg.hide())
+	del_b.pressed.connect(func():
+		var sel3 := list.get_selected_items()
+		if sel3.is_empty():
 			detail.text = "（先选中要删除的存档）"
 			return
 		if not del_armed[0]:
 			del_armed[0] = true
 			del_b.text = "再点一次确认删除"
 			return
-		var saves: Array = GameGlobals.list_battle_saves()
-		if sel[0] >= saves.size():
+		var saves3: Array = GameGlobals.list_battle_saves()
+		if sel3[0] >= saves3.size():
 			return
-		var err := DirAccess.remove_absolute(str(saves[sel[0]]["path"]))
-		print("[对战存档] 删除 %s：%s" % [str(saves[sel[0]]["name"]), "完成" if err == OK else "失败 %d" % err])
+		var err3 := DirAccess.remove_absolute(str(saves3[sel3[0]]["path"]))
+		print("[对战存档] 删除 %s：%s" % [str(saves3[sel3[0]]["name"]), "完成" if err3 == OK else "失败 %d" % err3])
 		fill.call())
-	load_b.pressed.connect(func():
-		var sel2 := list.get_selected_items()
-		if sel2.is_empty():
-			detail.text = "（先选中要读取的存档）"
+	imp_b.pressed.connect(func():
+		var fd := FileDialog.new()
+		fd.title = "导入对战存档（.thxb）"
+		fd.access = FileDialog.ACCESS_FILESYSTEM
+		fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+		fd.use_native_dialog = true ## 【作者裁定】浏览/文件选取=系统资源浏览器
+		fd.filters = ["*.thxb ; 对战存档"]
+		fd.file_selected.connect(func(p: String):
+			var err: String = GameGlobals.import_battle_save(p)
+			if err == "":
+				print("[对战存档] 已导入：%s" % p)
+				fill.call()
+			else:
+				detail.text = "导入失败：%s" % err
+				print("[对战存档] 导入失败：" + err)
+			fd.queue_free())
+		fd.canceled.connect(func(): fd.queue_free())
+		get_parent().add_child(fd)
+		fd.popup_centered(Vector2i(560, 420)))
+	exp_b.pressed.connect(func():
+		var sel4 := list.get_selected_items()
+		if sel4.is_empty():
+			detail.text = "（先选中要导出的存档）"
 			return
-		var saves2: Array = GameGlobals.list_battle_saves()
-		if sel2[0] >= saves2.size():
+		var saves4: Array = GameGlobals.list_battle_saves()
+		if sel4[0] >= saves4.size():
 			return
-		var err2: String = GameGlobals.load_battle_save(str(saves2[sel2[0]]["name"]))
-		if err2 != "":
-			detail.text = "读取失败：%s" % err2
-			print("[对战存档] 读取失败：" + err2)
-			return
-		_set_team(player_picks, GameGlobals.versus_player_team, 0)
-		_set_team(enemy_picks, GameGlobals.versus_enemy_team, 1)
-		for i5 in player_picks.size():
-			_refresh_pick_tex(0, i5)
-		for i6 in enemy_picks.size():
-			_refresh_pick_tex(1, i6)
-		print("[对战存档] 已读取并应用：%s（选人界面已回填，可继续微调后开始决斗）" % str(saves2[sel2[0]]["name"]))
-		dlg.hide())
+		var fname := str(saves4[sel4[0]]["name"])
+		var fd2 := FileDialog.new()
+		fd2.title = "导出对战存档"
+		fd2.access = FileDialog.ACCESS_FILESYSTEM
+		fd2.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+		fd2.use_native_dialog = true ## 【作者裁定】浏览/文件选取=系统资源浏览器
+		fd2.current_file = fname
+		fd2.filters = ["*.thxb ; 对战存档"]
+		fd2.file_selected.connect(func(p: String):
+			var err: String = GameGlobals.export_battle_save(fname, p)
+			print("[对战存档] 导出 %s：%s" % [fname, "完成" if err == "" else "失败：" + err])
+			fd2.queue_free())
+		fd2.canceled.connect(func(): fd2.queue_free())
+		get_parent().add_child(fd2)
+		fd2.popup_centered(Vector2i(560, 420)))
 	fill.call()
 	get_parent().add_child(dlg)
 	dlg.popup_centered()
