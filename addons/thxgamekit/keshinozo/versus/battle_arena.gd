@@ -2394,7 +2394,7 @@ func _heatmap_tick() -> void:
 	## heat_split 开（默认关）：三窗轮转 0=HT侧0 / 1=HT侧1 / 2=FAM——
 	## 每窗尖峰 ~1/3（侧0 回读 6ms 主导），各源刷新 0.2s→0.3s（AI 态势
 	## 本为 0.1s 旧近似；是否接受此语义变化=数据呈报后作者裁定）
-	var heat_split := bool(THXKit.scenario_cfg.get("heat_split", false))
+	var heat_split: bool = GameGlobals.heat_split 		if GameGlobals.has_method("get") and "heat_split" in GameGlobals 		else bool(THXKit.scenario_cfg.get("heat_split", false)) ## 【m97 玩家设置优先】
 	var hm_phase := -1
 	if heat_split:
 		_hm_tick_i += 1
@@ -3627,7 +3627,19 @@ func _bullet_updates(dt: float) -> void:
 			## Xlonia/Youshio）也大步进+采样收尾 pos 回起点=原地冻结——改三分：
 			## 非 frozen 恒逐帧原运算
 			if sn > 1 and b.frozen_ok and (time_frames + b._sample_phase) % sn != 0:
-				alive_now = b.update_smooth(sn)
+				## 【m97 路径A（作者数据启发：平滑档 phys x2.4 主凶=每弹每帧
+				## 方法调用）】插值帧内联算术——pos lerp+航程/出界轻检查
+				## （与 update_smooth 逐位一致；省方法调用与检查分支）
+				b._sample_elapsed += 1.0
+				var aa: float = minf(b._sample_elapsed / float(sn), 1.0)
+				var np: Vector2 = b._pos_prev.lerp(b._pos_target, aa)
+				var m9: float = b.draw_radius
+				if b._alive_frames > b.range_now or np.x < -m9 or np.x > 400.0 + m9 						or np.y < -m9 or np.y > 400.0 + m9:
+					b.pos = np
+					alive_now = false
+				else:
+					b.pos = np
+					alive_now = true
 			elif sn > 1 and b.frozen_ok:
 				alive_now = b.update(dt * sn) ## 采样帧：大步进（t 增量总和·解析精确）
 			else:
@@ -5494,14 +5506,13 @@ func draw_bullet_mm(onto: CanvasItem) -> void:
 			## （2000弹=12万次/帧≈12ms，draw 侧每帧）→ 活实体位置预收集+
 			## 平方距+命中即停（增显只看 40px 内，无需精确最近）
 			if _live_ent_pos_dirty:
-				_live_ent_pos.clear()
 				## 【m96 审计 P1】32px 分桶接线（原 A6 死代码激活）——每弹只查
 				## 3×3 邻格（96px 覆盖 40px 查询半径），1200 弹×全表扫 → 每弹常数
+				## 【m97 路径D】_live_ent_pos 数组撤（分桶已接管——无双份收集）
 				_live_ent_bucket.clear()
 				for e2 in entities:
 					if e2 is BattleEntity and not (e2 as BattleEntity).dead:
 						var ep0: Vector2 = (e2 as BattleEntity).position
-						_live_ent_pos.append(ep0)
 						var k0 := Vector2i(int(ep0.x) >> 5, int(ep0.y) >> 5)
 						if not _live_ent_bucket.has(k0):
 							_live_ent_bucket[k0] = []

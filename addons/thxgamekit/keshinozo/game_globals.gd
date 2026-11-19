@@ -478,6 +478,7 @@ var bullet_sample_n := 1
 var bullet_legacy_physics := false
 ## —— 【0.0.9·等高线采样精度（作者批 20261108）】等高线角点网格边长：
 ## 8=精细（默认）/16/24/32=性能档（网格粗→提取/绘制成本降）
+var heat_split := false ## 【m97 热力回读分摊】玩家决定（versus_menu 下拉）——真=三窗轮转（每窗尖峰 1/3，各源刷新 0.3s）
 var contour_edge_px := 8
 ## 【0.0.9·机控预设点（新二 81 行）20261109】三个预设点（0-400 场地坐标），
 ## 设置界面配置、任意决斗可用；热键 4/5/6。临时点（新二 82）不入档（每场重置）。
@@ -499,6 +500,7 @@ func save_default_archive() -> void:
 		"legacy_physics": bullet_legacy_physics,
 		"contour_edge_px": contour_edge_px,
 		"bullet_sample_n": bullet_sample_n,
+		"heat_split": heat_split,
 		"preset_points": _points_to_json(preset_points),
 		"retreat_points": _points_to_json(retreat_points),
 		"priv_reinforce_gap": priv_reinforce_gap,
@@ -541,6 +543,8 @@ func load_default_archive() -> void:
 		contour_edge_px = cep if cep in [8, 16, 24, 32] else 8
 	if data is Dictionary and data.has("bullet_sample_n"):
 		bullet_sample_n = clampi(int(data["bullet_sample_n"]), 1, 5)
+	if data is Dictionary and data.has("heat_split"):
+		heat_split = bool(data["heat_split"])
 	if data is Dictionary and data.has("player_team"):
 		player_team_default = data["player_team"]
 	if data is Dictionary and data.has("enemy_team"):

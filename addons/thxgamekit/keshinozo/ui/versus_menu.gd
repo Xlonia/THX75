@@ -14,6 +14,7 @@ var _stress_check: CheckBox
 var _no_surr_check: CheckBox ## 【m67】拒不投降（本场双方投降禁用）
 var _sample_pick: OptionButton
 var _edge_pick: OptionButton
+var _hsplit_pick: OptionButton ## 【m97】热力回读分摊（玩家决定）
 var _chars: Array[Dictionary] = []
 
 const TEAM_SLOTS := 5 ## demo：5角色/侧（上限6）
@@ -97,6 +98,15 @@ func _ready() -> void:
 	edge_pick.select(clampi(ei, 0, 3))
 	_add_labeled(cfg, "等高线精度", edge_pick)
 	_edge_pick = edge_pick
+	## 【m97 热力回读分摊（作者裁定：玩家决定，像弹幕运行平滑/等高图粗糙那样
+	## 下拉设置）】关=每 6 帧同窗全算（尖峰 7.7ms）；开=三窗轮转（每窗
+	## 1.5-2.5ms，各源刷新 0.3s）
+	var hsplit_pick := OptionButton.new()
+	for it in ["关闭（同窗全算）", "开启（三窗分摊·平滑）"]:
+		hsplit_pick.add_item(it)
+	hsplit_pick.select(1 if GameGlobals.heat_split else 0)
+	_add_labeled(cfg, "热力分摊", hsplit_pick)
+	_hsplit_pick = hsplit_pick
 	## 高火力演习（作者批复 2026-10-02：更恶劣演练 + 运行时覆写官方参数验证）
 	var stress := CheckBox.new()
 	stress.text = "高火力演习(覆写官方参数:更密+更久)"
@@ -426,6 +436,7 @@ func _on_start() -> void:
 	GameGlobals.versus_volley = "rotate" if volley_pick.selected == 0 else "salvo"
 	GameGlobals.bullet_sample_n = 1 + _sample_pick.selected ## 0=关（1）、2/3/4/5
 	GameGlobals.contour_edge_px = 8 * (_edge_pick.selected + 1) ## 8/16/24/32
+	GameGlobals.heat_split = _hsplit_pick.selected == 1 ## 【m97】分摊玩家决定
 	GameGlobals.save_default_archive() ## 采样/精度进默认存档
 	GameGlobals.apply_stress_override(_stress_check.button_pressed)
 	GameGlobals.duel_no_surrender = _no_surr_check.button_pressed ## 【m67】拒不投降进本场
