@@ -757,7 +757,7 @@ var _camp_chara_collapse := [0, 0]
 var _priv_losses := [0, 0] ## 各侧累计杂兵损失
 
 func arena_entities_n() -> int:
-	return entities.size() + drops.size() + _rot_pend.size() + _cannons.size() + _priv_shooters.size()
+	return entities.size() + drops.size() + _rot_pend_count() + _cannons.size() + _priv_shooters.size()
 
 func _connect_economy(ent: BattleEntity) -> void:
 	ent.ret = RetSystem.new(ent) ## 【v0.0.8】RET 基底挂载
@@ -1836,7 +1836,7 @@ func _fire_origin(point, ev: DanmakuEventData, src: BattleEntity, sp: Dictionary
 ##       expired（累计自然到期）/ retired（累计回收入池）
 func bullet_census() -> Dictionary:
 	var d := {"total": bullets.size(), "visible": 0, "hidden": 0, "offfield": 0,
-		"laser": 0, "pool": _bullet_pool.size(), "rot_pend": _rot_pend.size(),
+		"laser": 0, "pool": _bullet_pool.size(), "rot_pend": _rot_pend_count(),
 		"cannons": _cannons.size(), "expired": _expired_count, "retired": _retired_count}
 	var by_ev := {} ## 【深挖】场外弹按事件分组（定位永生弹来源）
 	var by_oob := {} ## oob_mode 分组（2=永不销毁）
@@ -1864,7 +1864,7 @@ func bullet_census() -> Dictionary:
 ##   并以首发副本反解"扇形基向"锚定——首弹不随外界时序偏转（作者批复 20261019）；
 ##   repeat 的重复=整扇再重放（与旋转重复相乘、语义独立）。gen>0 副本不再繁殖。
 ## =============================================================
-var _rot_pend: Array = [] ## {ev, point, src, rolls, ang, rid, frames, gen, carrier, pinned}
+## 【m98】_rot_pend 数组已由 _rot_pend_wheels 分桶轮取代（见 _rot_pending_tick 前）
 var _cannons: Array = []  ## 火炮节点 {ev, point, src, rolls, timer, fired}
 
 ## 释放时刻的求值上下文（field/火力点/自身/目标快照——与弹幕出现同语义；
@@ -1940,8 +1940,8 @@ func _spawn_event_copies(ev: DanmakuEventData, origin: Vector2, src: BattleEntit
 					anchor_base = b.dir.rotated(-ang)
 					fired_any = b
 				carrier_left = false
-			elif _rot_pend.size() < 2048:
-				_rot_pend.append({"ev": ev, "point": point, "src": src,
+			elif _rot_pend_count() < 2048:
+				_rot_pend_push({"ev": ev, "point": point, "src": src,
 					"rolls": rolls.duplicate(), "ang": ang, "rid": rid,
 					"frames": si * delay_step, "gen": gen,
 					"carrier": false,
@@ -1970,27 +1970,48 @@ func _spawn_rotated_copy(ev: DanmakuEventData, origin: Vector2, src: BattleEntit
 		b.repeat_enabled = false
 	return b
 
+## 【m98 分桶轮（920 弹分段表：_rot_pending_tick 2.34ms→每帧只处理当期窗）】
+## 旧=每帧全表 O(pend) 递减+逐条 remove_at；新=条目按绝对到期帧入桶，
+## tick 只取当期窗一桶消费（零递减/零全表遍历/零 remove_at）
+var _rot_pend_wheels: Dictionary = {} ## 绝对到期帧 → 条目数组
+var _rot_pend_tick_i := 0
+
+func _rot_pend_count() -> int:
+	var n := 0
+	for k in _rot_pend_wheels:
+		n += (_rot_pend_wheels[k] as Array).size()
+	return n
+
+func _rot_pend_push(pr: Dictionary) -> void:
+	pr["due"] = _rot_pend_tick_i + maxi(1, int(pr["frames"]))
+	var due: int = int(pr["due"])
+	if not _rot_pend_wheels.has(due):
+		_rot_pend_wheels[due] = []
+	(_rot_pend_wheels[due] as Array).append(pr)
+
 func _rot_pending_tick() -> void:
-	for i in range(_rot_pend.size() - 1, -1, -1):
-		var pr: Dictionary = _rot_pend[i]
-		pr["frames"] = int(pr["frames"]) - 1
-		if int(pr["frames"]) <= 0:
-			var ev: DanmakuEventData = pr["ev"]
-			var pr_src = pr["src"]
-			## 【审计#42】发射源死亡→丢弃延时副本
-			if pr_src == null or not is_instance_valid(pr_src) or (pr_src as BattleEntity).dead:
-				_rot_pend.remove_at(i)
-				continue
-			var rel_org := _fire_origin(pr["point"], ev, pr["src"], pr.get("sp", {}))
-			var stxy_use: Vector2 = pr.get("stxy", Vector2.INF)
-			var stxy_abs: Vector2 = pr.get("stxy_abs", Vector2.INF)
-			if stxy_abs != Vector2.INF and not ev.is_abs_coord:
-				stxy_use = stxy_abs - rel_org ## 【基准错位修复】按释放时刻原点重算相对共享点
-			_spawn_rotated_copy(ev, rel_org,
-				pr["src"], pr["point"], pr["ang"], pr["rid"], pr["rolls"], pr["gen"], pr["carrier"],
-				pr.get("pinned", Vector2.ZERO), float(pr.get("et", 0.0)), pr.get("shared", null),
-				stxy_use, {}, {}, str(pr.get("tag", "pend")))
-			_rot_pend.remove_at(i)
+	_rot_pend_tick_i += 1
+	var due: int = _rot_pend_tick_i
+	if not _rot_pend_wheels.has(due):
+		return
+	var batch: Array = _rot_pend_wheels[due]
+	_rot_pend_wheels.erase(due)
+	for pi in range(batch.size() - 1, -1, -1):
+		var pr: Dictionary = batch[pi]
+		var ev: DanmakuEventData = pr["ev"]
+		var pr_src = pr["src"]
+		## 【审计#42】发射源死亡→丢弃延时副本
+		if pr_src == null or not is_instance_valid(pr_src) or (pr_src as BattleEntity).dead:
+			continue
+		var rel_org := _fire_origin(pr["point"], ev, pr["src"], pr.get("sp", {}))
+		var stxy_use: Vector2 = pr.get("stxy", Vector2.INF)
+		var stxy_abs: Vector2 = pr.get("stxy_abs", Vector2.INF)
+		if stxy_abs != Vector2.INF and not ev.is_abs_coord:
+			stxy_use = stxy_abs - rel_org ## 【基准错位修复】按释放时刻原点重算相对共享点
+		_spawn_rotated_copy(ev, rel_org,
+			pr["src"], pr["point"], pr["ang"], pr["rid"], pr["rolls"], pr["gen"], pr["carrier"],
+			pr.get("pinned", Vector2.ZERO), float(pr.get("et", 0.0)), pr.get("shared", null),
+			stxy_use, {}, {}, str(pr.get("tag", "pend")))
 
 ## 火炮节点：按 repeat_time 间隔生成 repeat 禁用的弹幕粒子（repeat_freq 拍后自毁）
 ## 【类型批复 20261019】repeat 参数允许算式——登记时求值
@@ -5047,13 +5068,17 @@ func _bake_arc_texes() -> void:
 		for a in seg:
 			var a0: float = TAU * a / seg
 			var a1: float = TAU * (a + 1) / seg
-			## 弦近似弧（描边宽 2px：圆环带 r∈[sz/2-2, sz/2)）
+			## 【m98 判定圆失踪修复】描边宽按最小使用半径（r=10 判定圈）反推：
+			## 目标屏上 ~1.2px → 源描边 = 1.2×(128/10) ≈ 15px（256 纹理空间）。
+			## 旧 2px 描边缩到 r=10 时仅 0.156px=亚像素被采样滤掉=「判定圆看不见」
+			var stroke_px := 15.0
 			var steps := 8
 			for st in steps:
 				var t0: float = a0 + (a1 - a0) * st / steps
 				var t1: float = a0 + (a1 - a0) * (st + 1) / steps
-				for rr_v in [sz / 2.0 - 1.0, sz / 2.0 - 2.0]:
-					var rr: float = rr_v
+				var rr_n: int = int(stroke_px)
+				for ri in rr_n:
+					var rr: float = sz / 2.0 - 1.0 - float(ri)
 					var p0: Vector2 = Vector2(cx, cx) + Vector2(cos(t0), sin(t0)) * rr
 					var p1: Vector2 = Vector2(cx, cx) + Vector2(cos(t1), sin(t1)) * rr
 					_img_line(img, p0, p1, Color.WHITE)

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Tests/per_frame_cost_probe.gd" id="1_pf"]
+
+[node name="PerFrameCostProbe" type="Node"]
+script = ExtResource("1_pf")
