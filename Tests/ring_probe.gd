@@ -12,7 +12,7 @@ func _ready() -> void:
 		print("RING_FAIL 烘焙字典空")
 		get_tree().quit(1)
 		return
-	var t: Texture2D = arena._arc_texes[16]
+	var t: Texture2D = arena._arc_texes[16 * 10 + 1] ## 【m99】细环规格键
 	var img: Image = t.get_image()
 	print("tex size=", img.get_size(), " format=", img.get_format())
 	# 数非透明像素

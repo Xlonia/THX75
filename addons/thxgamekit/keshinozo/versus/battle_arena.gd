@@ -5053,14 +5053,18 @@ Shift+S 同意 / Shift+W 拒绝
 ## =============================================================
 ## 绘制（painters 回调）
 ## =============================================================
-## 【m96-D（作者令：初始化阶段处理好）】圆环弧预烘焙——16/24/48 段三种
-## 规格烘焙成 256px 圆环描边贴图（初始化一次），运行期 draw_texture_rect
-## 替代 draw_arc（数千条线段图元 → 每弧 1 个四边形图元；颜色用 modulate）
-var _arc_texes: Dictionary = {} ## 段数 → 弧贴图（白环，draw 时 modulate 上色）
+## 【m96-D（作者令：初始化阶段处理好）】圆环弧预烘焙——初始化一次，
+## 运行期 draw_texture_rect 替代 draw_arc（数千条线段图元 → 每弧 1 quad）。
+## 【m99 分规格（作者实测反馈：判定圆偏淡+消弹圈粗成环——两用一纹理顾此失彼）】
+## 键=段数×10+规格 id：细环（判定/自机/结界——源描边 15px，屏上 r10≈1.2px）
+## 与原味环（消弹圈——源描边 2px，大半径下与旧 draw_arc 同粗细）独立烘焙。
+var _arc_texes: Dictionary = {} ## 键 → 白环贴图
 
 func _bake_arc_texes() -> void:
-	for seg_i in [16, 24, 48]:
-		var seg: int = seg_i
+	for spec in [[16, 15, 1], [24, 15, 1], [48, 2, 2], [24, 2, 2]]:
+		var seg: int = spec[0]
+		var stroke_px: float = float(spec[1])
+		var key: int = seg * 10 + spec[2]
 		var sz := 256
 		var img := Image.create(sz, sz, false, Image.FORMAT_RGBA8)
 		img.fill(Color(0, 0, 0, 0))
@@ -5068,10 +5072,6 @@ func _bake_arc_texes() -> void:
 		for a in seg:
 			var a0: float = TAU * a / seg
 			var a1: float = TAU * (a + 1) / seg
-			## 【m98 判定圆失踪修复】描边宽按最小使用半径（r=10 判定圈）反推：
-			## 目标屏上 ~1.2px → 源描边 = 1.2×(128/10) ≈ 15px（256 纹理空间）。
-			## 旧 2px 描边缩到 r=10 时仅 0.156px=亚像素被采样滤掉=「判定圆看不见」
-			var stroke_px := 15.0
 			var steps := 8
 			for st in steps:
 				var t0: float = a0 + (a1 - a0) * st / steps
@@ -5083,7 +5083,7 @@ func _bake_arc_texes() -> void:
 					var p1: Vector2 = Vector2(cx, cx) + Vector2(cos(t1), sin(t1)) * rr
 					_img_line(img, p0, p1, Color.WHITE)
 		var t := ImageTexture.create_from_image(img)
-		_arc_texes[seg] = t
+		_arc_texes[key] = t
 
 func _img_line(img: Image, pa: Vector2, pb: Vector2, col: Color) -> void:
 	## 像素线（无抗锯齿——描边弧用）
@@ -5095,11 +5095,11 @@ func _img_line(img: Image, pa: Vector2, pb: Vector2, col: Color) -> void:
 		if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height():
 			img.set_pixel(x, y, col)
 
-func _draw_ring(onto: CanvasItem, at: Vector2, radius: float, seg: int, col: Color, width: float = 1.0) -> void:
-	## 弧贴图绘制（烘焙环直径 256 → 缩放到 2*radius；width>1=环加粗微缩）
-	var t: Texture2D = _arc_texes.get(seg)
+func _draw_ring(onto: CanvasItem, at: Vector2, radius: float, seg: int, col: Color, spec: int = 1) -> void:
+	## 弧贴图绘制（spec=环规格：1=细环[判定/自机/结界]，2=原味环[消弹]）
+	var t: Texture2D = _arc_texes.get(seg * 10 + spec)
 	if t == null:
-		onto.draw_arc(at, radius, 0, TAU, seg, col, width) ## 兜底（烘焙前调用）
+		onto.draw_arc(at, radius, 0, TAU, seg, col, 1.5) ## 兜底（烘焙前调用）
 		return
 	var d := radius * 2.0
 	onto.draw_texture_rect(t, Rect2(at.x - radius, at.y - radius, d, d), false, col)
@@ -5147,7 +5147,7 @@ func draw_entities(onto: CanvasItem) -> void:
 		if ent.clear_active():
 			var ca: float = clampf(float(ent.clear_frames) / 60.0, 0.15, 0.6)
 			onto.draw_circle(ent.position, ent.clear_radius, Color(0.4, 0.8, 1.0, ca * 0.18))
-			_draw_ring(onto, ent.position, ent.clear_radius, 48, Color(0.4, 0.8, 1.0, ca))
+			_draw_ring(onto, ent.position, ent.clear_radius, 48, Color(0.4, 0.8, 1.0, ca), 2) ## 【m99】原味环
 	## P点/符卡掉落物绘制（材质 pp.PNG/spell.PNG；闪烁提示将消失）
 	for d in drops:
 		if d["tex"] == null:
