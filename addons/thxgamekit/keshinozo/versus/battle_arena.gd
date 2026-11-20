@@ -1525,14 +1525,14 @@ func _exec_flow_step(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void
 		"svgresign":
 			## 【scheme 1114】注册矢量图形（空=默认圆形），存活至符卡结束；
 			## 可作为选择器/消弹域——旧消弹机制的规范化形态
-			var r: float = float(run.get("r", 80.0))
+			var r: float = float(run.get("r", 50.0)) ## 【m106 古典档位 50/80/150（作者裁定：不能太大）】
 			run["svg"] = {"shape": "circle", "r": r, "no": int(_kv(params).get("序号", 0))}
 		"clean":
 			## 【作者 20261117】每事件帧消弹：svg 范围内敌方弹幕清除（10Hz）
 			var svgd: Dictionary = run.get("svg") if run.get("svg") is Dictionary else {}
-			var cr: float = float(svgd.get("r", float(run.get("r", 80.0))))
+			var cr: float = float(svgd.get("r", float(run.get("r", 50.0))))
 			if cr <= 0.0:
-				cr = 80.0
+				cr = 50.0
 			## 【m105 作者"范围没写好"】显式范围可写：radius(N) 函数链 / 范围=N kv
 			## 优先（表达式自表范围，编辑器可改）；缺省=注册图形/档位半径（现状链）
 			var cprm := String(st.get("params", ""))
@@ -3512,6 +3512,10 @@ func _sit_tick(delta: float) -> void:
 		var hcs_at := float(ent.hcs_at) if ent.hcs_pts.size() >= 49 else 0.0
 		ent.sit_cards.Smn = clampf((float(ht_at) * 3.0 + float(hd_at) * 1.0 + hcs_at * 8.0) / 12.0, 0.0, 255.0)
 		ent.sit_cards.Sms = clampf((float(ht_at) * 2.0 + float(hd_at) * 1.0 + hcs_at * 4.0) / 7.0, 0.0, 255.0)
+		## 【m106 作者裁定】Ara=RET-SP 启用乘数（启用=1——启用时更容易释放是对的）；
+		## Al=角色逻辑提供（现 n/s 全由申请替换而来=1；非逻辑来源检测日后接）
+		ent.sit_cards.ARA = 1.0 if ent.ret != null else 0.0
+		ent.sit_cards.AL = 1.0
 		## 【RET-SP 两步（③期收官）】Sl=Σ 一段可行 × 二段可行(同角5d)
 		## 一段可行=5d 圈该方向 <64（假设位移不穿热）；二段可行=1d 同角 <64
 		var sl := 0.0
@@ -3576,7 +3580,10 @@ func _ent_tick_sit(delta: float) -> void:
 					and time_frames < int(_team_cast_cd[ent.side]):
 				ent.current_sit_card = ""
 			elif ent.current_sit_card == "n" or ent.current_sit_card == "s":
-				_apply_release(ent, ent.current_sit_card)
+				## 【m106 scheme 168-171 释放骰接线（作者裁定"当然做"）】出卡后
+				## 六帧尝试 Ns/Ds——失败=该卡消耗无效果（拟人第二道闸）
+				if ent.sit_cards.release_attempt(ent.sit_cards.Sms, 0.0):
+					_apply_release(ent, ent.current_sit_card)
 			elif ent.current_sit_card == "e":
 				## 【m100 应急符卡（scheme 324）】Sl=0 绝路强制交符卡——
 				## 不消耗符卡/P、不等装填（应急态）；释放走主要符卡档
@@ -3605,10 +3612,12 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 	## 能力 80px / 次级符卡 200px（主要符卡=全屏，随符卡数据实装）
 	## 【m66】能力80 / 次级符卡200 / 主要符卡=全屏（策划：500px 覆盖全场——
 	## "m" 档 rr2=INF=全场消弹，不受半径距离检查约束）
-	var radius: float = {"n": 80.0, "s": 200.0, "m": 500.0}.get(kind, 200.0)
+	var radius: float = {"n": 50.0, "s": 80.0, "m": 150.0}.get(kind, 80.0) ## 【m106 古典档位 50/80/150（作者裁定：不能太大；原 80/200/500）】
 	var cleared := 0
 	## 【22b 20261030c 效能化】同 _clear_bullets_around：倒序+平方距
-	var rr2: float = (INF if kind == "m" else radius * radius)
+	## 【m106 古典档位】m 档清除范围=圆半径 150 同步（原 INF 全屏——所见即所判；
+	## xlonia_verses 等自有定义的全屏反弹不受影响=走 inverse 选择器不走此值）
+	var rr2: float = radius * radius
 	var qx: float = ent.position.x
 	var qy: float = ent.position.y
 	for ci in range(bullets.size() - 1, -1, -1):
@@ -3654,7 +3663,7 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 剩余P定时长（批复公式）
 				## 【m90 三档符卡→m91 去旧制】能力档=skill_evs 定义全权
 				## （未配=仅游戏机制；解析失败=上方 toast）——古典兜底撤除
-				_mount_tier_spell(ent, "n", 80.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
+				_mount_tier_spell(ent, "n", 50.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
@@ -3664,7 +3673,7 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
 				## 【m90 三档符卡→m91 去旧制】符卡档=spell_s_evs 定义全权（同能力档）
-				_mount_tier_spell(ent, "s", 200.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
+				_mount_tier_spell(ent, "s", 80.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
 				ent.set_meta("released_kind", "s")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
@@ -3679,7 +3688,7 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
 				ent.spell_cards -= 1
 				ent.pp -= 100
-				var m_span: float = maxf(_spell_timeline_run(ent, 500.0), 5.0) ## 【m75】主符卡档半径 500
+				var m_span: float = maxf(_spell_timeline_run(ent, 150.0), 5.0) ## 【m106 古典档位】主符卡档半径 150（原500——作者裁定）
 				if _spell_runs.size() > 0:
 					_spell_runs[_spell_runs.size() - 1]["until_frame"] = time_frames + int(m_span * 60.0)
 				## 【m77】apply_clear 撤除（同上）——主符卡 clean 载体按 m_span 走
@@ -3689,7 +3698,10 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				_paralyze_fire(1 - ent.side, m_span)
 				var aname := String(ent.get_meta("spell_announce", ""))
 				_toast(("符卡宣言 %s" % aname) if aname != "" else "符卡释放")
-				_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
+				## 【m106 洒落雨修正】应急符卡不掉灰卡（scheme：应急无 UI 色条=
+				## 战地应急态没有符卡实体；且应急 e 循环曾每 0.1s 重复释放=灰卡雨）
+				if not emergency:
+					_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
 	ent.sit_cards.on_released(kind)
 	## 【m105 作者改案-A】队友释放后 2 秒全队释放锁（消"不约而同齐放"——保留拟人
 	## 倾向只错峰；手动指令不锁定自己但同样触发队友等待；应急 e 反射不受锁）

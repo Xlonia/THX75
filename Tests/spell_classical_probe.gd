@@ -72,7 +72,7 @@ func _run_all() -> void:
 		arena._physics_process(1.0 / 60.0)
 	var hostile1 := 0
 	for b2 in arena.bullets:
-		if b2.source_side == 1 and b2.pos.distance_to(pl.position) < 400.0:
+		if b2.source_side == 1 and b2.pos.distance_to(pl.position) < 150.0: ## 【m106 档位 50/80/150】域内=消弹职责口径
 			hostile1 += 1
 	if hostile1 >= hostile0:
 		_fail("G 消弹未生效（%d→%d）" % [hostile0, hostile1])

@@ -47,7 +47,13 @@ var Pcs := 0         ## 敌方剩余杂兵数
 var Smn := 0.0       ## 能力倾向（十六点近似；③期换权重图）
 var Sms := 0.0       ## 符卡倾向
 var SL := 256.0      ## RET-SP 可用方向（战场每拍回写；0=绝路→强制 e 态势）
-const ARA := 0.0     ## RET 启用乘数（未启用=0）
+## 【m106 作者裁定】Ara=RET-SP 启用乘数——启用取 1（启用时更容易释放=对的）；
+## 未启用（ret 缺失）取 0。战场每拍回写。
+var ARA := 0.0
+## 【m106 作者裁定：Al 实装】角色逻辑提供乘数——该 n/s 态势卡是否为角色逻辑
+## 提供：提供取 1，否则取 0.2（scheme 167；分母乘子）。现所有 n/s 均由申请
+## （=角色逻辑）替换而来→默认 1；非逻辑来源（日后机控/其他）检测留位。
+var AL := 1.0
 const PL := 0.0      ## 玩家指令提供（机控未实装）
 
 ## 每 0.1s：装填 + 申请 + 替换推进；返回本拍需要写入卡组的替换（""=无）
@@ -63,6 +69,8 @@ func release_tick(phase: int) -> String:
 	## 【应急符卡（scheme 324，m100）：Sl=0=所有寻路均失败→强制交符卡
 	## 直接顶替马上要打出来的下一张态势卡——pending 机制复用（e 类），
 	## 不经比率骰（强制），不消耗符卡资源（应急无 UI 色条=战地应急态）】
+	## 【m106】洒落雨真凶=应急释放的灰卡掉落（已改为应急不掉卡）；e 本体
+	## 保持 m100 契约（不看装填立即顶替——EMERGE 探针口径）
 	if SL <= 0.0 and pending_kind == "":
 		pending_kind = "e"
 		pending_tries = 10 ## 末帧位=下拍顶替直接成立
@@ -70,7 +78,8 @@ func release_tick(phase: int) -> String:
 	if pending_kind != "":
 		pending_tries += 1
 		var na: float = (100.0 * Kp + Pcs) / (SL + 1.0)
-		var da: float = sqrt(maxf((256.0 - Sms) * SL, 0.0)) + 1.0
+		## 【m106 Al 实装】Da=Al×[(256−Sms)×Sl]^0.5+1（scheme 166）
+		var da: float = AL * sqrt(maxf((256.0 - Sms) * SL, 0.0)) + 1.0
 		var ratio_a: float = 65536.0 if da <= 0.0 else na / da
 		var last_frame := pending_tries >= 10
 		var nf: float = Kp * Pcs
@@ -104,11 +113,13 @@ func release_tick(phase: int) -> String:
 	var smn := Smn
 	var sms := Sms
 	var nnr: float = sqrt(Kp) * (16.0 * Dcs / maxf(SL, 1.0) + 128.0 * smn / pow(0.5 * SL + 1.0, 2.0))
-	var dnr := 512.0 - smn - 128.0 * ARA
+	## 【m106 Al 实装（作者裁定）】分母乘 Al（角色逻辑提供=1 否则=0.2——scheme 162）
+	var dnr: float = (512.0 - smn - 128.0 * ARA) * AL
 	var nsr: float = 2.0 * Kp * sms / (SL + 1.0) + 64.0 * Dcs / (0.5 * SL + 1.0)
 	## 【m105 作者改案（scheme 164：Dsr=768+4Sl+0.25Pcs−4Sms）】−4Sl→+4Sl——
 	## Sl 是分母增益项：机动裕度足=更不急放（原 −4SL 使高 Sl 时分母变负=必成）
-	var dsr := 768.0 + 4.0 * SL + 0.25 * Pcs - 4.0 * sms
+	## 【m106】×Al（scheme 164）
+	var dsr: float = (768.0 + 4.0 * SL + 0.25 * Pcs - 4.0 * sms) * AL
 	var ratio_n: float = 65536.0 if dnr <= 0.0 else nnr / dnr
 	var ratio_s: float = 65536.0 if dsr <= 0.0 else nsr / dsr
 	var roll := rng.randf()

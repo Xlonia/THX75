@@ -43,9 +43,9 @@ func _ready() -> void:
 		if span2 != 105: ## 200-25=175 → 1.75s=105 帧
 			fails += 1
 			print("RFIX_FAIL: R1 n 档圆时长非 1.75s（%d 帧）" % span2)
-		if absf(float(run2["r"]) - 80.0) > 0.01:
+		if absf(float(run2["r"]) - 50.0) > 0.01:
 			fails += 1
-			print("RFIX_FAIL: R1 n 档半径非 80")
+			print("RFIX_FAIL: R1 n 档半径非 50（m106 古典档位）")
 	## R2. 支援框外召唤 P 豁免（位置=场心 200,200=中心 350² 内）
 	pl.pp = 300
 	var sum_row: Dictionary = CharaDB.get_by_name("Rumia")
@@ -156,6 +156,42 @@ func _ready() -> void:
 	if int(arena._team_cast_cd[pl.side]) != int(arena.time_frames) + 120:
 		fails += 1
 		print("RFIX_FAIL: R4 释放未置 2s 全队锁（%s）" % str(arena._team_cast_cd[pl.side]))
+	## R5. 应急符卡不掉灰卡（m106 洒落雨修正——真凶=应急灰卡雨）
+	if pl.sit_cards == null:
+		pl.sit_cards = SitCardSystem.new()
+	pl.sit_cards.spell_ready = true
+	pl.spell_cards = 2
+	pl.pp = 200
+	var d0: int = arena.drops.size()
+	arena._apply_release(pl, "m", true) ## 应急态
+	if arena.drops.size() != d0:
+		fails += 1
+		print("RFIX_FAIL: R5 应急释放掉灰卡（%d→%d）" % [d0, arena.drops.size()])
+	## R5b. 应急 e 保持 m100 契约（Sl=0 即触发——不受装填门；洒落雨由
+	## 应急不掉灰卡单独修掉）+Sl>0 不触发
+	pl.sit_cards.pending_kind = ""
+	pl.sit_cards.SL = 128.0
+	pl.sit_cards.release_tick(2)
+	if pl.sit_cards.pending_kind != "":
+		fails += 1
+		print("RFIX_FAIL: R5b Sl>0 仍触发应急 e（%s）" % pl.sit_cards.pending_kind)
+	pl.sit_cards.SL = 0.0
+	pl.sit_cards.pending_kind = "" ## 清掉上一拍申请残留（隔离本断言）
+	var r5b2: String = pl.sit_cards.release_tick(2) ## SL=0→ratio_a 必成=本拍顶替返回 e
+	if r5b2 != "e":
+		fails += 1
+		print("RFIX_FAIL: R5b Sl=0 未触发应急 e（ret=%s）" % r5b2)
+	## R6. 释放骰（scheme 168-171 接线）：比率 0=必败/比率大=必成
+	if pl.sit_cards.release_attempt(0.0, 0.0):
+		fails += 1
+		print("RFIX_FAIL: R6 释放骰比率 0 仍成功")
+	if not pl.sit_cards.release_attempt(10000.0, 0.0):
+		fails += 1
+		print("RFIX_FAIL: R6 释放骰比率超大仍失败")
+	## R7. Al 乘数：AL=0.2 时 dsr 变小→…（验证挂钩生效——AL=0.2 分母=1/5）
+	pl.sit_cards.AL = 0.2
+	pl.sit_cards.release_tick(2) ## 无副作用冒烟（不炸即可）
+	pl.sit_cards.AL = 1.0
 	if fails == 0:
-		print("RFIX_OK: 圆时长批复公式+支援框几何（框内费+强制/框外全免）+接管=滚轮所选+2s队锁 全过")
+		print("RFIX_OK: 圆时长批复公式+支援框几何+接管=滚轮所选+2s队锁+应急不掉灰卡/e保持m100契约+释放骰+Al挂钩 全过")
 	get_tree().quit(1 if fails > 0 else 0)
