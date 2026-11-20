@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Tests/release_fix_probe.gd" id="1_rfp"]
+
+[node name="ReleaseFixProbe" type="Node"]
+script = ExtResource("1_rfp")

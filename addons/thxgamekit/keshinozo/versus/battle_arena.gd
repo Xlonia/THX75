@@ -194,6 +194,16 @@ var _show_pick := false           ## F2 角色选取高亮开关
 var fps_label: Label = null
 ## 【批复 2026-10-05·完全接管（策划：Ctrl+Enter）】
 var take_over := false            ## 接管状态（方向键射击操作）
+## 【m104 作者裁定】接管对象=滚轮当前所选（不再恒领队第一位）——进接管瞬间
+## 锁定 picked_entity()；接管中该角色=玩家手动（移动/Z 开火/X·C·X+C 释放/
+## 态势卡停摆），其余成员照旧 AI。失效（死亡）自动回落领队。
+var takeover_ent: BattleEntity = null
+
+func _ctrl_ent() -> BattleEntity:
+	if takeover_ent != null and is_instance_valid(takeover_ent) \
+			and not takeover_ent.dead and takeover_ent.side == 0:
+		return takeover_ent
+	return player_leader
 ## 【0.0.9·试炼场预览临时窗】true=本 arena 跑在编辑器弹出的临时窗口里
 ## （0.0.8 行为：预览替换主窗口，编辑器子窗口保持；is_preview 判定面板变体）
 var _takeover_pending := false    ## Ctrl+Enter 第一次：暂停+选框确认
@@ -1052,7 +1062,11 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 【0.0.9·修复 20261111】原惰性创建在 _ent_tick_sit——支援框内召唤立即
 	## 强制发动能力→_apply_release 读 ne.sit_cards.on_released 踩 Nil（真炸）
 	ne.position = sel.position
-	ne.pp = sel.pp          ## 与原始角色共享
+	## 【m104 作者"支援框外P豁免"配套】召唤费 25P 显式扣（scheme：角色召唤=花费
+	## 资源+轮盘门"召唤需 25"——此前从未实扣，实际由强制能力的 25P 隐性代付；
+	## 强制能力豁免后费用由此显式承担——支援框外净账不变，支援框内按策划收费）
+	sel.pp = maxi(0, sel.pp - 25)
+	ne.pp = sel.pp          ## 与原始角色共享（扣费后）
 	ne.spell_cards = sel.spell_cards
 	ne.ap = 25              ## 召唤角色 25 结界
 	ne.set_meta("summoned", true)
@@ -1080,11 +1094,11 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 		player_leader = ne
 	if sel == _pick_side_target(0):
 		pass
-	## 支援框判定：中心 350×350 内召唤→强制下一帧发动能力（新二 8/21 行）
+	## 支援框判定：中心 350×350（=支援框外）内召唤→强制下一帧发动能力（新二 8/21 行）
+	## 【m104 作者裁定】强制发动=P 消耗豁免（不扣 25P 不设门——召唤费已显式扣）
 	if absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0:
-		if ne.pp >= 25:
-			_apply_release(ne, "n")
-			print("[召唤] 支援框外召唤→强制发动能力")
+		_apply_release(ne, "n", false, true)
+		print("[召唤] 支援框外召唤→强制发动能力（P豁免）")
 	print("[召唤] %s 接替 %s 上场（结界25 P=%d 符卡=%d）" % [
 		ne.chara_name(), sel.chara_name(), ne.pp, ne.spell_cards])
 	_toast("角色召唤：%s 接替 %s" % [ne.chara_name(), sel.chara_name()])
@@ -1136,6 +1150,11 @@ func _do_vanguard(sel: BattleEntity, row: Dictionary) -> void:
 	for j in 5:
 		_spawn_private_for(ne)
 	sel.pp -= 25
+	## 【m104 scheme 33】角色前锋同角色召唤：支援框外（中心350²）→强制发动能力
+	## （P 消耗豁免——前锋费 25P 已扣；不设门）
+	if absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0:
+		_apply_release(ne, "n", false, true)
+		print("[前锋] 支援框外前锋→强制发动能力（P豁免）")
 	_vanguards.append(ne)
 	_toast("角色前锋：%s 与 %s 重合保护（结界25+1）" % [ne.chara_name(), sel.chara_name()])
 	print("[前锋] %s 上场保护 %s（P=%d 剩余）" % [ne.chara_name(), sel.chara_name(), sel.pp])
@@ -1674,7 +1693,7 @@ func _run_sel_op(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void:
 var _skill_idx := {} ## 能力档轮放（instance_id→idx）
 var _spell_s_idx := {} ## 符卡档轮放
 
-func _mount_tier_spell(ent: BattleEntity, tier: String, tier_r: float, idx_in: int = -1) -> bool:
+func _mount_tier_spell(ent: BattleEntity, tier: String, tier_r: float, idx_in: int = -1, span_sec: float = 5.0) -> bool:
 	var col: String = {"n": "skill_evs", "s": "spell_s_evs", "m": "spell_evs"}.get(tier, "")
 	var names: PackedStringArray = String(ent.db.get(col, "")).split(";", false)
 	if names.is_empty():
@@ -1711,7 +1730,9 @@ func _mount_tier_spell(ent: BattleEntity, tier: String, tier_r: float, idx_in: i
 	ent.set_meta("spell_announce", sp0.spell_name)
 	_spell_runs.append({"ent": ent, "tl": ptl, "start_frame": time_frames, "tick": -1,
 		"svg": {}, "r": tier_r, "spell": sp0, "steps_tick": [],
-		"until_frame": time_frames + 300}) ## 时长占位 5s（SpellData 无时长列）
+		"until_frame": time_frames + int(maxf(1.0, span_sec) * 60.0)})
+		## 【m104 作者反馈"释放圆太大"】时长=批复公式（剩余P每100P=1s 最低1s——
+		## n/s 由调用方传实算 span；此前写死 5s 占位=100P 时圆亮 5 倍时长）
 	var run0: Dictionary = _spell_runs[_spell_runs.size() - 1]
 	for st in sp0.steps_start:
 		_exec_flow_step(ent, st, run0)
@@ -2783,17 +2804,17 @@ func _player_input() -> void:
 			r9e.move(rvec.normalized(), 1.0)
 	## 【0.0.9·攻击朝向（作者 20261111）】攻击方向=贴图/杂兵排布朝向——指向
 	## 瞄准的敌方角色；运动 facing 不再驱动贴图旋转（躲弹抽搐根除）
-	if take_over and player_leader != null and not player_leader.dead:
-		var p_t: BattleEntity = bullet_nearest_enemy_from(0, player_leader.position)
-		if p_t != null and p_t.position != player_leader.position:
-			player_leader.atk_facing = (p_t.position - player_leader.position).normalized()
-	if take_over and player_leader != null and not player_leader.dead:
+	if take_over and _ctrl_ent() != null and not _ctrl_ent().dead:
+		var p_t: BattleEntity = bullet_nearest_enemy_from(0, _ctrl_ent().position)
+		if p_t != null and p_t.position != _ctrl_ent().position:
+			_ctrl_ent().atk_facing = (p_t.position - _ctrl_ent().position).normalized()
+	if take_over and _ctrl_ent() != null and not _ctrl_ent().dead:
 		var dir := Vector2.ZERO
 		if Input.is_physical_key_pressed(KEY_LEFT): dir.x -= 1
 		if Input.is_physical_key_pressed(KEY_RIGHT): dir.x += 1
 		if Input.is_physical_key_pressed(KEY_UP): dir.y -= 1
 		if Input.is_physical_key_pressed(KEY_DOWN): dir.y += 1
-		player_leader.cruise_active = not Input.is_physical_key_pressed(KEY_SHIFT) ## 默认快机 Shift慢机
+		_ctrl_ent().cruise_active = not Input.is_physical_key_pressed(KEY_SHIFT) ## 默认快机 Shift慢机
 		## 【0.0.9·Enter 按住解除（新二 113）】控制状态下按住 Enter=解除接管
 		if Input.is_physical_key_pressed(KEY_ENTER):
 			_enter_hold += 1
@@ -2804,8 +2825,8 @@ func _player_input() -> void:
 		else:
 			_enter_hold = 0
 		if dir != Vector2.ZERO:
-			player_leader.position += dir.normalized() * (player_leader.cruise_speed() if player_leader.cruise_active else player_leader.normal_speed())
-			player_leader.position = player_leader.position.clamp(Vector2.ZERO, Vector2(400, 400))
+			_ctrl_ent().position += dir.normalized() * (_ctrl_ent().cruise_speed() if _ctrl_ent().cruise_active else _ctrl_ent().normal_speed())
+			_ctrl_ent().position = _ctrl_ent().position.clamp(Vector2.ZERO, Vector2(400, 400))
 ## ——双击检测（0.4s 窗口；策划）——
 var _dt_last: Dictionary = {} ## key -> 上次按下 time_frames
 var _dt_held: Dictionary = {} ## 【0.0.9·双击修复】key -> 上一帧是否按住（上升沿检测）
@@ -3002,12 +3023,15 @@ func _ai_sides() -> void:
 			continue
 		_ai_drive(ent, enemy_target, enemy_time_scale)
 	## 【批复 2026-10-05】自机也是 AI 自动控制（自走棋）——接管时才由玩家操作
-	if not take_over and player_target != null:
+	## 【m104】接管对象=滚轮所选：被接管者停 AI（玩家手动），领队照旧 AI
+	if player_target != null and (not take_over or _ctrl_ent() != player_leader):
 		if player_leader != null and not player_leader.dead:
 			_ai_drive(player_leader, player_target, 1.0)
 	for ent: BattleEntity in player_ents:
 		if ent == player_leader or ent.dead or ent.kind == BattleEntity.Kind.PRIVATE or ent == emitter_ent:
 			continue
+		if take_over and ent == _ctrl_ent():
+			continue ## 【m104】被接管成员=玩家手动（其余成员 AI 照旧）
 		_ai_drive(ent, player_target, 1.0)
 
 ## 单实体 AI 驱动（双方共用；target=本方的攻击目标领队）
@@ -3519,7 +3543,8 @@ func _ent_tick_sit(delta: float) -> void:
 			## 【m92 接管语义（作者 20261118：完全接管并非完全接管——角色依然
 			## 会自动放符卡）】玩家领队被完全接管（东方正作射击操作）时态势卡
 			## 自动释放停摆——n/s 交由玩家手动（X 瞬发/X+C 主符卡），抽卡照旧
-			if ent == player_leader and take_over:
+			## 【m104】接管对象=滚轮所选（_ctrl_ent）——非领队成员被接管同样停摆
+			if take_over and ent == _ctrl_ent():
 				ent.current_sit_card = ""
 				continue
 			var replaced: String = ent.sit_cards.release_tick(phase)
@@ -3550,7 +3575,9 @@ func _ent_tick_sit(delta: float) -> void:
 
 ## 释放效果（策划：能力80px·0.5s / 次级符卡200px·1s / 主要符卡全屏·5s）
 ## 消耗：能力25P / 次级符卡1张 / 主要符卡1张+100P（本批 n=能力、s=次级；主要符卡随符卡设置实装）
-func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false) -> void:
+## free_cost=资源豁免释放（支援框外召唤/前锋的强制能力——scheme 21/33；
+## 【m104 作者"支援框外P点消耗豁免"】强制发动不扣 25P 也不设门）
+func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, free_cost: bool = false) -> void:
 	## 【批复 2026-10-13】不论能力/符卡/主要符卡：释放即消除范围内弹幕
 	## 能力 80px / 次级符卡 200px（主要符卡=全屏，随符卡数据实装）
 	## 【m66】能力80 / 次级符卡200 / 主要符卡=全屏（策划：500px 覆盖全场——
@@ -3598,12 +3625,13 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false) ->
 	var paralyze_frames := 60
 	match kind:
 		"n":
-			if ent.pp >= 25:
-				ent.pp -= 25
-				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 扣费后剩余P定时长
+			if free_cost or ent.pp >= 25:
+				if not free_cost:
+					ent.pp -= 25
+				clear_sec = maxf(1.0, float(ent.pp) / 100.0) ## 剩余P定时长（批复公式）
 				## 【m90 三档符卡→m91 去旧制】能力档=skill_evs 定义全权
 				## （未配=仅游戏机制；解析失败=上方 toast）——古典兜底撤除
-				_mount_tier_spell(ent, "n", 80.0)
+				_mount_tier_spell(ent, "n", 80.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
 				_paralyze_fire(1 - ent.side, clear_sec)
@@ -3613,7 +3641,7 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false) ->
 				ent.spell_cards -= 1
 				clear_sec = maxf(1.0, float(ent.pp) / 100.0)
 				## 【m90 三档符卡→m91 去旧制】符卡档=spell_s_evs 定义全权（同能力档）
-				_mount_tier_spell(ent, "s", 200.0)
+				_mount_tier_spell(ent, "s", 200.0, -1, clear_sec) ## 【m104】圆时长=批复公式（原写死 5s）
 				ent.set_meta("released_kind", "s")
 				ent.set_meta("release_flash", ent.chara_name())
 				ent.set_meta("clear_count", cleared)
@@ -3708,7 +3736,7 @@ func _fire_ticks(delta: float) -> void:
 	for fc in fire_controls:
 		if not fc.entity.dead and not _fire_is_paralyzed(fc.entity):
 			## 【0.0.9·接管 Z（新二 111）】接管角色=Z 按住才开火（同东方正作）
-			if take_over and fc.entity == player_leader and not Input.is_physical_key_pressed(KEY_Z):
+			if take_over and fc.entity == _ctrl_ent() and not Input.is_physical_key_pressed(KEY_Z):
 				continue
 			## 敌侧火控接时间尺度（批复#8：AI/态势与弹幕节拍同步缩放）
 			var d := delta * (enemy_time_scale if fc.entity.side == 1 else 1.0)
@@ -4771,8 +4799,15 @@ func _unhandled_input(event: InputEvent) -> void:
 					## 再按 Enter：解除暂停并进入接管
 					_takeover_pending = false
 					take_over = true
+					## 【m104 作者裁定】接管对象=滚轮所选（非恒领队）
+					var tent := picked_entity()
+					if tent != null and tent.side == 0 and not tent.dead:
+						takeover_ent = tent
+					else:
+						takeover_ent = player_leader
 					pause_panel.visible = false
 					_takeover_label.visible = false
+					_toast("完全接管 → %s（Z 开火/方向键移动/X 能力/C 符卡/X+C 主要）" % _ctrl_ent().chara_name())
 				elif take_over:
 					take_over = false ## 持续接管中按 Enter=解除
 			KEY_R:
@@ -4812,7 +4847,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				elif take_over and Input.is_physical_key_pressed(KEY_X) and not finished:
 					## 【0.0.9·接管 X+C=主要符卡（新二 112）·m66 实装】
 					## 资源门：符卡装填(短兵起30s)+1符+100P
-					var tcm := player_leader
+					var tcm := _ctrl_ent() ## 【m104】接管对象=滚轮所选
 					if tcm == null or tcm.dead:
 						pass
 					elif tcm.sit_cards == null or not tcm.sit_cards.spell_ready:
@@ -4825,7 +4860,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						_apply_release(tcm, "m")
 				elif take_over and not finished:
 					## 【0.0.9·接管 C=次要符卡（新二 112）】
-					var tcs := player_leader
+					var tcs := _ctrl_ent() ## 【m104】接管对象=滚轮所选
 					if tcs != null and tcs.sit_cards != null:
 						if tcs.sit_cards.spell_ready:
 							_apply_release(tcs, "s")
@@ -4927,7 +4962,7 @@ func _unhandled_input(event: InputEvent) -> void:
 							_open_summon_wheel(wsel)
 				elif take_over and not finished:
 					## 【0.0.9·接管 X=能力（新二 112）】
-					var tsel := player_leader
+					var tsel := _ctrl_ent() ## 【m104】接管对象=滚轮所选
 					if tsel != null and tsel.sit_cards != null:
 						if tsel.sit_cards.skill_ready:
 							_apply_release(tsel, "n")
