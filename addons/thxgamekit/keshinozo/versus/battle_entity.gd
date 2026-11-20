@@ -94,8 +94,12 @@ func clear_active() -> bool:
 ## 杂兵排布/系绳公式=PrivateFormation（玩法插件自带的运行时半部）
 
 ## 【自走棋插件语义】结界半径=判定+Defend 列（作者 schema：Defend 本体非必填）
+## 【m100 前锋接线（m103 批）】前锋实体 meta vanguard_barrier_plus=结界半径再 +1（scheme 30）
 func barrier_radius() -> float:
-	return judge_radius() + float(db.get("Defend", 1))
+	var r := judge_radius() + float(db.get("Defend", 1))
+	if has_meta("vanguard_barrier_plus"):
+		r += float(get_meta("vanguard_barrier_plus"))
+	return r
 
 ## damaged/destroyed/barrier_shattered 信号=EntityCore（内核）
 

@@ -968,19 +968,69 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 		_toast("无可用候补——请在自定义对战设置召唤候补")
 		return
 	_wheel_open = true
+	_wheel_mode = "summon"
 	_wheel_sel = -1
 	_wheel_target = sel
 	_toast("%s 召唤轮盘（候补 %d 位）——松开 Shift+X 选取" % [sel.chara_name(), _wheel_cands.size()])
 
+## —— 前锋轮盘（m100 scheme 24-30 接线，作者 20261120 批次排序）——
+## Shift+C 按住显示、松开确认选取（交互同召唤轮盘；按住=新二"长按"）；
+## 候选=召唤候补配置优先/角色池兜底——排除现役+互斥三角色（scheme 27：
+## 晚汐/幽香/帕秋莉不能互相作为前锋）；资源门同召唤 25P
+func _open_vanguard_wheel(sel: BattleEntity) -> void:
+	if _wheel_lock:
+		return ## 【轮盘锁】取消后锁至松开 Shift+C 重按
+	if sel.pp < 25:
+		_toast("指令失败：%s P点不足（前锋需 25，当前 %d）" % [sel.chara_name(), sel.pp])
+		return
+	_wheel_cands.clear()
+	var used := {}
+	for e in player_ents:
+		if e is BattleEntity and (e as BattleEntity).kind != BattleEntity.Kind.PRIVATE:
+			used[(e as BattleEntity).chara_name()] = true
+	var pool := CharaDB.load_all()
+	if GameGlobals.summon_roster.is_empty():
+		for row in pool:
+			var nm: String = str(row.get("Name", ""))
+			if nm == "" or used.has(nm) or _vanguard_excluded(row):
+				continue
+			_wheel_cands.append(row)
+			if _wheel_cands.size() >= 8:
+				break
+	else:
+		for nm0 in GameGlobals.summon_roster:
+			var nm: String = str(nm0)
+			if nm == "" or used.has(nm):
+				continue
+			for row in pool:
+				if str(row.get("Name", "")) == nm:
+					if not _vanguard_excluded(row):
+						_wheel_cands.append(row)
+					break
+			if _wheel_cands.size() >= 8:
+				break
+	if _wheel_cands.is_empty():
+		_toast("无可用前锋候补（现役+互斥三角色除外）")
+		return
+	_wheel_open = true
+	_wheel_mode = "vanguard"
+	_wheel_sel = -1
+	_wheel_target = sel
+	_toast("%s 前锋轮盘（候补 %d 位）——松开 Shift+C 选取" % [sel.chara_name(), _wheel_cands.size()])
+
 ## 【0.0.9·轮盘取消（作者 20261111）】Esc/右键/双击中心共用出口——关盘+锁键
-## （锁至松开 Shift+X 重按）+左上角字幕反馈。后续新增轮盘沿用本出口
+## （锁至松开组合键重按）+左上角字幕反馈。后续新增轮盘沿用本出口
 func _wheel_cancel() -> void:
 	if not _wheel_open:
 		return
 	_wheel_open = false
 	_wheel_lock = true
-	print("[召唤] 轮盘取消（锁至松开 Shift+X 重按）")
-	_toast("召唤已取消（松开并重按 Shift+X 可再次召唤）")
+	if _wheel_mode == "vanguard":
+		print("[前锋] 轮盘取消（锁至松开 Shift+C 重按）")
+		_toast("前锋已取消（松开并重按 Shift+C 可再次呼叫）")
+	else:
+		print("[召唤] 轮盘取消（锁至松开 Shift+X 重按）")
+		_toast("召唤已取消（松开并重按 Shift+X 可再次召唤）")
 
 func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 策划：新角色 25 结界、破损自动离场（结界破损离场钩子=barrier_shattered 既有）、
@@ -2266,14 +2316,25 @@ func _process(delta: float) -> void:
 	_render_ddm() ## GPU 弹幕图提交（渲染线程，异步不阻塞 physics）
 	_heatmap_tick()
 	## 【0.0.9·决斗操作批】轮盘超时/杂兵 meta 递减/右下面板刷新
-	if not (Input.is_physical_key_pressed(KEY_X) and Input.is_physical_key_pressed(KEY_SHIFT)):
+	## 【m103】两种组合键（Shift+X 召唤 / Shift+C 前锋）任一按住=维持锁
+	if not ((Input.is_physical_key_pressed(KEY_X) or Input.is_physical_key_pressed(KEY_C))
+			and Input.is_physical_key_pressed(KEY_SHIFT)):
 		_wheel_lock = false ## 【轮盘锁】松开组合键=解锁（同 Tab 语义）
 	if _wheel_open:
-		## 【按住模式（作者裁定）】Shift+X 松开→确认选取（鼠标未接触=默认第一位）
-		if not (Input.is_physical_key_pressed(KEY_X) and Input.is_physical_key_pressed(KEY_SHIFT)):
+		## 【按住模式（作者裁定）】Shift+X（召唤）/Shift+C（前锋）松开→确认选取
+		## （鼠标未接触=默认第一位）
+		var hold_ok := false
+		if _wheel_mode == "vanguard":
+			hold_ok = Input.is_physical_key_pressed(KEY_C) and Input.is_physical_key_pressed(KEY_SHIFT)
+		else:
+			hold_ok = Input.is_physical_key_pressed(KEY_X) and Input.is_physical_key_pressed(KEY_SHIFT)
+		if not hold_ok:
 			if _wheel_target != null and not _wheel_cands.is_empty():
 				var pick: int = _wheel_sel if (_wheel_sel >= 0 and _wheel_sel < _wheel_cands.size()) else 0
-				_do_summon(_wheel_target, _wheel_cands[pick])
+				if _wheel_mode == "vanguard":
+					_do_vanguard(_wheel_target, _wheel_cands[pick])
+				else:
+					_do_summon(_wheel_target, _wheel_cands[pick])
 			_wheel_open = false
 	if not Input.is_physical_key_pressed(KEY_TAB):
 		_priv_tab_lock = false ## 松开 Tab→解锁（下次按恢复）
@@ -2790,6 +2851,7 @@ var _wheel_cands: Array = []    ## 轮盘候选（demo 角色池——候补数�
 var _wheel_lock := false
 var _wheel_center_click := -999 ## 上次中心单击帧（双击检测 0.4s 窗口）
 var _wheel_target: BattleEntity = null
+var _wheel_mode := "summon"     ## 轮盘用途（summon=召唤 Shift+X / vanguard=前锋 Shift+C——同一环盘复用）
 var _priv_panel := false        ## 杂兵面板（Tab 按住呼出）
 var _priv_tab_lock := false     ## 【锁 tab（作者释）】双击面板外区域→本次按住 Tab 失效；松开重按解锁
 var _ml_last := 0               ## 左键双击检测
@@ -4732,7 +4794,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_toast("自动增援：%s" % ("开" if auto_reinforce else "关"))
 			KEY_C:
 				## 【0.0.9·同键合并】原第二个 KEY_C 分支（请求/双击强制符卡）被本分支拦截=死代码
-				if Input.is_physical_key_pressed(KEY_CTRL):
+				## 【m103·前锋轮盘（m100 scheme 24-30 接线）】Shift+C 按住=前锋轮盘
+				## （松开确认——交互同召唤轮盘；互斥三角色不入候选）
+				if Input.is_physical_key_pressed(KEY_SHIFT):
+					if not finished:
+						var vsel := picked_entity()
+						if vsel != null and vsel.side == 0 and not _wheel_open:
+							_open_vanguard_wheel(vsel)
+				elif Input.is_physical_key_pressed(KEY_CTRL):
 					## Ctrl+C 取消全部指令（姿态+点位指令+待命）
 					team_stance = ""
 					cmd_frames = 0
@@ -6088,13 +6157,19 @@ func _draw_priv_panel(onto: CanvasItem) -> void:
 			"%d. %s %s HP%d" % [i, pv.chara_name(), tag, pv.hp[0]],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)
 
-## 召唤轮盘（Shift+S）：环形 8 槽+鼠标悬停高亮
+## 召唤轮盘（Shift+X）/前锋轮盘（Shift+C）：同一环盘（m103 复用——模式标色）
 func _draw_summon_wheel(onto: CanvasItem) -> void:
 	if not _wheel_open or not gpu_ok:
 		return
 	var center := Vector2(200, 200)
+	var is_vg := _wheel_mode == "vanguard"
 	onto.draw_circle(center, 150, Color(0.05, 0.07, 0.12, 0.8)) ## 【作者裁定】圆环加大
-	onto.draw_arc(center, 150, 0, TAU, 64, Color(0.6, 0.8, 1.0, 0.6), 1.5)
+	onto.draw_arc(center, 150, 0, TAU, 64,
+		Color(1.0, 0.7, 0.35, 0.6) if is_vg else Color(0.6, 0.8, 1.0, 0.6), 1.5)
+	onto.draw_string(ThemeDB.fallback_font, center + Vector2(-50, -122),
+		"前锋轮盘" if is_vg else "召唤轮盘",
+		HORIZONTAL_ALIGNMENT_CENTER, 100, 12,
+		Color(1.0, 0.75, 0.4, 0.9) if is_vg else Color(0.6, 0.8, 1.0, 0.9))
 	var mp := (get_global_mouse_position() - world.position) / world.scale.x
 	var mouse_in := false
 	for i in _wheel_cands.size():
