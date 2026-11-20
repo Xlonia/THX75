@@ -930,8 +930,9 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 	if _wheel_lock:
 		return ## 【轮盘锁】取消后锁至松开 Shift+X 重按
 	## 【0.0.9·资源预检（作者 20261111）】召唤=资源指令——P 不足 25 阻止并提示
-	if sel.pp < 25:
-		_toast("指令失败：%s P点不足（召唤需 25，当前 %d）" % [sel.chara_name(), sel.pp])
+	## 【m105 几何翻转】P 门只管支援框内（前线）——框外部署带=不消耗P（作者裁定）
+	if sel.pp < 25 and absf(sel.position.x - 200.0) <= 175.0 and absf(sel.position.y - 200.0) <= 175.0:
+		_toast("指令失败：%s P点不足（支援框内召唤需 25，当前 %d；框外免费）" % [sel.chara_name(), sel.pp])
 		return
 	_wheel_cands.clear()
 	var used := {}
@@ -990,8 +991,9 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 func _open_vanguard_wheel(sel: BattleEntity) -> void:
 	if _wheel_lock:
 		return ## 【轮盘锁】取消后锁至松开 Shift+C 重按
-	if sel.pp < 25:
-		_toast("指令失败：%s P点不足（前锋需 25，当前 %d）" % [sel.chara_name(), sel.pp])
+	## 【m105 几何翻转】P 门只管支援框内（前线）——框外部署带=不消耗P
+	if sel.pp < 25 and absf(sel.position.x - 200.0) <= 175.0 and absf(sel.position.y - 200.0) <= 175.0:
+		_toast("指令失败：%s P点不足（支援框内前锋需 25，当前 %d；框外免费）" % [sel.chara_name(), sel.pp])
 		return
 	_wheel_cands.clear()
 	var used := {}
@@ -1062,11 +1064,13 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 【0.0.9·修复 20261111】原惰性创建在 _ent_tick_sit——支援框内召唤立即
 	## 强制发动能力→_apply_release 读 ne.sit_cards.on_released 踩 Nil（真炸）
 	ne.position = sel.position
-	## 【m104 作者"支援框外P豁免"配套】召唤费 25P 显式扣（scheme：角色召唤=花费
-	## 资源+轮盘门"召唤需 25"——此前从未实扣，实际由强制能力的 25P 隐性代付；
-	## 强制能力豁免后费用由此显式承担——支援框外净账不变，支援框内按策划收费）
-	sel.pp = maxi(0, sel.pp - 25)
-	ne.pp = sel.pp          ## 与原始角色共享（扣费后）
+	## 【m105 作者几何裁定】支援框=中心350²正方形；**框外=距边界50px 外圈=
+	## 相对后方的部署带——支援类指令（召唤/切换/增援）不消耗P**；框内（前线）
+	## =正常消耗+立即发动能力（新二 8 行"在这个正方形内…立即释放一次能力"）
+	var in_center: bool = absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0
+	if in_center:
+		sel.pp = maxi(0, sel.pp - 25) ## 召唤费（scheme：角色召唤=花费资源）
+	ne.pp = sel.pp          ## 与原始角色共享（框内=扣费后；框外不扣）
 	ne.spell_cards = sel.spell_cards
 	ne.ap = 25              ## 召唤角色 25 结界
 	ne.set_meta("summoned", true)
@@ -1094,11 +1098,11 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 		player_leader = ne
 	if sel == _pick_side_target(0):
 		pass
-	## 支援框判定：中心 350×350（=支援框外）内召唤→强制下一帧发动能力（新二 8/21 行）
-	## 【m104 作者裁定】强制发动=P 消耗豁免（不扣 25P 不设门——召唤费已显式扣）
-	if absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0:
+	## 【m105 几何翻转】框内（前线）召唤→立即发动能力（P 豁免——召唤费已扣）；
+	## 框外（后方部署带）召唤=纯部署，不消耗不强制（作者："支援框外不需要发动能力"）
+	if in_center:
 		_apply_release(ne, "n", false, true)
-		print("[召唤] 支援框外召唤→强制发动能力（P豁免）")
+		print("[召唤] 支援框内召唤→立即发动能力（召唤费已扣）")
 	print("[召唤] %s 接替 %s 上场（结界25 P=%d 符卡=%d）" % [
 		ne.chara_name(), sel.chara_name(), ne.pp, ne.spell_cards])
 	_toast("角色召唤：%s 接替 %s" % [ne.chara_name(), sel.chara_name()])
@@ -1149,12 +1153,13 @@ func _do_vanguard(sel: BattleEntity, row: Dictionary) -> void:
 	## 5 名自带杂兵（前锋库存杂兵=privates.csv 循环）
 	for j in 5:
 		_spawn_private_for(ne)
-	sel.pp -= 25
-	## 【m104 scheme 33】角色前锋同角色召唤：支援框外（中心350²）→强制发动能力
-	## （P 消耗豁免——前锋费 25P 已扣；不设门）
-	if absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0:
+	## 【m105 几何翻转】框内（前线）=前锋费25P+立即发动能力（免费）；
+	## 框外（后方部署带）=纯部署不消耗不强制（同召唤——作者裁定）
+	var v_in_center: bool = absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0
+	if v_in_center:
+		sel.pp = maxi(0, sel.pp - 25)
 		_apply_release(ne, "n", false, true)
-		print("[前锋] 支援框外前锋→强制发动能力（P豁免）")
+		print("[前锋] 支援框内前锋→立即发动能力（前锋费已扣）")
 	_vanguards.append(ne)
 	_toast("角色前锋：%s 与 %s 重合保护（结界25+1）" % [ne.chara_name(), sel.chara_name()])
 	print("[前锋] %s 上场保护 %s（P=%d 剩余）" % [ne.chara_name(), sel.chara_name(), sel.pp])
@@ -1528,6 +1533,15 @@ func _exec_flow_step(ent: BattleEntity, st: Dictionary, run: Dictionary) -> void
 			var cr: float = float(svgd.get("r", float(run.get("r", 80.0))))
 			if cr <= 0.0:
 				cr = 80.0
+			## 【m105 作者"范围没写好"】显式范围可写：radius(N) 函数链 / 范围=N kv
+			## 优先（表达式自表范围，编辑器可改）；缺省=注册图形/档位半径（现状链）
+			var cprm := String(st.get("params", ""))
+			if cprm.contains("radius("):
+				var csel: Dictionary = BulletOps.parse_dsel(cprm)
+				if float(csel.get("r", 0.0)) > 0.0:
+					cr = float(csel["r"])
+			elif _kv(cprm).has("范围"):
+				cr = float(_kv(cprm)["范围"])
 			_apply_clean(ent, cr)
 			_run_sel_op(ent, st, run) ## params 带 sel:/ev: 时续走选择器操作
 		"reflex", "inverse", "inversep", "revolt", "inheritdamage":
@@ -3489,14 +3503,15 @@ func _sit_tick(delta: float) -> void:
 		ent.sit_cards.Pcs = enemy_privs
 		var ht_at: int = ent.get_meta("ht_at", 0)
 		var hd_at: int = ent.get_meta("hd_at", 0)
-		## 【数值口径暂定】Smn/Sms = 权重×热度的加权和（0~255 口径，非归一）——
-		## 策划公式 Dnr=512-Smn-… 与 Dsr=768+…-4Sms 的量纲暗示 Smn/Sms 为数十~数百级。
-		## Hcs/Hct 实装后按完整权重表替换；当前 Ht/Hd 近似。
-		## 【权重表 20261020（游戏逻辑介绍）】dm_smn=Ht3+Hd1+Hcs8；dm_sms=Ht2+Hd1+Hcs4
-		## （0~3060 口径；Dnr=512-Smn 高倾向转负→65536 必成=危急必交符）
+		## 【权重表 20261020（游戏逻辑介绍 237-238）】dm_smn=Ht3 Hd1 Hcs8；
+		## dm_sms=Ht2 Hd1 Hcs4——**不是向量相加，而是向量长度求平均**（scheme 原文）。
+		## 【m105 量纲修正（作者"释放倾向太高"主因）】旧=加权求和（0~3060/0~2295）
+		## →Dsr=768+4Sl+0.25Pcs−4Sms 在 Sms>~700 即变负→ratio=65536 必成→一过冷却齐放。
+		## 修正=加权**平均**（0~255 口径，恢复公式设计量纲）；真·向量长度平均
+		## （逐点梯度方向×权重取模长再平均）需十六点×三图梯度采样，量大留 0.2.0。
 		var hcs_at := float(ent.hcs_at) if ent.hcs_pts.size() >= 49 else 0.0
-		ent.sit_cards.Smn = clampf(float(ht_at) * 3.0 + float(hd_at) * 1.0 + hcs_at * 8.0, 0.0, 3060.0)
-		ent.sit_cards.Sms = clampf(float(ht_at) * 2.0 + float(hd_at) * 1.0 + hcs_at * 4.0, 0.0, 2295.0)
+		ent.sit_cards.Smn = clampf((float(ht_at) * 3.0 + float(hd_at) * 1.0 + hcs_at * 8.0) / 12.0, 0.0, 255.0)
+		ent.sit_cards.Sms = clampf((float(ht_at) * 2.0 + float(hd_at) * 1.0 + hcs_at * 4.0) / 7.0, 0.0, 255.0)
 		## 【RET-SP 两步（③期收官）】Sl=Σ 一段可行 × 二段可行(同角5d)
 		## 一段可行=5d 圈该方向 <64（假设位移不穿热）；二段可行=1d 同角 <64
 		var sl := 0.0
@@ -3520,6 +3535,9 @@ func _sit_tick(delta: float) -> void:
 
 ## 逐拍抽卡（0.1s 一张）+ 行为应用（敌方）
 var _card_acc := 0.0
+## 【m105 作者改案-A】队友释放后 2 秒全队释放锁（per-side until_frame；
+## 消"一过冷却不约而同齐放"——保留拟人倾向只错峰；应急 e 不受锁）
+var _team_cast_cd := [0, 0]
 var rally_point := Vector2.ZERO   ## 号召点（战术卡命中者位置）
 ## 【机控指令圈（策划：G键指定位置进攻；圈=255衰减的引力，持续2秒）】
 var cmd_point := Vector2.ZERO
@@ -3552,7 +3570,12 @@ func _ent_tick_sit(delta: float) -> void:
 				ent.sit_cards.ring[0] = replaced ## 替换下一张（策划：换掉下一张态势卡）
 			ent.current_sit_card = ent.sit_cards.pop_card()
 			## 释放判定（能力/符卡出卡即放；n=能力 s=次级符卡）
-			if ent.current_sit_card == "n" or ent.current_sit_card == "s":
+			## 【m105 作者改案-A】队友释放后 2 秒全队锁——n/s 自动释放被锁时
+			## 该卡消耗无效果（同 scheme 释放骰失败语义）；应急 e 反射不受锁
+			if (ent.current_sit_card == "n" or ent.current_sit_card == "s") \
+					and time_frames < int(_team_cast_cd[ent.side]):
+				ent.current_sit_card = ""
+			elif ent.current_sit_card == "n" or ent.current_sit_card == "s":
 				_apply_release(ent, ent.current_sit_card)
 			elif ent.current_sit_card == "e":
 				## 【m100 应急符卡（scheme 324）】Sl=0 绝路强制交符卡——
@@ -3668,6 +3691,9 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				_toast(("符卡宣言 %s" % aname) if aname != "" else "符卡释放")
 				_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
 	ent.sit_cards.on_released(kind)
+	## 【m105 作者改案-A】队友释放后 2 秒全队释放锁（消"不约而同齐放"——保留拟人
+	## 倾向只错峰；手动指令不锁定自己但同样触发队友等待；应急 e 反射不受锁）
+	_team_cast_cd[ent.side] = time_frames + 120
 
 ## 敌方火力瘫痪（时间轴实装前占位 1s/时长秒；实装后=至时间轴最后事件）
 func _paralyze_fire(victim_side: int, seconds: float) -> void:

@@ -109,6 +109,53 @@ func _ready() -> void:
 			print("RFIX_FAIL: R3 失效未回落领队")
 	else:
 		print("RFIX_SKIP: R3 无第二成员可测")
+	## R2c. 框外（后方部署带）召唤/前锋=不消耗P 不强制（m105 几何翻转）
+	## 注意：R2 的召唤已把领队替换——此处用当前 player_leader（在场实体）
+	var summoner = arena.player_leader
+	if summoner != null and not summoner.dead:
+		if summoner.sit_cards == null:
+			summoner.sit_cards = SitCardSystem.new()
+		summoner.pp = 200
+		var before2: int = summoner.pp
+		summoner.position = Vector2(20, 200) ## |20-200|=180>175=框外
+		arena._do_summon(summoner, CharaDB.get_by_name("Rumia"))
+		var ne2 = null
+		for e4 in arena.player_ents:
+			if e4 is BattleEntity and e4.has_meta("summoned") and e4.position == Vector2(20, 200):
+				ne2 = e4
+		if ne2 == null:
+			fails += 1
+			print("RFIX_FAIL: R2c 框外召唤未上场")
+		else:
+			if int(arena.player_leader.pp) != before2:
+				fails += 1
+				print("RFIX_FAIL: R2c 框外召唤仍扣费（%d→%d）" % [before2, int(arena.player_leader.pp)])
+			if ne2.has_meta("release_flash"):
+				fails += 1
+				print("RFIX_FAIL: R2c 框外召唤不应强制发动能力")
+	## R2d. 框外前锋=不扣费不强制
+	var pl3 = null
+	for e5 in arena.player_ents:
+		if e5 is BattleEntity and not e5.has_meta("summoned") and not e5.dead \
+				and e5.side == 0 and e5.kind != BattleEntity.Kind.PRIVATE \
+				and e5 != pl and e5 != pl2:
+			pl3 = e5
+			break
+	if pl3 != null:
+		pl3.position = Vector2(20, 380) ## |380-200|=180>175=框外
+		pl3.pp = 120
+		var b3: int = pl3.pp
+		arena._do_vanguard(pl3, {"Name": "Rumia", "NameZH": "露米娅"})
+		if not arena._vanguards.is_empty() and arena._vanguards[arena._vanguards.size() - 1].position == Vector2(20, 380):
+			if int(pl3.pp) != b3:
+				fails += 1
+				print("RFIX_FAIL: R2d 框外前锋仍扣费（%d→%d）" % [b3, int(pl3.pp)])
+	## R4. 队友释放后 2s 全队锁（作者改案-A）——释放即置锁
+	pl.pp = 300
+	arena._apply_release(pl, "n")
+	if int(arena._team_cast_cd[pl.side]) != int(arena.time_frames) + 120:
+		fails += 1
+		print("RFIX_FAIL: R4 释放未置 2s 全队锁（%s）" % str(arena._team_cast_cd[pl.side]))
 	if fails == 0:
-		print("RFIX_OK: 圆时长批复公式+支援框外P豁免+接管=滚轮所选 全过")
+		print("RFIX_OK: 圆时长批复公式+支援框几何（框内费+强制/框外全免）+接管=滚轮所选+2s队锁 全过")
 	get_tree().quit(1 if fails > 0 else 0)

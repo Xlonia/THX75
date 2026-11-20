@@ -106,7 +106,9 @@ func release_tick(phase: int) -> String:
 	var nnr: float = sqrt(Kp) * (16.0 * Dcs / maxf(SL, 1.0) + 128.0 * smn / pow(0.5 * SL + 1.0, 2.0))
 	var dnr := 512.0 - smn - 128.0 * ARA
 	var nsr: float = 2.0 * Kp * sms / (SL + 1.0) + 64.0 * Dcs / (0.5 * SL + 1.0)
-	var dsr := 768.0 + 0.25 * Pcs - 4.0 * sms - 4.0 * SL
+	## 【m105 作者改案（scheme 164：Dsr=768+4Sl+0.25Pcs−4Sms）】−4Sl→+4Sl——
+	## Sl 是分母增益项：机动裕度足=更不急放（原 −4SL 使高 Sl 时分母变负=必成）
+	var dsr := 768.0 + 4.0 * SL + 0.25 * Pcs - 4.0 * sms
 	var ratio_n: float = 65536.0 if dnr <= 0.0 else nnr / dnr
 	var ratio_s: float = 65536.0 if dsr <= 0.0 else nsr / dsr
 	var roll := rng.randf()
