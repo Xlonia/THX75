@@ -1194,6 +1194,8 @@ func _vanguard_tick() -> void:
 ## 已入 Bullet.grazed 清单）。计数=行为检测口径（关卡结算/事件流程后续接）
 const GRAZE_RADIUS := 14.0
 var graze_count := 0
+## 【备忘（作者 20261121）】擦弹效果实装随 0.2.0+——graze_count/标签的功能
+## 性测试届时再做，本轮仅判定链就位（判定/标签/计数已探针验证）
 
 func _graze_tick() -> void:
 	var pl := _ctrl_ent()
