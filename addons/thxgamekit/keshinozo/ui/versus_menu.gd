@@ -146,13 +146,20 @@ func _ready() -> void:
 	var barch_b := Button.new()
 	barch_b.text = "对战存档…"
 	barch_b.pressed.connect(_open_battle_archive)
+	## 【m111 测试存档（开发者）】配置面快照+回填（无种子——真性伪随机口径）
+	var tsave_b := Button.new()
+	tsave_b.text = "测试存档：保存（开发者）"
+	tsave_b.pressed.connect(_save_test_snapshot)
+	var tload_b := Button.new()
+	tload_b.text = "测试存档：读取最新（开发者）"
+	tload_b.pressed.connect(_load_test_snapshot)
 	## 【0.0.9·按钮两列（作者 20261110）】除开始/返回外两按钮一行，防纵向超界
 	var btn_grid := GridContainer.new()
 	btn_grid.columns = 2
 	btn_grid.add_theme_constant_override("h_separation", 12)
 	btn_grid.add_theme_constant_override("v_separation", 6)
 	root.add_child(btn_grid)
-	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b, barch_b]:
+	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b, barch_b, tsave_b, tload_b]:
 		btn_grid.add_child(b2)
 		(b2 as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var go := Button.new()
@@ -329,6 +336,81 @@ func _open_chara_cfg(pick: OptionButton, page: String) -> void:
 			GameGlobals.versus_chara_cfg[cname] = cfg)
 	get_parent().add_child(dlg)
 	dlg.popup_centered()
+
+## =============================================================
+## 【m111 测试存档（开发者）】payload=对战存档内容+全局开关+场地规则快照+
+## 道具库存。保存=自动命名 test_时间戳.thxt；读取=最新一份回填选人/开关/
+## 场地规则 CSV（写穿重注册）+道具库存。无种子——真性伪随机口径。
+## =============================================================
+func _test_snapshot_payload() -> Dictionary:
+	var arr := _battle_lineup()
+	var sw := {
+		"start_pp": int(pp_spin.value), "start_spell": int(spell_spin.value),
+		"volley": "rotate" if volley_pick.selected == 0 else "salvo",
+		"sample_n": 1 + _sample_pick.selected,
+		"contour_px": 8 * (_edge_pick.selected + 1),
+		"heat_split": _hsplit_pick.selected == 1,
+		"no_surrender": _no_surr_check.button_pressed,
+		"stress": _stress_check.button_pressed,
+	}
+	var fr_csv := ""
+	var frp := THXKit.kpath("data/field_rules.csv")
+	if FileAccess.file_exists(frp):
+		var f := FileAccess.open(frp, FileAccess.READ)
+		if f != null:
+			fr_csv = f.get_as_text()
+			f.close()
+	return {
+		"player_team": arr[0], "enemy_team": arr[1],
+		"chara_cfg": GameGlobals.versus_chara_cfg.duplicate(true),
+		"switches": sw,
+		"team_items": GameGlobals.versus_team_items.duplicate(),
+		"field_rules_csv": fr_csv,
+	}
+
+func _save_test_snapshot() -> void:
+	var fname := "test_%d.thxt" % int(Time.get_unix_time_from_system())
+	var err: String = GameGlobals.save_test_save(fname, _test_snapshot_payload())
+	print("[测试存档] %s" % ("已保存：%s（配置面快照，无种子）" % fname if err == "" else "保存失败：" + err))
+
+func _load_test_snapshot() -> void:
+	var saves: Array = GameGlobals.list_test_saves()
+	if saves.is_empty():
+		print("[测试存档] 无 .thxt 测试存档")
+		return
+	var d: Dictionary = GameGlobals.load_test_save(str(saves[0]["name"]))
+	if d.has("error"):
+		print("[测试存档] 读取失败：" + str(d["error"]))
+		return
+	_set_team(player_picks, d.get("player_team", []), 0)
+	_set_team(enemy_picks, d.get("enemy_team", []), 1)
+	for i in player_picks.size():
+		_refresh_pick_tex(0, i)
+	for i2 in enemy_picks.size():
+		_refresh_pick_tex(1, i2)
+	var cc: Dictionary = d.get("chara_cfg", {})
+	if not cc.is_empty():
+		GameGlobals.versus_chara_cfg = cc.duplicate(true)
+	var sw: Dictionary = d.get("switches", {})
+	pp_spin.value = float(sw.get("start_pp", 100))
+	spell_spin.value = float(sw.get("start_spell", 1))
+	volley_pick.select(0 if str(sw.get("volley", "rotate")) == "rotate" else 1)
+	_sample_pick.select(clampi(int(sw.get("sample_n", 1)) - 1, 0, 4))
+	_edge_pick.select(clampi(int(sw.get("contour_px", 8)) / 8 - 1, 0, 3))
+	_hsplit_pick.select(1 if bool(sw.get("heat_split", false)) else 0)
+	_no_surr_check.button_pressed = bool(sw.get("no_surrender", false))
+	_stress_check.button_pressed = bool(sw.get("stress", false))
+	var ti: Array = d.get("team_items", [])
+	if ti.size() == 3:
+		GameGlobals.versus_team_items = ti
+	var fr_csv := str(d.get("field_rules_csv", ""))
+	if fr_csv != "":
+		var frp := THXKit.kpath("data/field_rules.csv")
+		var f2 := FileAccess.open(frp, FileAccess.WRITE)
+		if f2 != null:
+			f2.store_string(fr_csv)
+			f2.close()
+	print("[测试存档] 已读取并回填：%s（选人/开关/场地规则/道具库存）" % str(saves[0]["name"]))
 
 ## =============================================================
 ## 【0.0.9 对战存档】保存=当前选人+versus_chara_cfg → .thxb；

@@ -755,6 +755,81 @@ func list_battle_saves() -> Array:
 	out.sort_custom(func(a, b): return int(a["mtime"]) > int(b["mtime"]))
 	return out
 
+## =============================================================
+## 【m109→m111 道具库存配置】每侧初始 [疗伤, 修理, 复活]——占位数值（作者调）
+## =============================================================
+var versus_team_items := [1, 1, 1]
+
+## =============================================================
+## 【m111 测试存档（作者批复 v2：开发者调试选项·配置面复现·无种子）】
+## user://battlesaves/*.thxt（JSON 明文 kind=thx_test_save_v1）
+## payload=对战存档内容（阵容+chara_cfg）+全局开关+场地规则快照+道具库存。
+## 随机面一律 Unix 时间戳真性伪随机——不落种子进存档。
+## =============================================================
+const TEST_SAVE_DIR := "user://battlesaves"
+const TEST_SAVE_KIND := "thx_test_save_v1"
+
+func save_test_save(fname: String, payload: Dictionary) -> String:
+	var clean := fname.strip_edges().get_file()
+	if clean == "":
+		return "文件名为空"
+	if not clean.ends_with(".thxt"):
+		clean += ".thxt"
+	var err := DirAccess.make_dir_recursive_absolute(TEST_SAVE_DIR)
+	if err != OK:
+		return "建目录失败：%d" % err
+	var full := {
+		"kind": TEST_SAVE_KIND,
+		"version": 1,
+		"saved_at": Time.get_unix_time_from_system(),
+	}
+	for k in payload:
+		full[k] = payload[k]
+	var f := FileAccess.open(String(TEST_SAVE_DIR).path_join(clean), FileAccess.WRITE)
+	if f == null:
+		return "写盘失败：%d" % FileAccess.get_open_error()
+	f.store_string(JSON.stringify(full, "	"))
+	f.close()
+	return ""
+
+func load_test_save(fname: String) -> Dictionary:
+	var clean := fname.strip_edges().get_file()
+	if clean == "":
+		return {"error": "文件名为空"}
+	if not clean.ends_with(".thxt"):
+		clean += ".thxt"
+	var path := String(TEST_SAVE_DIR).path_join(clean)
+	if not FileAccess.file_exists(path):
+		return {"error": "存档不存在：%s" % clean}
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {"error": "读盘失败：%d" % FileAccess.get_open_error()}
+	var data = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (data is Dictionary):
+		return {"error": "非 JSON 或已损坏"}
+	if str(data.get("kind", "")) != TEST_SAVE_KIND:
+		return {"error": "不是测试存档（kind=%s）" % str(data.get("kind", "?"))}
+	return data
+
+func list_test_saves() -> Array:
+	var out: Array = []
+	if not DirAccess.dir_exists_absolute(TEST_SAVE_DIR):
+		return out
+	var da := DirAccess.open(TEST_SAVE_DIR)
+	if da == null:
+		return out
+	da.list_dir_begin()
+	var fn := da.get_next()
+	while fn != "":
+		if not da.current_is_dir() and fn.ends_with(".thxt"):
+			var p := String(TEST_SAVE_DIR).path_join(fn)
+			out.append({"name": fn, "mtime": FileAccess.get_modified_time(p)})
+		fn = da.get_next()
+	da.list_dir_end()
+	out.sort_custom(func(a, b): return int(a["mtime"]) > int(b["mtime"]))
+	return out
+
 ## 统一场景跳转
 func goto_scene(res_path: String) -> void:
 	## 【手动切场景撤销 20261114】回 change_scene_to_file（作者指令——m54 手动版

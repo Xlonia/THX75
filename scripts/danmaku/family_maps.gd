@@ -217,6 +217,7 @@ func upload_hp_image(side: int, img: Image) -> void:
 	var i: int = 6 + side
 	_rd.texture_update(_tex[i][_front[i]], 0, img.get_data())
 	flip_seq[i] += 1 ## 【等高线去重】Hp 数据已重写
+	_disp_cache.erase("Hp" + str(side)) ## 【m111】原地写入不翻 front——显示缓存须失效（旧缓存=黑图常驻）
 
 ## 【0.0.9·Hr 派生（策划新三对齐）】Hr=Hv 半径2高斯派生（与 Hd←Ht 对称）。
 ## 撤销"快弹（速度≥4）印章"简化——测试弹速度不足时 Hr 恒空（作者实测无热力）。

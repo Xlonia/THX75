@@ -478,14 +478,14 @@ func _test_rotate_repeat() -> void:
 	evf.repeat_time = 30
 	evf.compile()
 	arena3._on_fire(fp, evf, {})
-	_check(arena3.bullets.size() == 1 and arena3._rot_pend.size() == 4,
+	_check(arena3.bullets.size() == 1 and arena3._rot_pend_count() == 4,
 		"对战链路：首发=时序首副本，其余4副本入延时队列")
 	var b0: Bullet = arena3.bullets[0]
 	var base := b0.dir.rotated(PI / 4.0) ## 锚角 -π/4 → 反解基向
 	_check(base.x > 0.99 and absf(base.y) < 0.01, "首发方向=基向.rotated(左缘角)（cw 首弹自逆时针极点起）")
 	for i in 50:
 		arena3._rot_pending_tick()
-	_check(arena3.bullets.size() == 5 and arena3._rot_pend.is_empty(), "延时步序全出（5副本）")
+	_check(arena3.bullets.size() == 5 and arena3._rot_pend_count() == 0, "延时步序全出（5副本）")
 	var b1: Bullet = arena3.bullets[1]
 	_check(absf(b1.dir.angle() - (-PI / 8.0)) < 0.001,
 		"延时副本=基向.rotated(槽位角)（不随外界时序重瞄）")
@@ -494,7 +494,7 @@ func _test_rotate_repeat() -> void:
 	for _rw in 30:
 		arena3._bullet_updates(1.0)
 	var n_before: int = arena3.bullets.size()
-	var pend_before: int = arena3._rot_pend.size()
+	var pend_before: int = arena3._rot_pend_count()
 	for _rw in 30:
 		arena3._bullet_updates(1.0)
 	## 【0.0.9·重复重写】30 帧内应触发一拍补发（首发+4 延时副本）
@@ -510,8 +510,8 @@ func _test_rotate_repeat() -> void:
 	_check(nrep != null, "重放副本不再携带 repeat 节拍（防 N 倍繁殖）")
 	for i in 60:
 		arena3._rot_pending_tick()
-	print("DBG3 pend=", arena3._rot_pend.size(), " bullets=", arena3.bullets.size())
-	_check(arena3._rot_pend.is_empty(), "重放扇完整（延时副本全出）")
+	print("DBG3 pend=", arena3._rot_pend_count(), " bullets=", arena3.bullets.size())
+	_check(arena3._rot_pend_count() == 0, "重放扇完整（延时副本全出）")
 	arena3.free()
 
 ## —— ⑬ 类型批复落地 + 绑定链路（20261019）：求值助手/净化/占位修复 ——

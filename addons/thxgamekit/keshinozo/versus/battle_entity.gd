@@ -132,11 +132,10 @@ func _mood_check() -> void:
 	elif ap < _initial_ap() / 2.0:
 		layer1 = "冷静"
 	## 二层：紧张（十六点均值>128 由战场每拍回写 sit_mean；应急先看 tag）
+	## 【m111 修正】紧张计时移 mood_tick（战场每拍固定节拍累加）——原在
+	## _mood_check 内累加，而 _mood_check 被懒门挡住=计时冻结+层1永不更新
 	if has_meta("sit_mean") and int(get_meta("sit_mean")) > 128:
 		layer1 = "紧张"
-		mood_tense_frames += 1
-	else:
-		mood_tense_frames = 0
 	_mood_tags = [layer1]
 	## 三层：亢奋/恐惧（在紧张基础上分 AP 高低）
 	if layer1 == "紧张":
@@ -150,9 +149,17 @@ func _mood_check() -> void:
 func mood() -> String:
 	if dead:
 		return "满目疮痍"
-	if _mood_tags.is_empty():
-		_mood_check()
+	_mood_check() ## 【m111】恒重算（懒门=首算后标签冻结恒"自信"的根因；代价=几次比较）
 	return _mood_tags[_mood_tags.size() - 1] ## 显示最高 tag
+
+## 【m111】紧张计时（战场每拍固定节拍调用——sit_mean>128 累计、否则清零）
+func mood_tick(mean: int) -> void:
+	if dead:
+		return
+	if mean > 128:
+		mood_tense_frames += 1
+	else:
+		mood_tense_frames = 0
 
 ## 心情的 S/P（态势抽卡用）
 func mood_sp() -> Array:

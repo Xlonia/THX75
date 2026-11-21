@@ -17,7 +17,6 @@ func _ready() -> void:
 	for i in 50:
 		arena._on_fire(null, ev, {})
 	arena.bullets.clear()
-	arena._rot_pend.clear()
 	arena._cannons.clear()
 	arena._nodesb_alive = 0
 	## 正式测量

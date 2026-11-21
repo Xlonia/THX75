@@ -427,6 +427,8 @@ func _setup_versus() -> void:
 	player_leader = player_ents[0] if not player_ents.is_empty() else null
 	enemy_leader = enemy_ents[0] if not enemy_ents.is_empty() else null
 	_assign_field_ids() ## 场地方位id（getChata 数字定位器用）
+	if GameGlobals.versus_team_items.size() == 3:
+		team_items[0] = GameGlobals.versus_team_items.duplicate() ## 【m111 测试存档】
 	## 【m107 支援框内核化】场地规则注册（scheme 弹幕编辑器新二"场地规则"节——
 	## 作者 20261121 更新案）：total_support=主规则（全场：支援类指令按策划消耗）；
 	## support_out=互斥覆盖规则（sattle=中心350²特许范围——框内不应用→仅外圈
@@ -3782,7 +3784,7 @@ func _apply_release(ent: BattleEntity, kind: String, free_cost: bool = false) ->
 ## 库存=每侧 [1,1,1] 占位（作者调数值）；目标=滚轮所选角色；
 ## 道具逻辑 AI 自动使用（修理/疗伤/复活目标选择）随目标选择器批次。
 ## =============================================================
-var team_items := [[1, 1, 1], [1, 1, 1]]
+var team_items := [[1, 1, 1], [1, 1, 1]] ## 【m111】我方侧从 GameGlobals.versus_team_items 装载（测试存档可覆写）
 
 func _use_item(keycode: int) -> void:
 	var slot: int = {"KEY_M": 0, "KEY_J": 1, "KEY_U": 2}.get(event_keycode_name(keycode), -1)
@@ -6025,6 +6027,11 @@ func _warmup_hp() -> void:
 	var imgs := [Image.create(400, 400, false, Image.FORMAT_L8), Image.create(400, 400, false, Image.FORMAT_L8)]
 	var done_ev := {}
 	var world := self
+	var hp_ev := 0
+	var hp_skip := 0
+	var hp_stamps := 0
+	var hp_bbox_min := Vector2(99999, 99999)
+	var hp_bbox_max := Vector2(-99999, -99999)
 	for fc in fire_controls:
 		if fc.entity == null or fc.entity.dead:
 			continue
@@ -6033,6 +6040,7 @@ func _warmup_hp() -> void:
 				if ev == null or done_ev.has(ev.event_name):
 					continue
 				done_ev[ev.event_name] = true
+				hp_ev += 1
 				## 威胁侧：我方角色发的弹→威胁敌方（写 Hp1=敌方视角）
 				var threat_side: int = 1 - fc.entity.side
 				var rctx := _rot_eval_ctx(fc.entity, pnt, 0.0)
@@ -6041,11 +6049,12 @@ func _warmup_hp() -> void:
 				var b := Bullet.new()
 				b.setup(ev, origin, fc.entity.side, fc.entity, world, 0, {})
 				if not b.alive:
+					hp_skip += 1
 					continue
 				## 干跑轨迹：t 步长 6 帧（10fps×~1s），采样 x/y/speed 表达式
 				var gctx := {"field_t": 0.0, "field_phase": 1}
 				b.sync_shared(gctx)
-				var steps := int(minf(b.range_now, 600.0) / 6.0)
+				var steps := int(minf(maxf(b.range_now, 60.0), 600.0) / 6.0) ## 【m111】步数下限 10（range_now 异常=全黑图来源之一）
 				for st in steps:
 					b.t = float(st) * 6.0
 					b._build_ctx()
@@ -6060,9 +6069,15 @@ func _warmup_hp() -> void:
 								var iy: int = py + dy
 								if ix >= 0 and ix < 400 and iy >= 0 and iy < 400:
 									imgs[threat_side].set_pixel(ix, iy, Color(1, 1, 1))
+									hp_stamps += 1
+									hp_bbox_min = hp_bbox_min.min(Vector2(ix, iy))
+									hp_bbox_max = hp_bbox_max.max(Vector2(ix, iy))
 	## 上传到 fam Hp 纹理
 	for side in 2:
 		fam_maps.upload_hp_image(side, imgs[side])
+	## 【m111 诊断（数据驱动协议——作者 F5 控制台读数定位空图环节）】
+	print("[Hp预热] 事件=%d 跳过(alive=false)=%d 印章=%d 覆盖框=%s~%s" % [
+		hp_ev, hp_skip, hp_stamps, str(hp_bbox_min), str(hp_bbox_max)])
 
 func _warmup_setup() -> void:
 	var world := self
