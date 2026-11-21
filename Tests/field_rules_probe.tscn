@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Tests/field_rules_probe.gd" id="1_frp"]
+
+[node name="FieldRulesProbe" type="Node"]
+script = ExtResource("1_frp")

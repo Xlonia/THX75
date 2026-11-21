@@ -427,6 +427,18 @@ func _setup_versus() -> void:
 	player_leader = player_ents[0] if not player_ents.is_empty() else null
 	enemy_leader = enemy_ents[0] if not enemy_ents.is_empty() else null
 	_assign_field_ids() ## 场地方位id（getChata 数字定位器用）
+	## 【m107 支援框内核化】场地规则注册（scheme 弹幕编辑器新二"场地规则"节——
+	## 作者 20261121 更新案）：total_support=主规则（全场：支援类指令按策划消耗）；
+	## support_out=互斥覆盖规则（sattle=中心350²特许范围——框内不应用→仅外圈
+	## 50px 部署带活跃=支援类指令不消耗P）。以后 THX75 支援框判定一律走查询。
+	FieldRules.clear()
+	FieldRules.register({"id": "total_support", "tag": "total_support", "chara": true,
+		"box": [0.0, 0.0, 400.0, 400.0],
+		"ops": ["支援类指令消耗P（召唤/前锋25；能力25/符卡1/主要1+100P）"]})
+	FieldRules.register({"id": "support_out", "tag": "support_out", "chara": true,
+		"box": [0.0, 0.0, 400.0, 400.0], "sattle": [25.0, 25.0, 375.0, 375.0],
+		"mutual": ["total_support"],
+		"ops": ["支援类指令不消耗P（相对前线的后方部署带）"]})
 
 func _rows_for(names: Array, from_enemy_csv: bool) -> Array:
 	var rows: Array = []
@@ -931,7 +943,7 @@ func _open_summon_wheel(sel: BattleEntity) -> void:
 		return ## 【轮盘锁】取消后锁至松开 Shift+X 重按
 	## 【0.0.9·资源预检（作者 20261111）】召唤=资源指令——P 不足 25 阻止并提示
 	## 【m105 几何翻转】P 门只管支援框内（前线）——框外部署带=不消耗P（作者裁定）
-	if sel.pp < 25 and absf(sel.position.x - 200.0) <= 175.0 and absf(sel.position.y - 200.0) <= 175.0:
+	if sel.pp < 25 and not FieldRules.is_active("support_out", sel.position): ## 【m107 内核化】
 		_toast("指令失败：%s P点不足（支援框内召唤需 25，当前 %d；框外免费）" % [sel.chara_name(), sel.pp])
 		return
 	_wheel_cands.clear()
@@ -992,7 +1004,7 @@ func _open_vanguard_wheel(sel: BattleEntity) -> void:
 	if _wheel_lock:
 		return ## 【轮盘锁】取消后锁至松开 Shift+C 重按
 	## 【m105 几何翻转】P 门只管支援框内（前线）——框外部署带=不消耗P
-	if sel.pp < 25 and absf(sel.position.x - 200.0) <= 175.0 and absf(sel.position.y - 200.0) <= 175.0:
+	if sel.pp < 25 and not FieldRules.is_active("support_out", sel.position): ## 【m107 内核化】
 		_toast("指令失败：%s P点不足（支援框内前锋需 25，当前 %d；框外免费）" % [sel.chara_name(), sel.pp])
 		return
 	_wheel_cands.clear()
@@ -1067,7 +1079,7 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 【m105 作者几何裁定】支援框=中心350²正方形；**框外=距边界50px 外圈=
 	## 相对后方的部署带——支援类指令（召唤/切换/增援）不消耗P**；框内（前线）
 	## =正常消耗+立即发动能力（新二 8 行"在这个正方形内…立即释放一次能力"）
-	var in_center: bool = absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0
+	var in_center: bool = not FieldRules.is_active("support_out", ne.position) ## 【m107 内核化】框内=total_support 活跃
 	if in_center:
 		sel.pp = maxi(0, sel.pp - 25) ## 召唤费（scheme：角色召唤=花费资源）
 	ne.pp = sel.pp          ## 与原始角色共享（框内=扣费后；框外不扣）
@@ -1155,7 +1167,7 @@ func _do_vanguard(sel: BattleEntity, row: Dictionary) -> void:
 		_spawn_private_for(ne)
 	## 【m105 几何翻转】框内（前线）=前锋费25P+立即发动能力（免费）；
 	## 框外（后方部署带）=纯部署不消耗不强制（同召唤——作者裁定）
-	var v_in_center: bool = absf(ne.position.x - 200.0) <= 175.0 and absf(ne.position.y - 200.0) <= 175.0
+	var v_in_center: bool = not FieldRules.is_active("support_out", ne.position) ## 【m107 内核化】
 	if v_in_center:
 		sel.pp = maxi(0, sel.pp - 25)
 		_apply_release(ne, "n", false, true)
@@ -1397,22 +1409,30 @@ func _update_drops() -> void:
 			d["vel"] = v.normalized() * sp
 		## 【批复 2026-10-14】双方可拾 + 吸附：40px 内吸向最近角色，<10px 收集
 		## （【m70】m69 拾取延迟已按作者令回退）
+		## 【m107 itemget 磁吸（内核 FieldRules，scheme 1246）】角色挂 itemget
+		## 状态=吸附半径扩为该值（东方收点线式全屏快吸=radius 给大值即可）
 		var nearest: BattleEntity = null
 		var nd := 1e9
+		var nearest_pr := 40.0
+		var nearest_ig := false ## 【m107】磁吸目标=快吸（东方收点线式快速吸收）
 		for e in entities:
 			if e is BattleEntity and e.kind != BattleEntity.Kind.PRIVATE and not e.dead:
 				if int(d.get("owner", -1)) >= 0 and e.side == int(d["owner"]):
 					continue ## 【m67】掉落方角色不吸附不拾取（仅对方可拣）
 				if _res_banned(e):
 					continue ## 【m67 内核配置】nonhuman_res_ban=非人类玩家不获取资源
+				var igr: float = FieldRules.itemget_radius(e, time_frames)
+				var pr: float = maxf(40.0, igr)
 				var dist: float = e.position.distance_to(d["pos"])
-				if dist < nd:
+				if dist < pr and dist < nd:
 					nd = dist
 					nearest = e
+					nearest_pr = pr
+					nearest_ig = igr > 0.0
 		var picked := false
-		if nearest != null and nd < 40.0:
+		if nearest != null and nd < nearest_pr:
 			var pull: Vector2 = (nearest.position - d["pos"]).normalized()
-			d["pos"] += pull * maxf(2.0, 12.0 - nd * 0.2)
+			d["pos"] += pull * maxf(8.0 if nearest_ig else 2.0, 12.0 - nd * 0.2)
 			if nd < 10.0:
 				if d["kind"] == "pp":
 					_redistribute_pp(nearest, d["amount"])
@@ -3582,6 +3602,9 @@ func _ent_tick_sit(delta: float) -> void:
 			elif ent.current_sit_card == "n" or ent.current_sit_card == "s":
 				## 【m106 scheme 168-171 释放骰接线（作者裁定"当然做"）】出卡后
 				## 六帧尝试 Ns/Ds——失败=该卡消耗无效果（拟人第二道闸）
+				## 【m107 作者问确认】失败消耗的是**态势卡**（出卡即离队——scheme
+				## 原文"全失败则该卡消耗、无效果"），**不消耗符卡资源**（spell_cards
+				## 只在骰成功后的 _apply_release 内扣）
 				if ent.sit_cards.release_attempt(ent.sit_cards.Sms, 0.0):
 					_apply_release(ent, ent.current_sit_card)
 			elif ent.current_sit_card == "e":
@@ -3686,8 +3709,12 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 			## 【m100 应急符卡】emergency=应急态：跳过资源门（无符卡/P 也强制交）
 			if emergency or (ent.spell_cards >= 1 and ent.pp >= 100):
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
-				ent.spell_cards -= 1
-				ent.pp -= 100
+				## 【m107 应急资源确认修正】emergency=不消耗不设门（m100 设计注记
+				## "不消耗符卡资源（应急无 UI 色条）"——原实现照扣 1符+100P 还可透支
+				## 成负数=实现疏忽）；非应急照常扣
+				if not emergency:
+					ent.spell_cards -= 1
+					ent.pp -= 100
 				var m_span: float = maxf(_spell_timeline_run(ent, 150.0), 5.0) ## 【m106 古典档位】主符卡档半径 150（原500——作者裁定）
 				if _spell_runs.size() > 0:
 					_spell_runs[_spell_runs.size() - 1]["until_frame"] = time_frames + int(m_span * 60.0)
