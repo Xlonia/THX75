@@ -111,6 +111,8 @@ func front_rid() -> RID:
 func display_texture() -> Texture2D:
 	if not ok:
 		return null
+	if _hv.size() == 2 and _rd != null and not _rd.texture_is_valid(_hv[_front]):
+		return null ## 【m111 作者日志】纹理已释放仍包装=TextureRD 无效 RID 错误刷屏
 	if _disp_cache != null and _disp_front == _front:
 		return _disp_cache
 	_disp_cache = Texture2DRD.new()

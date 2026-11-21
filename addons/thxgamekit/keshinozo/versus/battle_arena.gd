@@ -6017,6 +6017,14 @@ var _laser_data := PackedFloat32Array() ## 【m96-E】激光段直填 buffer（�
 ## 【22b 20261103·作者建议】决斗初始化阶段按角色弹幕样式预 setup：
 ## 对全事件各做一次 Bullet 干跑 setup（丢弃）——驱动 BulletHot C++ 编译
 ## 缓存/表达式首求值/纹理上传全部在初始化期完成，首次真实发射零冷启动
+## 【m111】Hp 期望分布平滑：4× 下采样+双线性回上（C++ 内建——GDScript 逐像素
+## 模糊会把加载帧拖到秒级；resize 口径=作者性能守则"高频循环先查可否复用"）
+func _blur_l8(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	img.resize(w / 4, h / 4, Image.INTERPOLATE_BILINEAR)
+	img.resize(w, h, Image.INTERPOLATE_BILINEAR)
+
 ## 【0.0.9·Hp 重做（策划新三 66 行·作者令）】初始化时按弹幕表达式
 ## 模拟函数生成"假 DDM"：对每事件干跑弹幕轨迹（t 采样），弹位写入
 ## 400×400 L8 图；被重复/旋转复制复制后=该事件全部弹幕的规律期望。
@@ -6025,21 +6033,23 @@ func _warmup_hp() -> void:
 	if fam_maps == null or not fam_maps.ok:
 		return
 	var imgs := [Image.create(400, 400, false, Image.FORMAT_L8), Image.create(400, 400, false, Image.FORMAT_L8)]
-	var done_ev := {}
 	var world := self
 	var hp_ev := 0
 	var hp_skip := 0
 	var hp_stamps := 0
 	var hp_bbox_min := Vector2(99999, 99999)
 	var hp_bbox_max := Vector2(-99999, -99999)
+	## 【m111 内容形态重做（作者："0.0.8 起就是网格花纹画笔画几笔"）】
+	## 旧=事件去重（每事件只画首火力点一条轨迹）+t 步 6/px 步 2=稀疏点阵弧
+	## →"网格花纹画几笔"。新=**逐火力点**轨迹（不同起点各画）+t 步 2/px 步 1
+	## +上传前 3×3 盒式模糊×2=平滑期望分布（策划新三 66 行口径）。
 	for fc in fire_controls:
 		if fc.entity == null or fc.entity.dead:
 			continue
 		for pnt in fc.weapon_points + fc.sub_points:
 			for ev in pnt.events:
-				if ev == null or done_ev.has(ev.event_name):
+				if ev == null:
 					continue
-				done_ev[ev.event_name] = true
 				hp_ev += 1
 				## 威胁侧：我方角色发的弹→威胁敌方（写 Hp1=敌方视角）
 				var threat_side: int = 1 - fc.entity.side
@@ -6054,16 +6064,16 @@ func _warmup_hp() -> void:
 				## 干跑轨迹：t 步长 6 帧（10fps×~1s），采样 x/y/speed 表达式
 				var gctx := {"field_t": 0.0, "field_phase": 1}
 				b.sync_shared(gctx)
-				var steps := int(minf(maxf(b.range_now, 60.0), 600.0) / 6.0) ## 【m111】步数下限 10（range_now 异常=全黑图来源之一）
+				var steps := int(minf(maxf(b.range_now, 60.0), 300.0) / 2.0) ## 【m111】t 步 2 帧（密度）上限 300 步
 				for st in steps:
-					b.t = float(st) * 6.0
+					b.t = float(st) * 2.0
 					b._build_ctx()
-					b._step_regular(6.0 / 60.0, b._ctx)
+					b._step_regular(2.0 / 60.0, b._ctx)
 					var px := int(clampf(b.pos.x, 0.0, 399.0))
 					var py := int(clampf(b.pos.y, 0.0, 399.0))
 					var rr := int(clampf(b.draw_radius, 2.0, 24.0))
-					for dy in range(-rr, rr + 1, 2):
-						for dx in range(-rr, rr + 1, 2):
+					for dy in range(-rr, rr + 1):
+						for dx in range(-rr, rr + 1):
 							if dx * dx + dy * dy <= rr * rr:
 								var ix: int = px + dx
 								var iy: int = py + dy
@@ -6072,6 +6082,10 @@ func _warmup_hp() -> void:
 									hp_stamps += 1
 									hp_bbox_min = hp_bbox_min.min(Vector2(ix, iy))
 									hp_bbox_max = hp_bbox_max.max(Vector2(ix, iy))
+	## 【m111】3×3 盒式模糊×2（稀疏点阵→平滑期望分布；初始化一次性成本）
+	for img in imgs:
+		_blur_l8(img)
+		_blur_l8(img)
 	## 上传到 fam Hp 纹理
 	for side in 2:
 		fam_maps.upload_hp_image(side, imgs[side])
