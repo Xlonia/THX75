@@ -156,17 +156,17 @@ func _ready() -> void:
 	if int(arena._team_cast_cd[pl.side]) != int(arena.time_frames) + 120:
 		fails += 1
 		print("RFIX_FAIL: R4 释放未置 2s 全队锁（%s）" % str(arena._team_cast_cd[pl.side]))
-	## R5. 应急符卡不掉灰卡（m106 洒落雨修正——真凶=应急灰卡雨）
+	## R5. m 档资源门照常（m108 应急豁免语义移除——e 走能力档不再进 m）
 	if pl.sit_cards == null:
 		pl.sit_cards = SitCardSystem.new()
 	pl.sit_cards.spell_ready = true
 	pl.spell_cards = 2
 	pl.pp = 200
 	var d0: int = arena.drops.size()
-	arena._apply_release(pl, "m", true) ## 应急态
-	if arena.drops.size() != d0:
+	arena._apply_release(pl, "m") ## 正常资源门（1符+100P 照扣+灰卡掉落=设计流转）
+	if arena.drops.size() != d0 + 1:
 		fails += 1
-		print("RFIX_FAIL: R5 应急释放掉灰卡（%d→%d）" % [d0, arena.drops.size()])
+		print("RFIX_FAIL: R5 m 档灰卡掉落缺失（%d→%d）" % [d0, arena.drops.size()])
 	## R5b. 应急 e 保持 m100 契约（Sl=0 即触发——不受装填门；洒落雨由
 	## 应急不掉灰卡单独修掉）+Sl>0 不触发
 	pl.sit_cards.pending_kind = ""
@@ -193,5 +193,5 @@ func _ready() -> void:
 	pl.sit_cards.release_tick(2) ## 无副作用冒烟（不炸即可）
 	pl.sit_cards.AL = 1.0
 	if fails == 0:
-		print("RFIX_OK: 圆时长批复公式+支援框几何+接管=滚轮所选+2s队锁+应急不掉灰卡/e保持m100契约+释放骰+Al挂钩 全过")
+		print("RFIX_OK: 圆时长批复公式+支援框几何+接管=滚轮所选+2s队锁+m档门照常+释放骰+Al挂钩 全过")
 	get_tree().quit(1 if fails > 0 else 0)

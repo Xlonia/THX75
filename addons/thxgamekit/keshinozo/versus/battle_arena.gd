@@ -1113,7 +1113,7 @@ func _do_summon(sel: BattleEntity, row: Dictionary) -> void:
 	## 【m105 几何翻转】框内（前线）召唤→立即发动能力（P 豁免——召唤费已扣）；
 	## 框外（后方部署带）召唤=纯部署，不消耗不强制（作者："支援框外不需要发动能力"）
 	if in_center:
-		_apply_release(ne, "n", false, true)
+		_apply_release(ne, "n", true)
 		print("[召唤] 支援框内召唤→立即发动能力（召唤费已扣）")
 	print("[召唤] %s 接替 %s 上场（结界25 P=%d 符卡=%d）" % [
 		ne.chara_name(), sel.chara_name(), ne.pp, ne.spell_cards])
@@ -1170,7 +1170,7 @@ func _do_vanguard(sel: BattleEntity, row: Dictionary) -> void:
 	var v_in_center: bool = not FieldRules.is_active("support_out", ne.position) ## 【m107 内核化】
 	if v_in_center:
 		sel.pp = maxi(0, sel.pp - 25)
-		_apply_release(ne, "n", false, true)
+		_apply_release(ne, "n", true)
 		print("[前锋] 支援框内前锋→立即发动能力（前锋费已扣）")
 	_vanguards.append(ne)
 	_toast("角色前锋：%s 与 %s 重合保护（结界25+1）" % [ne.chara_name(), sel.chara_name()])
@@ -3608,11 +3608,11 @@ func _ent_tick_sit(delta: float) -> void:
 				if ent.sit_cards.release_attempt(ent.sit_cards.Sms, 0.0):
 					_apply_release(ent, ent.current_sit_card)
 			elif ent.current_sit_card == "e":
-				## 【m100 应急符卡（scheme 324）】Sl=0 绝路强制交符卡——
-				## 不消耗符卡/P、不等装填（应急态）；释放走主要符卡档
-				if ent.spell_cards < 1:
-					ent.spell_cards += 1 ## 应急特例：无符卡也强制交（保障绝路反应）
-				_apply_release(ent, "m", true)
+				## 【m108 作者修正案（scheme 324 写错自纠）】应急先释放**能力**：
+				## Sl=0 绝路反射走 n 档（pending e 绕过申请骰=不等装填）；
+				## **资源照扣**（能力 25P）——不够花费则跳过，无论多需要也跳过；
+				## 原"强制交主要符卡+透支"=作者自述写错（灰卡雨+透支副产物一并消）
+				_apply_release(ent, "n")
 			var tac: Dictionary = ent.sit_cards.check_tactic(ent.db)
 			ent.current_tactic = tac.get("name", "")
 			## 【号召点（③期）】命中战术的角色广播号召（队友 AI 向其引力靠拢）
@@ -3628,9 +3628,10 @@ func _ent_tick_sit(delta: float) -> void:
 
 ## 释放效果（策划：能力80px·0.5s / 次级符卡200px·1s / 主要符卡全屏·5s）
 ## 消耗：能力25P / 次级符卡1张 / 主要符卡1张+100P（本批 n=能力、s=次级；主要符卡随符卡设置实装）
-## free_cost=资源豁免释放（支援框外召唤/前锋的强制能力——scheme 21/33；
-## 【m104 作者"支援框外P点消耗豁免"】强制发动不扣 25P 也不设门）
-func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, free_cost: bool = false) -> void:
+## free_cost=资源豁免释放（支援框内召唤/前锋的强制能力——scheme 8/33；
+## 强制发动不扣 25P 也不设门）。应急（e 态势）不走豁免：m108 作者裁定=能力档
+## 资源照扣，不够花费则跳过（emergency 参数已随旧"强制交主符卡"语义移除）
+func _apply_release(ent: BattleEntity, kind: String, free_cost: bool = false) -> void:
 	## 【批复 2026-10-13】不论能力/符卡/主要符卡：释放即消除范围内弹幕
 	## 能力 80px / 次级符卡 200px（主要符卡=全屏，随符卡数据实装）
 	## 【m66】能力80 / 次级符卡200 / 主要符卡=全屏（策划：500px 覆盖全场——
@@ -3706,15 +3707,11 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 			## 【0.0.9·主要符卡实装 20261114（m66）】策划：1张+100P·全屏·5s 起步；
 			## 时长=符卡时间轴最后事件执行时刻（无时间轴=5s 占位）；
 			## 消弹=全场（rr2=INF）；最接近敌方+1符（_on_main_spell_released 接线）
-			## 【m100 应急符卡】emergency=应急态：跳过资源门（无符卡/P 也强制交）
-			if emergency or (ent.spell_cards >= 1 and ent.pp >= 100):
+			## 【m108】应急（e 态势）不再走 m 档（作者修正案=先释放能力、资源照扣）
+			if ent.spell_cards >= 1 and ent.pp >= 100:
 				_first_spell_fired = true ## 【破阵判定③】首次符卡攻击
-				## 【m107 应急资源确认修正】emergency=不消耗不设门（m100 设计注记
-				## "不消耗符卡资源（应急无 UI 色条）"——原实现照扣 1符+100P 还可透支
-				## 成负数=实现疏忽）；非应急照常扣
-				if not emergency:
-					ent.spell_cards -= 1
-					ent.pp -= 100
+				ent.spell_cards -= 1
+				ent.pp -= 100 ## 【m107→m108】应急豁免语义已随作者修正案移除（e→能力档照扣）
 				var m_span: float = maxf(_spell_timeline_run(ent, 150.0), 5.0) ## 【m106 古典档位】主符卡档半径 150（原500——作者裁定）
 				if _spell_runs.size() > 0:
 					_spell_runs[_spell_runs.size() - 1]["until_frame"] = time_frames + int(m_span * 60.0)
@@ -3725,10 +3722,9 @@ func _apply_release(ent: BattleEntity, kind: String, emergency: bool = false, fr
 				_paralyze_fire(1 - ent.side, m_span)
 				var aname := String(ent.get_meta("spell_announce", ""))
 				_toast(("符卡宣言 %s" % aname) if aname != "" else "符卡释放")
-				## 【m106 洒落雨修正】应急符卡不掉灰卡（scheme：应急无 UI 色条=
-				## 战地应急态没有符卡实体；且应急 e 循环曾每 0.1s 重复释放=灰卡雨）
-				if not emergency:
-					_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
+				## 【m106→m108】应急已改走能力档（作者修正案）——m 档灰卡掉落恢复
+				## 无条件（洒落雨真凶=应急 e 循环掉卡，e 不走 m 后此口不再触发雨）
+				_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
 	ent.sit_cards.on_released(kind)
 	## 【m105 作者改案-A】队友释放后 2 秒全队释放锁（消"不约而同齐放"——保留拟人
 	## 倾向只错峰；手动指令不锁定自己但同样触发队友等待；应急 e 反射不受锁）
