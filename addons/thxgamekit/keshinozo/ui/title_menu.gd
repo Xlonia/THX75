@@ -19,9 +19,10 @@ const MENU_ITEMS := [
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return ## 编辑器态不构建（运行时 UI）
-	## 背景（原工程资产）
+	## 背景（【m114】GameKit UI 背景槽优先——标题背景已导入则覆盖默认）
 	var bg := TextureRect.new()
-	bg.texture = load("res://themes/images/tmainUvReimu.png")
+	var tbp: String = THXKit.ui_title_bg_path()
+	bg.texture = load(tbp) if FileAccess.file_exists(tbp) else load("res://themes/images/tmainUvReimu.png")
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)

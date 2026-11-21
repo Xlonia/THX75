@@ -372,6 +372,18 @@ func _notification(what: int) -> void:
 
 func _build_world() -> void:
 	world = Node2D.new()
+	## 【m114 关卡背景】GameKit UI 背景槽（stage_bg.png 存在=覆盖场底；非方形按高适配）
+	var sbgp: String = THXKit.ui_stage_bg_path()
+	if FileAccess.file_exists(sbgp):
+		var sbgtex: Texture2D = load(sbgp)
+		var sbg := Sprite2D.new()
+		sbg.texture = sbgtex
+		sbg.position = Vector2(200, 200)
+		var k: float = 400.0 / maxf(float(sbgtex.get_height()), 1.0)
+		sbg.scale = Vector2(k, k)
+		sbg.z_index = -50
+		sbg.modulate = Color(1, 1, 1, 0.85)
+		world.add_child(sbg)
 	world.name = "World"
 	_update_scale()
 	add_child(world)
@@ -905,6 +917,22 @@ func _surrender_accepted() -> void:
 	surrender_frames = 60
 ## 【轮换（批复 2026-10-13）】角色在边界（画布边缘 20px 内）时长按 A 原地对换：
 ## 选中角色与队伍下一名存活角色互换“角色数据行+位置”——杂兵继承角色ID随 owner 走
+## 【m114 搭档组（新二 11-13）】互斥搭档分组（同组内轮换/召唤互斥）——
+## 叶妮雪尔米娜(Yenie)/梅莉(Meili) 未入 Characters.csv=占位名
+const PARTNER_GROUPS := [
+	["Youshio", "Yuka", "Patchouli"],
+	["Xlonia", "Yenie", "Remilna"],
+	["Yukari", "Ran"],
+	["Renko", "Meili"],
+	["Seiran", "Ringo"],
+]
+
+func _partner_group_of(name: String) -> Array:
+	for g in PARTNER_GROUPS:
+		if (g as Array).has(name):
+			return g
+	return []
+
 func _swap_selected_character() -> void:
 	var sel := picked_entity()
 	if sel == null or sel.side != 0:
@@ -926,6 +954,19 @@ func _swap_selected_character() -> void:
 			_do_summon(sel, hz_row)
 			return
 	var other: BattleEntity = chars[_pick_idx % chars.size()]
+	## 【m114 队伍特殊规则（新二 11-13）】搭档组轮换限制：同组才可对换+
+	## 对换入组员结界（ap）不足 5 不可轮换（希洛妮娅-叶妮/八云紫-蓝/莲子-梅莉/
+	## 清兰-铃瑚组；晚汐组走召唤特殊技能=上方 Xlonia 分支）。叶妮/梅莉未入
+	## Characters.csv=占位名（作者数据期补）。
+	var g_sel := _partner_group_of(sel.chara_name())
+	var g_other := _partner_group_of(other.chara_name())
+	if g_sel != null or g_other != null:
+		if g_sel == null or g_other == null or g_sel != g_other:
+			_toast("轮换限制：%s 为搭档角色（仅同组内对换）" % sel.chara_name())
+			return
+		if int(other.ap) < 5:
+			_toast("轮换限制：%s 结界不足 5，不可轮换" % other.chara_name())
+			return
 	var tmp_db: Dictionary = sel.db
 	var tmp_pos: Vector2 = sel.position
 	sel.db = other.db
@@ -2298,6 +2339,7 @@ func _physics_process(delta: float) -> void:
 		_flow_runs_tick() ## 【m75】事件帧流程载体（n 档等）
 		_vanguard_tick() ## 【m100 角色前锋】结界破损自动离场（每帧轻量）
 		_graze_tick() ## 【m109 擦弹（scheme graze(距离)）】
+		_item_ai_tick() ## 【m114 道具 AI 逻辑（消望插件域）】
 		if is_preview:
 			_preview_emitter(delta)
 			_preview_controls() ## 【批复 20261024】预览可控：方向键移动玩家
@@ -3823,6 +3865,66 @@ func _use_item(keycode: int) -> void:
 			sel.hp = [10, 20, 10] if sel.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
 			sel.ap = sel._initial_ap()
 	_toast("使用道具%d（%s）→ %s（剩 %d）" % [slot + 1, kind_name, sel.chara_name(), int(team_items[0][slot])])
+
+## =============================================================
+## 【m114 道具 AI 逻辑（作者裁定：全局队伍设置——自动优先对某目标在中途
+## 消耗道具，修理/疗伤/复活；**消望插件域**——目标选择对接 GameKit
+## EntityOps 选择器，道具语义留在插件，kernel 不含道具）】
+## 节流=每侧 1 秒一检；优先级=复活>疗伤>修理；双侧 AI 生效
+## （复活目标走直接扫描——EntityOps 实体池不含已死，语义即"存活查询"）。
+## =============================================================
+var _item_ai_cd := [0, 0]
+
+func _item_ai_tick() -> void:
+	print("[DBG item_ai] frame=", time_frames, " cd=", _item_ai_cd, " items=", team_items[0], team_items[1])
+	for sd in 2:
+		if time_frames < int(_item_ai_cd[sd]):
+			continue
+		_item_ai_cd[sd] = time_frames + 60
+		var pool: Array = player_ents if sd == 0 else enemy_ents
+		## 复活（最高优先）
+		var dead_m = null
+		for e in pool:
+			if e is BattleEntity and e.dead:
+				dead_m = e
+				break
+		if dead_m != null and int(team_items[sd][2]) > 0:
+			team_items[sd][2] = int(team_items[sd][2]) - 1
+			dead_m.dead = false
+			dead_m.hp = [10, 20, 10] if dead_m.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
+			dead_m.ap = dead_m._initial_ap()
+			_item_ai_log(sd, 2, dead_m)
+			continue
+		## 疗伤/修理：EntityOps 选择器（geniterate 命题）+本侧过滤
+		var caster = player_leader if sd == 0 else enemy_leader
+		if caster == null or caster.dead:
+			continue
+		## 【m111 续→m114 调参】命题口径：部位制 HP（ent_ctx hp=部位0 值）——
+		## 判据取**低于出厂半值**（hp<<=2：member 出厂 3/玩家 10；ap<<=15：
+		## member 出厂 25/玩家 50）——hpper（part0/总和）在部位制下恒≈0.25=
+		## 全员命中（首轮实测 AI 秒耗库存根因）；数值占位作者可调
+		var low_hp: Array = EntityOps.resolve("geniterate(hp<<=2, member)", caster, self)
+		var low_ap: Array = EntityOps.resolve("geniterate(ap<<=15, member)", caster, self)
+		low_hp = low_hp.filter(func(x): return x.side == sd)
+		low_ap = low_ap.filter(func(x): return x.side == sd)
+		if int(team_items[sd][0]) > 0 and not low_hp.is_empty():
+			var t1 = low_hp[0]
+			var mx: Array = [10, 20, 10] if t1.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
+			for i in 3:
+				t1.hp[i] = mini(int(t1.hp[i]) + int(mx[i] * 0.5), int(mx[i]))
+			team_items[sd][0] = int(team_items[sd][0]) - 1
+			_item_ai_log(sd, 0, t1)
+		elif int(team_items[sd][1]) > 0 and not low_ap.is_empty():
+			var t2 = low_ap[0]
+			t2.ap = t2._initial_ap()
+			team_items[sd][1] = int(team_items[sd][1]) - 1
+			_item_ai_log(sd, 1, t2)
+
+func _item_ai_log(sd: int, slot: int, tgt) -> void:
+	var kn: String = ["疗伤", "修理", "复活"][slot]
+	if sd == 0:
+		_toast("道具 AI（%s）→ %s（剩 %d）" % [kn, tgt.chara_name(), int(team_items[0][slot])])
+	print("[道具AI] %s侧 %s → %s（剩 %d）" % ["我方" if sd == 0 else "敌方", kn, tgt.chara_name(), int(team_items[sd][slot])])
 
 func event_keycode_name(kc: int) -> String:
 	match kc:
