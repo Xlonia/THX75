@@ -432,13 +432,15 @@ func _setup_versus() -> void:
 	## support_out=互斥覆盖规则（sattle=中心350²特许范围——框内不应用→仅外圈
 	## 50px 部署带活跃=支援类指令不消耗P）。以后 THX75 支援框判定一律走查询。
 	FieldRules.clear()
-	FieldRules.register({"id": "total_support", "tag": "total_support", "chara": true,
-		"box": [0.0, 0.0, 400.0, 400.0],
-		"ops": ["支援类指令消耗P（召唤/前锋25；能力25/符卡1/主要1+100P）"]})
-	FieldRules.register({"id": "support_out", "tag": "support_out", "chara": true,
-		"box": [0.0, 0.0, 400.0, 400.0], "sattle": [25.0, 25.0, 375.0, 375.0],
-		"mutual": ["total_support"],
-		"ops": ["支援类指令不消耗P（相对前线的后方部署带）"]})
+	var fr_n: int = FieldRules.load_csv(THXKit.kpath("data/field_rules.csv")) ## 【m109 编辑页数据源】
+	if fr_n == 0:
+		FieldRules.register({"id": "total_support", "tag": "total_support", "chara": true,
+			"box": [0.0, 0.0, 400.0, 400.0],
+			"ops": ["支援类指令消耗P（召唤/前锋25；能力25/符卡1/主要1+100P）"]})
+		FieldRules.register({"id": "support_out", "tag": "support_out", "chara": true,
+			"box": [0.0, 0.0, 400.0, 400.0], "sattle": [25.0, 25.0, 375.0, 375.0],
+			"mutual": ["total_support"],
+			"ops": ["支援类指令不消耗P（相对前线的后方部署带）"]})
 
 func _rows_for(names: Array, from_enemy_csv: bool) -> Array:
 	var rows: Array = []
@@ -1186,6 +1188,31 @@ func _vanguard_tick() -> void:
 		if int(v.ap) <= 0:
 			v.dead = true ## 离场（25 结界破损——scheme 29）
 			_vanguards.remove_at(i)
+
+## 【m109 擦弹（scheme graze(距离)）】自机接近未标记弹幕=记一次擦弹+贴
+## #grazed_标签（每弹至多一次；命中弹在被弹结算即消亡不进计数；池化重置
+## 已入 Bullet.grazed 清单）。计数=行为检测口径（关卡结算/事件流程后续接）
+const GRAZE_RADIUS := 14.0
+var graze_count := 0
+
+func _graze_tick() -> void:
+	var pl := _ctrl_ent()
+	if pl == null or pl.dead:
+		return
+	var r2: float = GRAZE_RADIUS * GRAZE_RADIUS
+	var jr2: float = pl.judge_radius() * pl.judge_radius()
+	for i in range(bullets.size() - 1, -1, -1):
+		var bl: Bullet = bullets[i]
+		if bl.grazed or bl.hidden_now or bl.source_side == pl.side:
+			continue
+		var dx: float = bl.pos.x - pl.position.x
+		var dy: float = bl.pos.y - pl.position.y
+		var d2: float = dx * dx + dy * dy
+		if d2 <= jr2:
+			continue ## 命中环内=被弹结算域，不算擦弹
+		if d2 <= r2:
+			bl.grazed = true
+			graze_count += 1
 
 ## 右下面板（新二 87 行）：H 在"特定角色详细状态"与"决斗机控热键展示"间切换
 func _br_cycle() -> void:
@@ -2245,6 +2272,7 @@ func _physics_process(delta: float) -> void:
 		_spell_runs_tick() ## 【m66】主要符卡时间轴逐 tick 执行
 		_flow_runs_tick() ## 【m75】事件帧流程载体（n 档等）
 		_vanguard_tick() ## 【m100 角色前锋】结界破损自动离场（每帧轻量）
+		_graze_tick() ## 【m109 擦弹（scheme graze(距离)）】
 		if is_preview:
 			_preview_emitter(delta)
 			_preview_controls() ## 【批复 20261024】预览可控：方向键移动玩家
@@ -3730,6 +3758,53 @@ func _apply_release(ent: BattleEntity, kind: String, free_cost: bool = false) ->
 	## 倾向只错峰；手动指令不锁定自己但同样触发队友等待；应急 e 反射不受锁）
 	_team_cast_cd[ent.side] = time_frames + 120
 
+## =============================================================
+## 【m109 道具本体（新二 104-106：使用道具功能1/2/3=M/J/U）】
+## 道具1=疗伤（部位 HP 回一半上限）｜道具2=修理（结界 AP 回满）｜
+## 道具3=复活（满目疮痍成员原位站起：HP 全满+结界回初始）
+## 库存=每侧 [1,1,1] 占位（作者调数值）；目标=滚轮所选角色；
+## 道具逻辑 AI 自动使用（修理/疗伤/复活目标选择）随目标选择器批次。
+## =============================================================
+var team_items := [[1, 1, 1], [1, 1, 1]]
+
+func _use_item(keycode: int) -> void:
+	var slot: int = {"KEY_M": 0, "KEY_J": 1, "KEY_U": 2}.get(event_keycode_name(keycode), -1)
+	var sel := picked_entity()
+	if slot < 0 or sel == null or sel.side != 0:
+		_toast("指令失败：道具目标=滚轮所选的我方角色")
+		return
+	## 【m109】目标生死按道具分流：疗伤/修理要活的；复活要满目疮痍的
+	if slot != 2 and sel.dead:
+		_toast("指令失败：疗伤/修理目标须为存活角色")
+		return
+	if int(team_items[0][slot]) <= 0:
+		_toast("指令失败：道具%d 已用完" % (slot + 1))
+		return
+	var kind_name: String = ["疗伤", "修理", "复活"][slot]
+	if slot == 2 and not sel.dead:
+		_toast("指令失败：复活目标须为满目疮痍成员")
+		return
+	team_items[0][slot] = int(team_items[0][slot]) - 1
+	match slot:
+		0: ## 疗伤：部位 HP 回一半上限（上限=出厂部位值）
+			var mx: Array = [10, 20, 10] if sel.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
+			for i in 3:
+				sel.hp[i] = mini(int(sel.hp[i]) + int(mx[i] * 0.5), int(mx[i]))
+		1: ## 修理：结界回初始
+			sel.ap = sel._initial_ap()
+		2: ## 复活：原位站起
+			sel.dead = false
+			sel.hp = [10, 20, 10] if sel.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
+			sel.ap = sel._initial_ap()
+	_toast("使用道具%d（%s）→ %s（剩 %d）" % [slot + 1, kind_name, sel.chara_name(), int(team_items[0][slot])])
+
+func event_keycode_name(kc: int) -> String:
+	match kc:
+		KEY_M: return "KEY_M"
+		KEY_J: return "KEY_J"
+		KEY_U: return "KEY_U"
+	return ""
+
 ## 敌方火力瘫痪（时间轴实装前占位 1s/时长秒；实装后=至时间轴最后事件）
 func _paralyze_fire(victim_side: int, seconds: float) -> void:
 	var until := time_frames + int(seconds * 60.0)
@@ -5082,9 +5157,13 @@ func _unhandled_input(event: InputEvent) -> void:
 						zsel.sit_cards.pending_kind = ""
 						zsel.sit_cards.pending_tries = 0
 						_toast("已撤销 %s 的能力/符卡请求" % zsel.chara_name())
+			KEY_SEMICOLON:
+				## 【m109 作者需要】热力图双窗口切换（象限小窗↔战场重合窗）
+				_heat_place_overlay = not _heat_place_overlay
+				_toast("热力图显示：%s" % ("战场重合窗" if _heat_place_overlay else "象限小窗"))
 			KEY_M, KEY_J, KEY_U:
-				## 【0.0.9·道具键位占位（新二 104-106）】道具系统随④期；按键给明确反馈
-				_toast("道具功能（M/J/U）随④期实装")
+				## 【m109 道具本体（新二 104-106）】M=疗伤 J=修理 U=复活
+				_use_item(event.keycode)
 			KEY_G:
 				## 【N7】G 指令仅在选人后生效，避免对局中被空按打断
 				if not finished and picked_entity() != null:
@@ -6208,8 +6287,34 @@ func draw_ddm_debug(onto: CanvasItem) -> void:
 			if bl.hidden_now:
 				continue
 			onto.draw_circle(bl.pos, bl.draw_radius, Color(1, 0, 1, 0.15))
+	if _heat_view > 0:
+		_apply_heat_placement() ## 【m109"；"双窗口】放置随切换态
 	_draw_priv_panel(onto)
 	_draw_summon_wheel(onto)
+
+## 【m109 作者需要】热力图双窗口：false=象限小窗（0.0.8 公布版映射窗，hud
+## 屏空间 (200,0)）；true=战场重合窗（0.0.8 以前形态——热力贴图覆盖战场矩形，
+## 跟随 world 缩放；等高线层同拍放置）。"；"键切换
+var _heat_place_overlay := false
+
+func _apply_heat_placement() -> void:
+	if _ht_sprite == null or _ht_sprite.texture == null:
+		return
+	var tw: float = maxf(float(_ht_sprite.texture.get_width()), 1.0)
+	var k: float = world.scale.x * 400.0 / tw
+	if _heat_place_overlay:
+		_ht_sprite.position = world.position
+		_ht_sprite.scale = Vector2(k, k)
+	else:
+		_ht_sprite.position = Vector2(200, 0)
+		_ht_sprite.scale = Vector2.ONE
+	if _contour_layer != null:
+		if _heat_place_overlay:
+			_contour_layer.position = world.position
+			_contour_layer.scale = Vector2(k, k)
+		else:
+			_contour_layer.position = Vector2(200, 0)
+			_contour_layer.scale = Vector2.ONE
 
 ## 杂兵面板（Tab 按住）：选中角色麾下杂兵列表+滚轮高亮
 ## 【0.0.9·杂兵面板列表】所属角色麾下存活杂兵，**按血量从低到高**（新二 84）
