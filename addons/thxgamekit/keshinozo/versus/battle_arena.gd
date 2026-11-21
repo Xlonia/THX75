@@ -6047,7 +6047,19 @@ func _warmup_hp() -> void:
 		if fc.entity == null or fc.entity.dead:
 			continue
 		for pnt in fc.weapon_points + fc.sub_points:
-			for ev in pnt.events:
+			## 【m112 作者"疑似角色弹幕事件读取问题"确认】火力点数据在 m85 片段化
+			## 后分两形态：entries（片段条目 {tick,ev}——角色弹幕配置的现行载体）
+			## 与 events（旧直挂）。预热只读 events=片段条目全部漏画（作者所见
+			## "两条横线几个点"）——改为 entries 优先、events 兜底。
+			var evlist: Array = []
+			if not pnt.entries.is_empty():
+				for en in pnt.entries:
+					if en is Dictionary and en.get("ev") != null:
+						evlist.append(en["ev"])
+			else:
+				for ev0 in pnt.events:
+					evlist.append(ev0)
+			for ev in evlist:
 				if ev == null:
 					continue
 				hp_ev += 1

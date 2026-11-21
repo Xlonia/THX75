@@ -119,10 +119,6 @@ func _ready() -> void:
 	no_surr.button_pressed = false
 	_add_labeled(cfg, "投降", no_surr)
 	_no_surr_check = no_surr
-	var hint := Label.new()
-	hint.text = "WASD移动　Shift:全队快机(演示)　V轮射↔齐射　F3 DDM图　Esc暂停"
-	hint.add_theme_font_size_override("font_size", 12)
-	root.add_child(hint)
 	var probe_b := Button.new()
 	probe_b.text = "预设探针(F8)：我方萃香×5　敌方早苗+希洛妮娅+3空"
 	probe_b.pressed.connect(_apply_preset_probe)
@@ -153,15 +149,18 @@ func _ready() -> void:
 	var tload_b := Button.new()
 	tload_b.text = "测试存档：读取最新（开发者）"
 	tload_b.pressed.connect(_load_test_snapshot)
-	## 【0.0.9·按钮两列（作者 20261110）】除开始/返回外两按钮一行，防纵向超界
+	## 【m112 按钮折叠（作者：按钮太多放不下）】两类下拉组（PopupMenu）：
+	## 机控与键位设置=机控预设点/撤退预设点/召唤候补/键位一览；
+	## 存档设置=对战存档/测试存档保存/读取/预设探针。完成度一览保留直挂。
 	var btn_grid := GridContainer.new()
 	btn_grid.columns = 2
 	btn_grid.add_theme_constant_override("h_separation", 12)
 	btn_grid.add_theme_constant_override("v_separation", 6)
 	root.add_child(btn_grid)
-	for b2 in [done_b, pts_b, ret_b, roster_b, probe_b, keys_b, barch_b, tsave_b, tload_b]:
+	for b2 in [done_b, _group_menu("机控与键位设置 ▾", [pts_b, ret_b, roster_b, keys_b]),
+			_group_menu("存档设置 ▾", [barch_b, tsave_b, tload_b, probe_b])]:
 		btn_grid.add_child(b2)
-		(b2 as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		(b2 as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var go := Button.new()
 	go.text = "开始决斗"
 	go.add_theme_font_size_override("font_size", 20)
@@ -411,6 +410,24 @@ func _load_test_snapshot() -> void:
 			f2.store_string(fr_csv)
 			f2.close()
 	print("[测试存档] 已读取并回填：%s（选人/开关/场地规则/道具库存）" % str(saves[0]["name"]))
+
+## 【m112 折叠组】下拉菜单按钮：点开呼出组内原按钮（触发其 pressed 信号，
+## 复用既有处理逻辑与文案）；菜单位置=按钮下方
+func _group_menu(title: String, targets: Array) -> Button:
+	var b := Button.new()
+	b.text = title
+	var pm := PopupMenu.new()
+	pm.name = title.replace(" ", "_")
+	for t in targets:
+		pm.add_item((t as Button).text)
+	add_child(pm)
+	pm.id_pressed.connect(func(id: int):
+		if id >= 0 and id < targets.size():
+			(targets[id] as Button).pressed.emit())
+	b.pressed.connect(func():
+		var br: Rect2 = b.get_global_rect()
+		pm.popup(Rect2i(Vector2i(br.position.x, br.position.y + br.size.y), Vector2i(int(br.size.x), 0))))
+	return b
 
 ## =============================================================
 ## 【0.0.9 对战存档】保存=当前选人+versus_chara_cfg → .thxb；
