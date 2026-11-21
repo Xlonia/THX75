@@ -452,7 +452,7 @@ func _setup_versus() -> void:
 	## support_out=互斥覆盖规则（sattle=中心350²特许范围——框内不应用→仅外圈
 	## 50px 部署带活跃=支援类指令不消耗P）。以后 THX75 支援框判定一律走查询。
 	FieldRules.clear()
-	var fr_n: int = FieldRules.load_csv(THXKit.kpath("data/field_rules.csv")) ## 【m109 编辑页数据源】
+	var fr_n: int = FieldRules.load_csv(THXKit.kpath("res://addons/thx_gamekit/data/field_rules.csv")) ## 【m109 编辑页数据源】
 	if fr_n == 0:
 		FieldRules.register({"id": "total_support", "tag": "total_support", "chara": true,
 			"box": [0.0, 0.0, 400.0, 400.0],
@@ -461,6 +461,7 @@ func _setup_versus() -> void:
 			"box": [0.0, 0.0, 400.0, 400.0], "sattle": [25.0, 25.0, 375.0, 375.0],
 			"mutual": ["total_support"],
 			"ops": ["支援类指令不消耗P（相对前线的后方部署带）"]})
+	_chapters_start() ## 【m116 章节运行时（0.2.0 第一批）——chapters.csv 装载+总剪辑流转】
 
 func _rows_for(names: Array, from_enemy_csv: bool) -> Array:
 	var rows: Array = []
@@ -1238,6 +1239,70 @@ func _vanguard_tick() -> void:
 			v.dead = true ## 离场（25 结界破损——scheme 29）
 			_vanguards.remove_at(i)
 
+## =============================================================
+## 【m116 章节运行时最小版（0.2.0 第一批——scheme"关卡设置/总剪辑/章节"节）】
+## chapters.csv 装载→总剪辑流转：starter（进章）→flow（入场片段时长/30s 下限）
+## →finner（出章）→下一个；loop=重进当前；trigged=外部触发接口（后续批）。
+## 入场片段经 playclips 机制（锚=演出方领队）。触发器脚本执行随章节系统批。
+## =============================================================
+var _chapters_active: Array = []
+var _chapter_idx := -1
+var _chapter_until := -1
+
+func _chapters_start() -> void:
+	ChapterData.clear()
+	ChapterData.load_csv(THXKit.kpath("res://addons/thx_gamekit/data/chapters.csv"))
+	_chapters_active = ChapterData.ordered()
+	if _chapters_active.is_empty():
+		return
+	_chapter_idx = -1
+	_chapter_advance()
+
+func _chapter_advance() -> void:
+	_chapter_idx += 1
+	if _chapter_idx >= _chapters_active.size():
+		print("[章节] 总剪辑完结（the_fin）")
+		_chapter_until = -1
+		return
+	var ch: Dictionary = _chapters_active[_chapter_idx]
+	print("[章节] 进入 %s（%s） starter 触发" % [str(ch.get("id")), str(ch.get("name"))])
+	## 入场片段：锚=演出方领队（敌方编排=敌方领队；无则我方）
+	var anchor = enemy_leader if enemy_leader != null and not enemy_leader.dead else player_leader
+	if anchor != null and str(ch.get("entrance_clips", "")) != "":
+		var run := {"ent": anchor, "tl": {"tl_name": "chapter_" + str(ch.get("id", "")), "ticks": {"0": []},
+			"flow_start": "", "flow_every": "", "steps_tick": []},
+			"start_frame": time_frames, "tick": -1, "svg": {}, "r": 80.0, "spell": null,
+			"steps_tick": [], "until_frame": time_frames + 36000} ## 章节级长驻（10 分钟上限）
+		_spell_runs.append(run)
+		for cn in String(ch.get("entrance_clips", "")).split(";", false):
+			var cdx: ClipData = THXKit.resolve_clip(cn.strip_edges())
+			if cdx != null:
+				_sched_clip_entries(run, cdx)
+			else:
+				print("[章节] 片段未解析：", cn)
+	## 流转：flow=入场片段播完（估算，30s 下限）；trigged=外部触发接口
+	var dur := 30 * 60
+	if str(ch.get("loop", "flow")) == "flow":
+		var total_ticks := 0
+		for cn2 in String(ch.get("entrance_clips", "")).split(";", false):
+			var cdx2: ClipData = THXKit.resolve_clip(cn2.strip_edges())
+			if cdx2 != null:
+				total_ticks += _clip_cycle_ticks(cdx2)
+		dur = maxi(30 * 60, total_ticks * 6 + 60)
+	_chapter_until = time_frames + dur
+
+func _chapters_tick() -> void:
+	if _chapters_active.is_empty() or finished:
+		return
+	if _chapter_until >= 0 and time_frames >= _chapter_until:
+		var ch: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
+		if str(ch.get("loop", "flow")) == "loop":
+			_chapter_idx -= 1 ## 循环章节：重进当前（循环后须 trigged 转场——scheme）
+			_chapter_advance()
+		else:
+			print("[章节] %s finner 触发" % str(ch.get("id", "?")))
+			_chapter_advance()
+
 ## 【m109 擦弹（scheme graze(距离)）】自机接近未标记弹幕=记一次擦弹+贴
 ## #grazed_标签（每弹至多一次；命中弹在被弹结算即消亡不进计数；池化重置
 ## 已入 Bullet.grazed 清单）。计数=行为检测口径（关卡结算/事件流程后续接）
@@ -1264,6 +1329,7 @@ func _graze_tick() -> void:
 		if d2 <= r2:
 			bl.grazed = true
 			graze_count += 1
+			BehaviorScore.add("graze") ## 【m116 行为检测底座（scheme 行为检测节）】
 
 ## 右下面板（新二 87 行）：H 在"特定角色详细状态"与"决斗机控热键展示"间切换
 func _br_cycle() -> void:
@@ -2339,6 +2405,7 @@ func _physics_process(delta: float) -> void:
 		_flow_runs_tick() ## 【m75】事件帧流程载体（n 档等）
 		_vanguard_tick() ## 【m100 角色前锋】结界破损自动离场（每帧轻量）
 		_graze_tick() ## 【m109 擦弹（scheme graze(距离)）】
+		_chapters_tick() ## 【m116 章节流转】
 		_item_ai_tick() ## 【m114 道具 AI 逻辑（消望插件域）】
 		if is_preview:
 			_preview_emitter(delta)

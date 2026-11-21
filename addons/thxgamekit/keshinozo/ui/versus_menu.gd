@@ -353,7 +353,7 @@ func _test_snapshot_payload() -> Dictionary:
 		"stress": _stress_check.button_pressed,
 	}
 	var fr_csv := ""
-	var frp := THXKit.kpath("data/field_rules.csv")
+	var frp := THXKit.kpath("res://addons/thx_gamekit/data/field_rules.csv")
 	if FileAccess.file_exists(frp):
 		var f := FileAccess.open(frp, FileAccess.READ)
 		if f != null:
@@ -404,7 +404,7 @@ func _load_test_snapshot() -> void:
 		GameGlobals.versus_team_items = ti
 	var fr_csv := str(d.get("field_rules_csv", ""))
 	if fr_csv != "":
-		var frp := THXKit.kpath("data/field_rules.csv")
+		var frp := THXKit.kpath("res://addons/thx_gamekit/data/field_rules.csv")
 		var f2 := FileAccess.open(frp, FileAccess.WRITE)
 		if f2 != null:
 			f2.store_string(fr_csv)
