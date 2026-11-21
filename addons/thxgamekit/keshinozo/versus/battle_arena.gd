@@ -1389,8 +1389,23 @@ func _spawn_private_for(ent: BattleEntity) -> void:
 func _reinforce_all() -> void:
 	for ent: BattleEntity in player_ents:
 		if not ent.dead:
-			while _private_count(ent) < GameGlobals.versus_privates_per_char:
-				_spawn_private_for(ent)
+			_reinforce_one(ent)
+
+## 【m110 scheme 97/99 改案（作者已改内外口径）】增援的支援框条件：
+## **支援框内（前线）**=增援须**立即使用能力**（_apply_release n 资源照扣
+## 25P 不够则该角色本次跳过）；**支援框外（后方部署带）**=直接补充不消耗
+## （support_out 活跃=免费）。line 97/99 旧内外表述已由作者改妥。
+func _reinforce_one(ent: BattleEntity) -> void:
+	var in_free: bool = FieldRules.is_active("support_out", ent.position)
+	var n0: int = _private_count(ent)
+	if not in_free:
+		## 框内=能力增援：资源门（25P）——不够则该角色本次不补
+		if ent.pp < 25 or ent.sit_cards == null:
+			return
+	while _private_count(ent) < GameGlobals.versus_privates_per_char:
+		_spawn_private_for(ent)
+	if not in_free and _private_count(ent) > n0:
+		_apply_release(ent, "n") ## 有效增援→立即发动能力（照扣 25P）
 
 func _private_count(ent: BattleEntity) -> int:
 	var cnt := 0
@@ -4953,12 +4968,17 @@ func _unhandled_input(event: InputEvent) -> void:
 				if finished:
 					get_tree().reload_current_scene()
 				elif Input.is_physical_key_pressed(KEY_SHIFT):
-					## 【0.0.9·Shift+R（新二 124）】立即补充杂兵（能力消耗随④期杂兵能力系统）
+					## 【0.0.9·Shift+R（新二 124）】立即补充杂兵（单角色）
+					## 【m110 支援框条件（scheme 97/99 改案）】框内=能力增援照扣 25P
+					## 不够跳过；框外=直接补不消耗
 					var rsel := picked_entity()
 					if rsel != null and rsel.side == 0 and not rsel.dead:
-						while _private_count(rsel) < GameGlobals.versus_privates_per_char:
-							_spawn_private_for(rsel)
-						_toast("立即补充杂兵 → %s（能力消耗待④期）" % rsel.chara_name())
+						var had_r: int = _private_count(rsel)
+						_reinforce_one(rsel)
+						if _private_count(rsel) > had_r:
+							_toast("立即补充杂兵 → %s" % rsel.chara_name())
+						else:
+							_toast("指令失败：%s P点不足（支援框内增援需 25P；框外免费）" % rsel.chara_name())
 				else:
 					_reinforce_all() ## 团队增援
 					_toast("团队增援：补充所有杂兵")
