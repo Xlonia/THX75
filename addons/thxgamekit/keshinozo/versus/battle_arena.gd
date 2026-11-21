@@ -140,7 +140,13 @@ func _build_load_tasks() -> void:
 			b.tex_slot = _ddm_tex_slot(b.tex)
 			if b.tex_slot > 0:
 				_upload_ddm_tex(b.tex_slot, b.tex))
-	_load_tasks.append(_warmup_hp)
+	## 【m1102 备忘（作者 20261121 裁定：跳过 Hp 生成与避弹加权，0.0.9 收尾）】
+	## Hp 机制性残缺已破案：逐拍 fam 印章只喂 He0/He1（"Hp 独立印章保留"注释
+	## 陈旧）——Hp 无实时数据，唯一内容=初始化静态图；且瞄准类弹幕在初始化
+	## 无目标锁定→一律朝默认朝向横飞（"横着画的线"）。重设计方向（0.2.0/
+	## 后续批）：实时印章（发射/飞行中弹写入）+慢记忆衰减 0.98+瞄准弹的目标
+	## 依赖解算。本函数保留（诊断读数/未来重设计参考），不再排队执行。
+	## _load_tasks.append(_warmup_hp)
 	## GPU 管线首编译空跑（DDM/Ht/Hv/fam 全链一次提交——shader 编译挪进加载期）
 	_load_tasks.append(func():
 		if gpu_ok:
@@ -2679,7 +2685,7 @@ func _heatmap_tick() -> void:
 			continue ## 【m96-C】FAM 只在 phase=2 窗口采样分摊
 		fam_sides.append({
 			"pts": side_pts,
-			"maps": ["He%d" % side, "Hd%d" % side, "Hr%d" % side, "Hp%d" % side, "Ha%d" % side],
+			"maps": ["He%d" % side, "Hd%d" % side, "Hr%d" % side, "Ha%d" % side], ## 【m1102 备忘】Hp 停用（静态图机制残缺——见 _warmup_hp 备忘）
 			"side": side, "ents": side_ents,
 		})
 	## 【③期收官·多图加权】【P2 修复】只采本侧 4 图并批一次提交（原 sample_multi 无条件回读 8 图）
@@ -3544,7 +3550,8 @@ func _sit_tick(delta: float) -> void:
 		for v in ent.sit16_1d:
 			sum += v
 		var mean := sum / 16 if ent.sit16_1d.size() == 16 else 0
-		var wsum := float(mean) * 1.0 + float(ent.get_meta("hd_at", 0)) * 3.0 			+ float(ent.get_meta("hr_at", 0)) * 3.0 + float(ent.get_meta("he_at", 0)) * 1.0 			+ float(ent.get_meta("hp_at", 0)) * 1.0
+		## 【m1102 备忘】Hp 停用——权重撤 hp_at（Ht1 Hd3 Hr3 He1，分母 9→8）
+		var wsum := float(mean) * 1.0 + float(ent.get_meta("hd_at", 0)) * 3.0 			+ float(ent.get_meta("hr_at", 0)) * 3.0 + float(ent.get_meta("he_at", 0)) * 1.0
 		ent.set_meta("sit_mean", int(wsum / 9.0))
 		ent.set_meta("sit_mean_ht", mean) ## 原始 Ht 均值（滞回阈值口径）
 		var sp := ent.mood_sp()
@@ -4690,10 +4697,20 @@ func _export(bl: Bullet, buf: PackedFloat32Array) -> PackedFloat32Array:
 ## HUD / 输入
 ## =============================================================
 ## 【20261026】左上热力图名 + 左下调试键位（呼出后显示）
+## 【m1102 备忘】F1/F3/[ 循环切图跳过 6=Hp（停用——静态图机制残缺，重设计随 0.2.0/后续批）
+func _heat_view_next() -> int:
+	var v := _heat_view
+	while true:
+		v = (v + 1) % 10
+		if v != 6:
+			return v
+	return v
+
 func _update_hud_debug_labels() -> void:
 	if _heat_label != null:
-		var names := ["关", "Ht 全局热点", "Hv 速度热点", "He 期望热点", "Hd 总结期望云",
-			"Hr 快弹警告", "Hp 敌方规律", "Hcs 角色1s图", "Hct 角色s20图", "Ha 全局抽象"]
+		## 【m1102 备忘】Hp 视图停用（生成与避弹加权一并跳过——作者裁定 0.0.9 收尾）
+		var names := {1: "Ht 全局热点", 2: "Hv 速度热点", 3: "He 期望热点", 4: "Hd 总结期望云",
+			5: "Hr 快弹警告", 7: "Hcs 角色1s图", 8: "Hct 角色s20图", 9: "Ha 全局抽象"} ## 【m1102 备忘】6=Hp 停用
 		var side_txt := "我方" if _heat_view_side == 0 else "敌方"
 		var focus_name: String = _heat_focus.chara_name() if _heat_focus != null and is_instance_valid(_heat_focus) else "未选(F1)"
 		var sit_txt := ""
@@ -4717,7 +4734,7 @@ func _update_hud_debug_labels() -> void:
 			desc_extra = " [Hr 快弹轨迹·半径2高斯·等高线8px]"
 		elif _heat_view == 9:
 			desc_extra = " [Ht 派生·25×25 马赛克]"
-		_heat_label.text = "%s|%s(%s)%s%s%s" % [names[_heat_view] if _heat_view > 0 else "图:关", focus_name, side_txt, sit_txt, ret_txt, desc_extra]
+		_heat_label.text = "%s|%s(%s)%s%s%s" % [names.get(_heat_view, "图:关"), focus_name, side_txt, sit_txt, ret_txt, desc_extra]
 	if _debug_hint_label != null and _debug_used:
 		_debug_hint_label.text = "调试：F1/F3/[ 切热力图 ]切帧序 F2十六点 F1选角色 滚轮换角色 F4慢速0.25 V轮射 G点攻 B点防 Esc菜单"
 func _unhandled_input(event: InputEvent) -> void:
@@ -4912,13 +4929,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F1: ## 【22b 20261103·修3 正解】热力图显示=循环切图种
 				## （键位表：F1=热力图显示；0.0.7 语义恢复——此前被改成选角色
 				## 导致作者按 F1 永远停在 Ht）
-				_heat_view = (_heat_view + 1) % 10
+				_heat_view = _heat_view_next() ## 【m1102 备忘】跳过 6=Hp（停用）
 				_debug_used = true
 				_heat_focus = picked_entity()
 				_update_hud_debug_labels()
 
 			KEY_BRACKETLEFT: ## 【新三 20261028】[ 切换热力图种类（关→Ht→…→Hct→关）
-				_heat_view = (_heat_view + 1) % 10 ## 【20261030】9=Ha 接入
+				_heat_view = _heat_view_next() ## 【m1102 备忘】跳过 6=Hp（停用） ## 【20261030】9=Ha 接入
 				_debug_used = true
 				_update_hud_debug_labels()
 
@@ -5207,7 +5224,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_cmd_arm_b = false
 			KEY_F3: ## 【22b 20261103d·键位兼容】F3=循环切图种
 				## （作者 0.0.7 习惯：F1/F3 都循环看图——三键兼容防键位配置差）
-				_heat_view = (_heat_view + 1) % 10
+				_heat_view = _heat_view_next() ## 【m1102 备忘】跳过 6=Hp（停用）
 				_debug_used = true
 				_heat_focus = picked_entity()
 				_update_hud_debug_labels()
