@@ -1294,14 +1294,127 @@ func _chapter_advance() -> void:
 func _chapters_tick() -> void:
 	if _chapters_active.is_empty() or finished:
 		return
+	var ch: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
+	if not ch.is_empty():
+		_ch_triggers_tick(ch) ## 【m117】章节触发器（ticker/threshold/feedback）
+		_ch_chars_tick(ch) ## 【m117】章节角色出场条目
 	if _chapter_until >= 0 and time_frames >= _chapter_until:
-		var ch: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
-		if str(ch.get("loop", "flow")) == "loop":
+		var ch2: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
+		if str(ch2.get("loop", "flow")) == "loop":
 			_chapter_idx -= 1 ## 循环章节：重进当前（循环后须 trigged 转场——scheme）
 			_chapter_advance()
 		else:
-			print("[章节] %s finner 触发" % str(ch.get("id", "?")))
+			print("[章节] %s finner 触发" % str(ch2.get("id", "?")))
 			_chapter_advance()
+
+## 【m117 触发器执行器（基础集）】脚本文本最小操作集：
+##   toast(文本)/print(文本)/playclips(片段名)/cancel()/——其余操作=响亮提示
+##   （脚本语言定义随章节系统后续批——数据与触发点先行）
+func _chapter_exec(script: String, where: String) -> void:
+	var t := script.strip_edges()
+	if t == "":
+		return
+	var lp := t.find("(")
+	if lp > 0 and t.ends_with(")"):
+		var op := t.substr(0, lp).strip_edges().to_lower()
+		var arg := t.substr(lp + 1, t.length() - lp - 2).strip_edges()
+		match op:
+			"toast":
+				_toast("【章节】%s" % arg)
+				return
+			"print":
+				print("[章节脚本] %s" % arg)
+				return
+			"playclips":
+				var anchor = enemy_leader if enemy_leader != null and not enemy_leader.dead else player_leader
+				if anchor != null:
+					var run := {"ent": anchor, "tl": {"tl_name": "ch_exec", "ticks": {"0": []}, "flow_start": "", "flow_every": "", "steps_tick": []},
+						"start_frame": time_frames, "tick": -1, "svg": {}, "r": 80.0, "spell": null,
+						"steps_tick": [], "until_frame": time_frames + 3600}
+					_spell_runs.append(run)
+					var cdx: ClipData = THXKit.resolve_clip(arg)
+					if cdx != null:
+						_sched_clip_entries(run, cdx)
+					return
+			"cancel":
+				for r2 in _spell_runs:
+					if r2.has("until_frame"):
+						r2["until_frame"] = time_frames ## 解除所有有解除条件的操作（scheme cancel 语义）
+				_toast("【章节】cancel 全部持续操作")
+				return
+	print("[章节脚本·未实装] %s（%s）" % [t, where])
+
+## 【m117 章节触发器逐帧】ticker 每拍/threshold 上下沿（条件=行为检测+time_frames
+## 表达式）/feedback 注册事件（delta>0 且已注册才检——scheme"注册才启用"）
+var _fb_seen: Dictionary = {} ## 事件 → 上一拍累计（delta 检测）
+
+func _ch_triggers_tick(ch: Dictionary) -> void:
+	for tcell in [str(ch.get("globe_triggers", "")), str(ch.get("local_triggers", ""))]:
+		for tr in ChapterData.parse_triggers(tcell):
+			match str(tr["type"]):
+				"ticker":
+					_chapter_exec(str(tr["script"]), "ticker")
+				"threshold":
+					var cond := str(tr["cond"])
+					var ex := DanmakuExpr.new()
+					if ex.compile(cond.replace(">>", ">").replace("<<", "<"),
+							PackedStringArray(["time_frames", "graze", "hit", "miss", "spell", "danmaku", "shoot", "privatehit"])):
+						var v: float = ex.execute_dict({
+							"time_frames": float(time_frames),
+							"graze": float(BehaviorScore.read("graze")),
+							"hit": float(BehaviorScore.read("hit")),
+							"miss": float(BehaviorScore.read("miss")),
+							"spell": float(BehaviorScore.read("spell")),
+							"danmaku": float(BehaviorScore.read("danmaku")),
+							"shoot": float(BehaviorScore.read("shoot")),
+							"privatehit": float(BehaviorScore.read("privatehit")),
+						}, 0.0)
+						if v > 0.5:
+							_chapter_exec(str(tr["script"]), "threshold")
+				"feedback":
+					var ev := str(tr["cond"])
+					var cur: int = BehaviorScore.display_score(ev)
+					var seen: int = int(_fb_seen.get(ev, cur))
+					if cur > seen:
+						_chapter_exec(str(tr["script"]), "feedback:" + ev)
+					_fb_seen[ev] = cur
+
+## 【m117 章节角色出场条目】名:进tick:出tick:x,y:运动——进=原位站起+摆位；
+## 出=满目疮痍（dead）；成员须已在敌我阵容（本批不产新角色）
+var _ch_chars_state: Dictionary = {} ## 章节id+名 → {entered:bool}
+
+func _ch_chars_tick(ch: Dictionary) -> void:
+	var ch_id := str(ch.get("id", ""))
+	for ce in ChapterData.parse_char_entries(str(ch.get("chars", ""))):
+		var key: String = ch_id + "|" + str(ce["name"])
+		var st: Dictionary = _ch_chars_state.get(key, {"entered": false})
+		if not bool(st["entered"]) and time_frames >= int(ce["enter"]):
+			_ch_char_enter(ce)
+			st["entered"] = true
+			_ch_chars_state[key] = st
+		elif bool(st["entered"]) and int(ce["exit"]) >= 0 and time_frames >= int(ce["exit"]):
+			_ch_char_exit(ce)
+			st["entered"] = false
+			_ch_chars_state[key] = st
+
+func _ch_char_enter(ce: Dictionary) -> void:
+	for e in entities:
+		if e is BattleEntity and e.chara_name() == str(ce["name"]):
+			if e.dead:
+				e.dead = false
+				e.hp = [10, 20, 10] if e.kind == BattleEntity.Kind.PLAYER else [3, 5, 3]
+				e.ap = e._initial_ap()
+			e.position = (ce["pos"] as Vector2).clamp(Vector2.ZERO, Vector2(400, 400))
+			print("[章节] 角色出场：%s @ %s" % [str(ce["name"]), str(ce["pos"])])
+			return
+	print("[章节] 角色出场：%s 不在阵容（跳过）" % str(ce["name"]))
+
+func _ch_char_exit(ce: Dictionary) -> void:
+	for e in entities:
+		if e is BattleEntity and e.chara_name() == str(ce["name"]):
+			e.dead = true
+			print("[章节] 角色离场：%s" % str(ce["name"]))
+			return
 
 ## 【m109 擦弹（scheme graze(距离)）】自机接近未标记弹幕=记一次擦弹+贴
 ## #grazed_标签（每弹至多一次；命中弹在被弹结算即消亡不进计数；池化重置
@@ -2121,6 +2234,10 @@ func _setup_preview() -> void:
 	entities.append(emitter_ent)
 
 func _on_fire(point, ev: DanmakuEventData, rolls: Dictionary = {}) -> void:
+	BehaviorScore.add("danmaku") ## 【m117 反馈事件】弹幕被发送
+	var _src0: BattleEntity = src_position_of(point)
+	if _src0 != null and _src0.side == 0:
+		BehaviorScore.add("shoot") ## 自机发射了弹幕
 	## 【类型批复 20261019】发射时刻统一求值：x/y_offset 算式、repeat 参数算式
 	## （上下文与弹幕出现同语义；t=事件出现至今、t_copy=0）
 	var src: BattleEntity = src_position_of(point)
@@ -3888,6 +4005,9 @@ func _apply_release(ent: BattleEntity, kind: String, free_cost: bool = false) ->
 				## 【m106→m108】应急已改走能力档（作者修正案）——m 档灰卡掉落恢复
 				## 无条件（洒落雨真凶=应急 e 循环掉卡，e 不走 m 后此口不再触发雨）
 				_on_main_spell_released(ent) ## 【m66 接线】最接近的敌方+1符
+	BehaviorScore.add("spell") ## 【m117 反馈事件】释放符卡（n 能力也算能力攻击行为）
+	if ent.side == 0:
+		BehaviorScore.add("playerspell")
 	ent.sit_cards.on_released(kind)
 	## 【m105 作者改案-A】队友释放后 2 秒全队释放锁（消"不约而同齐放"——保留拟人
 	## 倾向只错峰；手动指令不锁定自己但同样触发队友等待；应急 e 反射不受锁）

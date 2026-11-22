@@ -88,6 +88,61 @@ func _ready() -> void:
 		print("CHAP_FAIL: D 入场片段未挂 playclips 条目")
 	else:
 		print("CHAP_NOTE: 入场片段条目=%d" % int(run["clip_sched"].size()))
+	## E. 触发器执行器（m117 基础集）：ticker/toast/threshold（行为+time_frames 表达式）/feedback
+	var pl = arena.player_leader
+	var ch_t: Dictionary = {"id": "ch_trig", "name": "触发器测试", "loop": "flow",
+		"globe_triggers": "ticker:toast(章节ticker在拍);threshold:time_frames>>=999999=toast(不应触发);feedback:miss=toast(自机被弹反馈)",
+		"chars": "", "entrance_clips": ""}
+	arena._chapters_active = [ch_t]
+	arena._chapter_idx = 0
+	arena._chapter_until = -1
+	var toasts0: int = arena._toasts.size()
+	arena._physics_process(1.0 / 60.0) ## ticker 拍（toast 触发）
+	var ticker_ok := false
+	for t in arena._toasts:
+		if str(t["text"]).contains("章节ticker在拍"):
+			ticker_ok = true
+	if not ticker_ok:
+		fails += 1
+		print("CHAP_FAIL: E ticker 未执行")
+	## E2. threshold：条件恒假（time_frames>>=999999）不触发——行为读数口径验证
+	var miss0: int = BehaviorScore.read("miss")
+	arena._physics_process(1.0 / 60.0)
+	if BehaviorScore.read("miss") < miss0:
+		fails += 1
+		print("CHAP_FAIL: E2 miss 行为读数异常")
+	## E3. feedback:miss=toast——被弹（take_hit 自机）→ 反馈触发 toast
+	arena._toasts.clear()
+	BehaviorScore.clear()
+	arena._physics_process(1.0 / 60.0) ## 记录 miss 基线
+	pl.take_hit(1, 0, 0.0) ## 自机被弹（pl 免疫帧清零后）
+	pl.immune_frames = 0
+	arena._physics_process(1.0 / 60.0)
+	var fb_ok := false
+	for t2 in arena._toasts:
+		if str(t2["text"]).contains("自机被弹反馈"):
+			fb_ok = true
+	if not fb_ok:
+		fails += 1
+		print("CHAP_FAIL: E3 feedback:miss 未触发")
+	## F. 章节角色出场条目：第二成员出场摆位+离场
+	arena._chapters_active = [{"id": "ch_chars", "name": "角色条目", "loop": "flow",
+		"chars": "MarisaA:5:9999:300,100:stay", "entrance_clips": "", "globe_triggers": "", "local_triggers": ""}]
+	arena._chapter_idx = 0
+	arena._chapter_until = -1
+	var tgt = null
+	for e6 in arena.player_ents:
+		if e6 is BattleEntity and e6.chara_name() == "MarisaA":
+			tgt = e6
+			break
+	if tgt != null:
+		tgt.dead = false
+		arena._physics_process(1.0 / 60.0) ## 进场拍（enter=5，time_frames 远超）
+		if tgt.dead or (tgt.position - Vector2(300, 100)).length() > 1.0:
+			fails += 1
+			print("CHAP_FAIL: F 角色出场未摆位（%s @ %s）" % [str(tgt.dead), str(tgt.position)])
+	else:
+		print("CHAP_SKIP: F 无 MarisaA 成员可测")
 	if fails == 0:
-		print("CHAP_OK: ChapterData/行为检测/章节流转/入场片段 全过")
+		print("CHAP_OK: ChapterData/行为检测/章节流转/入场片段/触发器执行器/角色条目 全过")
 	get_tree().quit(1 if fails > 0 else 0)

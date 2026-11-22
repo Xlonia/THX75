@@ -204,8 +204,13 @@ func take_hit(dmg: int, dmg_type: int, hit_angle: float) -> bool:
 			stun_frames[part] = maxi(stun_frames[part], dmg * 60)
 	immune_frames = 30
 	damaged.emit(self)
+	BehaviorScore.add("miss" if side == 0 else "bullseye") ## 【m117 反馈事件】自机被弹/自机弹幕击中敌机
 	if hp[0] <= 0 and hp[1] <= 0 and hp[2] <= 0:
 		dead = true
+		if side == 1:
+			BehaviorScore.add("hit") ## 【m117】敌机被击败（非 boss 另计 privatehit）
+			if int(db.get("is_boss", 0)) != 1:
+				BehaviorScore.add("privatehit")
 		destroyed.emit(self)
 	return true
 
