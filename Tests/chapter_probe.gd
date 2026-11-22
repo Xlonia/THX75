@@ -29,16 +29,17 @@ func _ready() -> void:
 			r[k] = over[k]
 		return r
 	var install := func(rows: Array) -> void:
-		arena._chapters_active = rows
-		arena._chapter_idx = -1
-		arena._ch_run = []
-		arena._ch_done = false ## 完结门复位（C 节 the_fin 后的各节复用）
-		arena._skip_plans = []
-		arena._fb_seen.clear()
-		arena._trig_memo.clear()
+		var fl = arena._ch_flow
+		fl.rows = rows
+		fl.scan_idx = -1
+		fl.run = []
+		fl.done = false ## 完结门复位（C 节 the_fin 后的各节复用）
+		fl.fb_seen.clear()
+		fl.trig_memo.clear()
+		fl.skip_plans = []
 		for r2 in rows:
 			for sk in ChapterData.parse_skip_cell(str(r2.get("skip", ""))):
-				arena._skip_plans.append(sk)
+				fl.skip_plans.append(sk)
 	var toasts_has := func(s: String) -> bool:
 		for t in arena._toasts:
 			if str(t["text"]).contains(s):
@@ -107,45 +108,45 @@ func _ready() -> void:
 		print("CHAP_FAIL: B behaviorReset 未清")
 	## C. 章节流转（块扫描→下一章 / loop 重进 / slug 冻结+trigged）
 	arena._chapters_start()
-	if arena._chapters_active.is_empty():
+	if arena._ch_flow.rows.is_empty():
 		fails += 1
 		print("CHAP_FAIL: C 运行时未装载章节")
 	else:
-		arena._chapters_active = [mkrow.call("c1", 1), mkrow.call("c2", 2)]
-		arena._skip_plans = []
-		arena._chapter_idx = -1
-		arena._ch_run = []
-		arena._chapter_advance()
-		if arena._ch_run.size() != 1 or str(arena._ch_run[0].get("id")) != "c1":
+		arena._ch_flow.rows = [mkrow.call("c1", 1), mkrow.call("c2", 2)]
+		arena._ch_flow.skip_plans = []
+		arena._ch_flow.scan_idx = -1
+		arena._ch_flow.run = []
+		arena._ch_flow.advance()
+		if arena._ch_flow.run.size() != 1 or str(arena._ch_flow.run[0].get("id")) != "c1":
 			fails += 1
 			print("CHAP_FAIL: C 首章未装载")
-		arena._ch_run[0]["_until_frame"] = arena.time_frames + 2 ## 压缩 flow 时长
+		arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2 ## 压缩 flow 时长
 		for fr in 4:
 			arena._physics_process(1.0 / 60.0)
-		if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "c2":
+		if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "c2":
 			fails += 1
 			print("CHAP_FAIL: C flow 流转未进下一章")
-		arena._ch_run[0]["loop"] = "loop"
-		arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+		arena._ch_flow.run[0]["loop"] = "loop"
+		arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 		for fr2 in 4:
 			arena._physics_process(1.0 / 60.0)
-		if arena._ch_run.is_empty() or int(arena._ch_run[0].get("_loops", 0)) < 1:
+		if arena._ch_flow.run.is_empty() or int(arena._ch_flow.run[0].get("_loops", 0)) < 1:
 			fails += 1
-			print("CHAP_FAIL: C loop 章未重进（_loops=%s）" % str(arena._ch_run[0].get("_loops", -1) if not arena._ch_run.is_empty() else -1))
-		arena._ch_run[0]["loop"] = "slug"
-		arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+			print("CHAP_FAIL: C loop 章未重进（_loops=%s）" % str(arena._ch_flow.run[0].get("_loops", -1) if not arena._ch_flow.run.is_empty() else -1))
+		arena._ch_flow.run[0]["loop"] = "slug"
+		arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 		for fr3 in 6:
 			arena._physics_process(1.0 / 60.0)
-		if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "c2":
+		if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "c2":
 			fails += 1
 			print("CHAP_FAIL: C slug 章未冻结（提前流转）")
 		arena._chapter_trigged()
-		if not arena._ch_run.is_empty():
+		if not arena._ch_flow.run.is_empty():
 			fails += 1
 			print("CHAP_FAIL: C trigged 唤起未流转（the_fin 完结）")
 	## D. 入场片段：章节条目挂 playclips（clip_sched 非空）
 	install.call([mkrow.call("ch_d", 1, {"entrance_clips": "clip_MarisaA_sub_demo_missile"})])
-	arena._chapter_advance()
+	arena._ch_flow.advance()
 	var runs0: int = arena._spell_runs.size()
 	var run_ok := false
 	if arena._spell_runs.size() > 0:
@@ -163,11 +164,11 @@ func _ready() -> void:
 		"local_triggers": "starter:toast(章开始);finner:toast(章结束);ticker:toast(章节ticker在拍);threshold:chaptertime>>=2=toast(章时阈值);feedback:miss=toast(自机被弹反馈)",
 		"globe_triggers": "stage:toast(关卡开始);settle:toast(关卡结算);next:toast(公共转场)",
 	}), mkrow.call("ch_trig2", 2)])
-	arena._globe_level_exec("stage")
+	arena._ch_flow.globe_level("stage")
 	if not toasts_has.call("关卡开始"):
 		fails += 1
 		print("CHAP_FAIL: E stage 触发器未执行")
-	arena._chapter_advance() ## → ch_trig（starter）
+	arena._ch_flow.advance() ## → ch_trig（starter）
 	if not toasts_has.call("章开始"):
 		fails += 1
 		print("CHAP_FAIL: E starter 触发器未执行")
@@ -186,7 +187,7 @@ func _ready() -> void:
 	if not toasts_has.call("自机被弹反馈"):
 		fails += 1
 		print("CHAP_FAIL: E feedback:miss 未触发")
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr6 in 4:
 		arena._physics_process(1.0 / 60.0) ## finner+next 转场 → ch_trig2
 	if not toasts_has.call("章结束"):
@@ -195,16 +196,16 @@ func _ready() -> void:
 	if not toasts_has.call("公共转场"):
 		fails += 1
 		print("CHAP_FAIL: E next 转场触发器未执行")
-	if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "ch_trig2":
+	if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "ch_trig2":
 		fails += 1
 		print("CHAP_FAIL: E next 转场后未进下一章")
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr7 in 4:
 		arena._physics_process(1.0 / 60.0) ## → the_fin（settle）
 	if not toasts_has.call("关卡结算"):
 		fails += 1
 		print("CHAP_FAIL: E settle 触发器未执行")
-	if not arena._ch_run.is_empty():
+	if not arena._ch_flow.run.is_empty():
 		fails += 1
 		print("CHAP_FAIL: E the_fin 未完结")
 	## F. 角色条目（章节局部帧）+ 运动关键帧（二次贝塞尔）
@@ -214,7 +215,7 @@ func _ready() -> void:
 		"chars": "MarisaA:0:9999:100,100:stay",
 		"moves": "MarisaA@10:300,200|260,100",
 	})])
-	arena._chapter_advance()
+	arena._ch_flow.advance()
 	var tgt = null
 	for e6 in arena.player_ents:
 		if e6 is BattleEntity and e6.chara_name() == "MarisaA":
@@ -222,8 +223,7 @@ func _ready() -> void:
 			break
 	if tgt != null:
 		tgt.dead = false
-		arena.time_frames += 1
-		arena._chapters_tick() ## 直驱章节拍（不跑战斗模拟——编排位不被实体自身运动积分漂移）
+		arena._ch_flow.tick() ## 直驱章节拍（内核自持时基——编排位不被实体自身运动积分漂移）
 		if tgt.dead:
 			fails += 1
 			print("CHAP_FAIL: F 角色出场失败（dead）")
@@ -231,8 +231,7 @@ func _ready() -> void:
 		## lt=1 处位置=(130.8,101)（曲线 1/10 处）——进场摆位由下方 t=0.5
 		## 精确命中隐式验证（若未出场则不驱动，位置不会落在线上）
 		for fr8 in 4:
-			arena.time_frames += 1
-			arena._chapters_tick() ## 局部帧累计至 5 → 贝塞尔 t=0.5
+			arena._ch_flow.tick() ## 局部帧累计至 5 → 贝塞尔 t=0.5
 		## (100,100)→弯(260,100)→(300,200) t=0.5 = 0.25P0+0.5C+0.25P1 = (230,125)
 		if (tgt.position - Vector2(230, 125)).length() > 2.0:
 			fails += 1
@@ -245,95 +244,145 @@ func _ready() -> void:
 	arena._toasts.clear()
 	## G1 skip：无条件/条件不满足
 	install.call([mkrow.call("g1a", 1, {"skip": "g1b"}), mkrow.call("g1b", 2), mkrow.call("g1c", 3)])
-	arena._chapter_advance()
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance()
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr9 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "g1c":
+	if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "g1c":
 		fails += 1
-		print("CHAP_FAIL: G1 skip 未跳过 g1b（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G1 skip 未跳过 g1b（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	install.call([mkrow.call("g1d", 1, {"skip": "g1e|time_frames>>=999999"}), mkrow.call("g1e", 2)])
-	arena._chapter_advance()
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance()
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr10 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "g1e":
+	if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "g1e":
 		fails += 1
-		print("CHAP_FAIL: G1 skip 条件不满足仍跳过（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G1 skip 条件不满足仍跳过（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	## G2 goto：目标/the_fin/条件不满足
 	install.call([mkrow.call("g2a", 1, {"goto": "g2c"}), mkrow.call("g2b", 2), mkrow.call("g2c", 3)])
-	arena._chapter_advance()
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance()
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr11 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "g2c":
+	if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "g2c":
 		fails += 1
-		print("CHAP_FAIL: G2 goto 未跳转（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G2 goto 未跳转（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	arena._toasts.clear()
 	install.call([mkrow.call("g2d", 1, {"goto": "the_fin", "globe_triggers": "settle:toast(关卡结算)"}), mkrow.call("g2e", 2)])
-	arena._chapter_advance()
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance()
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr12 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if not arena._ch_run.is_empty() or not toasts_has.call("关卡结算"):
+	if not arena._ch_flow.run.is_empty() or not toasts_has.call("关卡结算"):
 		fails += 1
 		print("CHAP_FAIL: G2 goto the_fin 未直达完结")
 	install.call([mkrow.call("g2f", 1, {"goto": "g2h|time_frames>>=999999"}), mkrow.call("g2g", 2), mkrow.call("g2h", 3)])
-	arena._chapter_advance()
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance()
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr13 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if arena._ch_run.is_empty() or str(arena._ch_run[0].get("id")) != "g2g":
+	if arena._ch_flow.run.is_empty() or str(arena._ch_flow.run[0].get("id")) != "g2g":
 		fails += 1
-		print("CHAP_FAIL: G2 goto 条件不满足仍跳转（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G2 goto 条件不满足仍跳转（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	## G3 select：择一/全否跳块/空兜底
 	install.call([mkrow.call("g3a", 1, {"select": "1.0>0.5"}), mkrow.call("g3b", 1, {"select": "1.0<0.5"}), mkrow.call("g3c", 2)])
-	arena._chapter_advance()
-	if arena._ch_run.size() != 1 or str(arena._ch_run[0].get("id")) != "g3a":
+	arena._ch_flow.advance()
+	if arena._ch_flow.run.size() != 1 or str(arena._ch_flow.run[0].get("id")) != "g3a":
 		fails += 1
-		print("CHAP_FAIL: G3 select 未择一（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G3 select 未择一（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	install.call([mkrow.call("g3d", 1, {"select": "1.0<0.5"}), mkrow.call("g3e", 1, {"select": "2.0<0.5"}), mkrow.call("g3f", 2)])
-	arena._chapter_advance()
-	if arena._ch_run.size() != 1 or str(arena._ch_run[0].get("id")) != "g3f":
+	arena._ch_flow.advance()
+	if arena._ch_flow.run.size() != 1 or str(arena._ch_flow.run[0].get("id")) != "g3f":
 		fails += 1
-		print("CHAP_FAIL: G3 select 均不满足未整块跳过（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G3 select 均不满足未整块跳过（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	install.call([mkrow.call("g3g", 1, {"select": "1.0<0.5"}), mkrow.call("g3h", 1), mkrow.call("g3i", 2)])
-	arena._chapter_advance()
-	if arena._ch_run.size() != 1 or str(arena._ch_run[0].get("id")) != "g3h":
+	arena._ch_flow.advance()
+	if arena._ch_flow.run.size() != 1 or str(arena._ch_flow.run[0].get("id")) != "g3h":
 		fails += 1
-		print("CHAP_FAIL: G3 select 空条件未兜底（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G3 select 空条件未兜底（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
 	## G4 fix：并列混合（同序同屏，各自独立结束）
 	install.call([mkrow.call("g4a", 1, {"fix": "the_start,the_fin"}), mkrow.call("g4b", 1, {"fix": "the_start,the_fin"}), mkrow.call("g4c", 2)])
-	arena._chapter_advance()
-	if arena._ch_run.size() != 2:
+	arena._ch_flow.advance()
+	if arena._ch_flow.run.size() != 2:
 		fails += 1
-		print("CHAP_FAIL: G4 fix 未并列同屏（%d）" % arena._ch_run.size())
+		print("CHAP_FAIL: G4 fix 未并列同屏（%d）" % arena._ch_flow.run.size())
 	else:
-		arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
-		arena._ch_run[1]["_until_frame"] = arena.time_frames + 10
+		arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
+		arena._ch_flow.run[1]["_until_frame"] = arena.time_frames + 10
 		for fr14 in 4:
 			arena._physics_process(1.0 / 60.0)
-		if arena._ch_run.size() != 1 or str(arena._ch_run[0].get("id")) != "g4b":
+		if arena._ch_flow.run.size() != 1 or str(arena._ch_flow.run[0].get("id")) != "g4b":
 			fails += 1
-			print("CHAP_FAIL: G4 fix 成员未独立结束（%d/%s）" % [arena._ch_run.size(),
-				str(arena._ch_run[0].get("id")) if not arena._ch_run.is_empty() else "无"])
-		if not arena._ch_run.is_empty():
-			arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+			print("CHAP_FAIL: G4 fix 成员未独立结束（%d/%s）" % [arena._ch_flow.run.size(),
+				str(arena._ch_flow.run[0].get("id")) if not arena._ch_flow.run.is_empty() else "无"])
+		if not arena._ch_flow.run.is_empty():
+			arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 			for fr15 in 4:
 				arena._physics_process(1.0 / 60.0)
-	## G5 dochu/clear 语境（道中=非末块/关底=末块或 goto the_fin——dochu=原 michihit，作者 20261122 改名）
+	## G5 midboss/clear 语境（道中=非末块/关底=末块或 goto the_fin——语源破案 michihit→midboss+dochuhit）
 	install.call([mkrow.call("g5a", 1), mkrow.call("g5b", 2)])
-	arena._chapter_advance()
-	if arena._chapter_is_final():
+	arena._ch_flow.advance()
+	if arena._ch_flow.is_final():
 		fails += 1
 		print("CHAP_FAIL: G5 道中语境误判为关底")
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr16 in 4:
 		arena._physics_process(1.0 / 60.0)
-	if arena._ch_run.is_empty() or not arena._chapter_is_final():
+	if arena._ch_flow.run.is_empty() or not arena._ch_flow.is_final():
 		fails += 1
-		print("CHAP_FAIL: G5 关底语境未判定（%s）" % str(arena._ch_run[0].get("id") if not arena._ch_run.is_empty() else "无"))
+		print("CHAP_FAIL: G5 关底语境未判定（%s）" % str(arena._ch_flow.run[0].get("id") if not arena._ch_flow.run.is_empty() else "无"))
+		## G6 letchara 角色操作（m120——EntityOps 选择器+实体/修饰操作+modifiremove）
+	BehaviorScore.clear()
+	install.call([mkrow.call("g6a", 1)])
+	arena._ch_flow.advance()
+	var pl6 = arena.player_leader
+	if pl6 != null:
+		var miss0 := BehaviorScore.read("miss")
+		arena._chapter_let("letchara", "player(){damage(player(),1)}")
+		if BehaviorScore.read("miss") <= miss0:
+			fails += 1
+			print("CHAP_FAIL: G6 damage 操作未生效（miss 未增）")
+		arena._chapter_let("letchara", "player(){banshoot(modifiremove(time_frames>>=2))}")
+		if not arena._ent_banned(pl6):
+			fails += 1
+			print("CHAP_FAIL: G6 banshoot 未登记")
+		arena._chapters_tick() ## 宿主拍（含 _ent_mods_tick 解除轮询+flow.tick）
+		arena._chapters_tick()
+		arena._chapters_tick()
+		if arena._ent_banned(pl6):
+			fails += 1
+			print("CHAP_FAIL: G6 modifiremove 未解除")
+		arena._chapter_let("letchara", "player(){itemget(60)}")
+		if arena._ent_itemget_radius(pl6) < 60.0:
+			fails += 1
+			print("CHAP_FAIL: G6 itemget 未登记")
+		arena._ent_mods.clear() ## 清修饰态（防串节）
+	else:
+		print("CHAP_SKIP: G6 无玩家实体")
 	## H. 音乐方案 + 背景画面
+	## H0 真曲实载（作者 20261122 放置——th75/addons/thxgamekit/music/ 4 首 ogg）
+	var real := ""
+	var d0 := DirAccess.open("res://addons/thxgamekit/music")
+	if d0 != null:
+		d0.list_dir_begin()
+		var fn := d0.get_next()
+		while fn != "":
+			if fn.to_lower().ends_with(".ogg"):
+				real = "res://addons/thxgamekit/music/" + fn
+				break
+			fn = d0.get_next()
+		d0.list_dir_end()
+	if real != "":
+		install.call([mkrow.call("h0", 0, {"music_plan": "hard", "music_track": real, "music_start": "0"})])
+		arena._ch_flow.advance()
+		if arena._ch_flow._music_a == null or not arena._ch_flow._music_a.playing:
+			fails += 1
+			print("CHAP_FAIL: H0 真曲未播放（%s）" % real)
+		else:
+			print("CHAP_NOTE: H0 真曲实载=", real)
+	else:
+		print("CHAP_SKIP: H0 music 目录无 ogg")
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = 22050
@@ -345,38 +394,38 @@ func _ready() -> void:
 	wav.data = pcm
 	wav.save_to_wav("user://chap_music_test.wav")
 	install.call([mkrow.call("h1", 1, {"music_plan": "hard", "music_track": "user://chap_music_test.wav", "music_start": "0.25"})])
-	arena._chapter_advance()
-	if arena._music_a == null or not arena._music_a.playing:
+	arena._ch_flow.advance()
+	if arena._ch_flow._music_a == null or not arena._ch_flow._music_a.playing:
 		fails += 1
 		print("CHAP_FAIL: H1 音乐 hard 起始未播放")
 	install.call([mkrow.call("h2", 2, {"music_track": "user://chap_music_test.wav"})])
-	arena._chapter_advance() ## 进入 h2（continue：同轨继续不重启）
-	arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	arena._ch_flow.advance() ## 进入 h2（continue：同轨继续不重启）
+	arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 	for fr17 in 4:
 		arena._physics_process(1.0 / 60.0) ## 进入 h2（continue：同轨继续不重启）
-	if arena._music_a == null or not arena._music_a.playing or arena._music_track != "user://chap_music_test.wav":
+	if arena._ch_flow._music_a == null or not arena._ch_flow._music_a.playing or arena._ch_flow._music_track != "user://chap_music_test.wav":
 		fails += 1
 		print("CHAP_FAIL: H2 音乐 continue 语义不符")
 	install.call([mkrow.call("h3", 3, {"music_plan": "loop:0.2,0.8", "music_track": "user://chap_music_test.wav"})])
-	arena._chapter_advance()
-	if arena._music_loop_range.size() != 2 or absf(arena._music_loop_range[0] - 0.2) > 0.01 or absf(arena._music_loop_range[1] - 0.8) > 0.01:
+	arena._ch_flow.advance()
+	if arena._ch_flow._music_loop_range.size() != 2 or absf(arena._ch_flow._music_loop_range[0] - 0.2) > 0.01 or absf(arena._ch_flow._music_loop_range[1] - 0.8) > 0.01:
 		fails += 1
-		print("CHAP_FAIL: H3 内循环区间未登记（%s）" % str(arena._music_loop_range))
+		print("CHAP_FAIL: H3 内循环区间未登记（%s）" % str(arena._ch_flow._music_loop_range))
 	var img := Image.create_empty(64, 64, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0.2, 0.4, 0.9))
 	img.save_png("user://chap_bg_test.png")
 	install.call([mkrow.call("h4a", 1, {"background": "user://chap_bg_test.png"})])
-	arena._chapter_advance()
+	arena._ch_flow.advance()
 	if arena._ch_bg_sprite == null or arena._ch_bg_sprite.texture == null or not arena._ch_bg_sprite.visible:
 		fails += 1
 		print("CHAP_FAIL: H4 章节背景未应用")
 	install.call([mkrow.call("h4b", 2)])
-	arena._chapter_advance()
+	arena._ch_flow.advance()
 	if arena._ch_bg_sprite != null and arena._ch_bg_default == null and (arena._ch_bg_sprite.visible or arena._ch_bg_sprite.texture != null):
 		fails += 1
 		print("CHAP_FAIL: H4 空背景未恢复默认（无默认=隐藏）")
-	if not arena._ch_run.is_empty():
-		arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
+	if not arena._ch_flow.run.is_empty():
+		arena._ch_flow.run[0]["_until_frame"] = arena.time_frames + 2
 		for fr18 in 4:
 			arena._physics_process(1.0 / 60.0) ## the_fin → 恢复默认
 	if fails == 0:
