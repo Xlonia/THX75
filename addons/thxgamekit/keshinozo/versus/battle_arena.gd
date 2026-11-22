@@ -855,11 +855,24 @@ func _on_entity_destroyed(ent: BattleEntity) -> void:
 		if drop > 0:
 			_spawn_drop(ent.position, "pp", drop)
 		if ent.side == 1 and int(ent.db.get("is_boss", 0)) == 1:
-			## 【m118→m120】midboss=道中boss被彻底击败（语源破案：michihit=道中
-			## みち+hit——作者 20261122 定名 midboss+dochuhit）/clear=关底boss
-			## （关底=当前成员块为总剪辑最后一块或 goto the_fin——内核 is_final）
+			## 【m121】midboss/dochuhit（作者 20261123 定案）：midboss=逐次事件
+			## （上升沿可检——每次道中boss击破+1）；dochuhit=关卡级认定标签
+			## （幂等——midboss 标签章的 boss 击破后整关认定，再写入无所谓）；
+			## clear=关底boss（最后一块/goto the_fin）不变；未标签非关底=沿旧
+			## 语义（道中boss 事件，不认定 dochuhit——标签=认定来源）
 			if _ch_flow != null and not _ch_flow.rows.is_empty():
-				BehaviorScore.add("clear" if _ch_flow.is_final() else "midboss")
+				var mem0: Dictionary = _ch_flow.run[0] if not _ch_flow.run.is_empty() else {}
+				var tagged: bool = (not mem0.is_empty()) and str(mem0.get("midboss", "")).strip_edges() != "" and str(mem0.get("midboss", "")).strip_edges() != "0"
+				if tagged:
+					BehaviorScore.add("midboss") ## 逐次事件（上升沿每次可检——作者令）
+					BehaviorScore.set_level_flag("dochuhit") ## 关卡认定（幂等）
+				elif _ch_flow.is_final():
+					BehaviorScore.add("clear")
+				else:
+					BehaviorScore.add("midboss") ## 未标签非关底（不认定 dochuhit）
+				var lp0 := str(mem0.get("loop", "")) if not mem0.is_empty() else ""
+				if lp0 == "slug" or lp0 == "trigged":
+					_chapter_trigged() ## boss 击破=外部唤起（scheme trigged/slug——道中boss击破即流转）
 
 ## 生成掉落拾取物（材质 pp/spell）
 ## 【批复 2026-10-13】散落：随机方向 1px/帧 初速，模长每帧 -0.05，20 帧后静止

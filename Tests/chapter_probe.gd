@@ -24,7 +24,7 @@ func _ready() -> void:
 		var r := {"id": id, "name": id, "order": str(order), "transition": "next", "loop": "flow",
 			"goto": "", "skip": "", "select": "", "fix": "", "music_plan": "", "music_track": "",
 			"music_start": "", "entrance_clips": "", "chars": "", "local_triggers": "",
-			"globe_triggers": "", "enemypcs": "", "boss_data": "", "background": "", "moves": ""}
+			"globe_triggers": "", "enemypcs": "", "boss_data": "", "background": "", "moves": "", "midboss": ""}
 		for k in over:
 			r[k] = over[k]
 		return r
@@ -237,6 +237,22 @@ func _ready() -> void:
 			fails += 1
 			print("CHAP_FAIL: F 运动关键帧贝塞尔不符（@ %s）" % str(tgt.position))
 		print("CHAP_NOTE: F 编排位=%s（lt=1 时=(130.8,101)）" % str(tgt.position))
+		## F2 函数形态（2c——物理类弹幕术语：phy(x速度式,y速度式[,乘数])）
+		install.call([mkrow.call("ch_phy", 1, {
+			"chars": "MarisaA:0:9999:100,100:stay",
+			"moves": "MarisaA@0:phy(1,0)",
+		})])
+		arena._ch_flow.advance()
+		arena._ch_flow.tick()
+		arena._ch_flow.tick()
+		arena._ch_flow.tick()
+		arena._ch_flow.tick()
+		arena._ch_flow.tick() ## lt=5 → 逐帧积分 +1px/帧 x
+		if (tgt.position - Vector2(105, 100)).length() > 2.0:
+			fails += 1
+			print("CHAP_FAIL: F2 phy 函数形态积分不符（@ %s）" % str(tgt.position))
+		else:
+			print("CHAP_NOTE: F2 phy 积分位=%s" % str(tgt.position))
 	else:
 		print("CHAP_SKIP: F 无 MarisaA 成员可测")
 	## G. 跳转/并列
@@ -360,6 +376,57 @@ func _ready() -> void:
 		arena._ent_mods.clear() ## 清修饰态（防串节）
 	else:
 		print("CHAP_SKIP: G6 无玩家实体")
+	## G7 midboss 标签+dochuhit 关卡认定+boss 击破 trigged（作者 20261123 定案）
+	BehaviorScore.clear()
+	install.call([mkrow.call("g7a", 1), mkrow.call("g7a2", 2)]) ## 未标签章（非末块——唯一章=is_final 会正确走 clear）
+	arena._ch_flow.advance()
+	var mb0 := BehaviorScore.read("midboss")
+	var foes: Array = []
+	for e7 in arena.entities:
+		if e7 is BattleEntity and e7.side == 1 and not e7.dead and e7.kind != BattleEntity.Kind.PRIVATE:
+			foes.append(e7) ## 排除杂兵（boss 钩在角色死亡分支——杂兵死不走）
+	if foes.size() < 2:
+		print("CHAP_NOTE: G7 敌侧角色不足二（foes=%d）——仍以首位代验" % foes.size())
+	var sanae = foes[0] if foes.size() >= 1 else null ## 默认队无 Sanae——用任意敌侧实体代验（作者阵容无关）
+	if sanae != null:
+		sanae.db["is_boss"] = 1
+		for ka in [-PI / 2.0, PI / 2.0, 0.0]: ## 逐部位（武器/机动/本体——角度推导）
+			sanae.immune_frames = 0
+			sanae.take_hit(9999, 1, ka) ## dmg_type=1 穿透（绕 AP）
+		if BehaviorScore.read("midboss") <= mb0 or BehaviorScore.level_flag("dochuhit"):
+			fails += 1
+			print("CHAP_FAIL: G7 未标签章 boss 击破语义不符（midboss+%d dochuhit=%s）" % [
+				BehaviorScore.read("midboss") - mb0, str(BehaviorScore.level_flag("dochuhit"))])
+	else:
+		print("CHAP_SKIP: G7 敌侧实体不足")
+	arena._ch_flow.run = []
+	arena._ch_flow.done = true ## 挂起当前流转（防 the_fin 提前）
+	BehaviorScore.clear()
+	install.call([mkrow.call("g7b", 1, {"midboss": "1", "loop": "slug"})]) ## 标签+slug 章
+	arena._ch_flow.advance()
+	var mb1 := BehaviorScore.read("midboss")
+	var xlonia = foes[1] if foes.size() >= 2 else null
+	if xlonia != null:
+		xlonia.db["is_boss"] = 1
+		for ka2 in [-PI / 2.0, PI / 2.0, 0.0]:
+			xlonia.immune_frames = 0
+			xlonia.take_hit(9999, 1, ka2)
+		if BehaviorScore.read("midboss") <= mb1:
+			fails += 1
+			print("CHAP_FAIL: G7 标签章 midboss 事件未触发")
+		if not BehaviorScore.level_flag("dochuhit"):
+			fails += 1
+			print("CHAP_FAIL: G7 dochuhit 关卡认定未写入")
+		var again: bool = BehaviorScore.set_level_flag("dochuhit")
+		if again:
+			fails += 1
+			print("CHAP_FAIL: G7 dochuhit 认定非幂等（二次写入返回首次）")
+		if not arena._ch_flow.run.is_empty():
+			fails += 1
+			print("CHAP_FAIL: G7 boss 击破未唤起 slug 章流转（trigged）")
+	else:
+		print("CHAP_SKIP: G7 敌侧实体不足二")
+	BehaviorScore.clear()
 	## H. 音乐方案 + 背景画面
 	## H0 真曲实载（作者 20261122 放置——th75/addons/thxgamekit/music/ 4 首 ogg）
 	var real := ""
