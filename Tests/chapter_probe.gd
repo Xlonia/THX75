@@ -427,6 +427,53 @@ func _ready() -> void:
 	else:
 		print("CHAP_SKIP: G7 敌侧实体不足二")
 	BehaviorScore.clear()
+	## G8 c/d/f 三小件（m122）：阈值真 setter/getenemy 系/boss_data 归属
+	BehaviorScore.clear()
+	arena._toasts.clear()
+	install.call([mkrow.call("g8a", 1, {
+		"local_triggers": "threshold:hit>>=0=toast(setter阈值)",
+	})])
+	arena._ch_flow.advance()
+	for fr20 in 3:
+		arena._chapters_tick() ## hit 恒 0=输入不变→只首拍执行（真 setter）
+	var cnt := 0
+	for t9 in arena._toasts:
+		if str(t9["text"]).contains("setter阈值"):
+			cnt += 1
+	if cnt != 1:
+		fails += 1
+		print("CHAP_FAIL: G8 阈值 setter 语义不符（3 拍触发 %d 次——输入未变应只首拍）" % cnt)
+	var pl8 = arena.player_leader
+	if pl8 != null:
+		var mis0 := BehaviorScore.read("miss")
+		pl8.immune_frames = 0 ## G6 伤害的 immune 帧未衰减（直驱拍不走实体积分）——重置
+		arena._chapter_let("letenemy", "getallenemy(){damage(player(),1)}")
+		if BehaviorScore.read("miss") <= mis0:
+			fails += 1
+			print("CHAP_FAIL: G8 getallenemy 选择器未生效")
+	## boss_data 归属：名不匹配的章不被无关 boss 死亡唤起
+	BehaviorScore.clear()
+	install.call([mkrow.call("g8b", 1, {"loop": "slug", "boss_data": "名=不存在的人"})])
+	arena._ch_flow.advance()
+	var foe8 = null
+	for e9 in arena.entities:
+		if e9 is BattleEntity and e9.side == 1 and not e9.dead and e9.kind != BattleEntity.Kind.PRIVATE:
+			foe8 = e9
+			break
+	if foe8 != null:
+		foe8.db["is_boss"] = 1
+		for ka9 in [-PI / 2.0, PI / 2.0, 0.0]:
+			foe8.immune_frames = 0
+			foe8.take_hit(9999, 1, ka9)
+		if arena._ch_flow.run.is_empty():
+			fails += 1
+			print("CHAP_FAIL: G8 boss_data 名不匹配仍被唤起")
+		else:
+			arena._ch_flow.run = []
+			arena._ch_flow.done = true
+	else:
+		print("CHAP_SKIP: G8 敌侧实体不足")
+	BehaviorScore.clear()
 	## H. 音乐方案 + 背景画面
 	## H0 真曲实载（作者 20261122 放置——th75/addons/thxgamekit/music/ 4 首 ogg）
 	var real := ""

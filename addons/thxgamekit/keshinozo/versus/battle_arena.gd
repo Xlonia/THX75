@@ -861,18 +861,40 @@ func _on_entity_destroyed(ent: BattleEntity) -> void:
 			## clear=关底boss（最后一块/goto the_fin）不变；未标签非关底=沿旧
 			## 语义（道中boss 事件，不认定 dochuhit——标签=认定来源）
 			if _ch_flow != null and not _ch_flow.rows.is_empty():
-				var mem0: Dictionary = _ch_flow.run[0] if not _ch_flow.run.is_empty() else {}
-				var tagged: bool = (not mem0.is_empty()) and str(mem0.get("midboss", "")).strip_edges() != "" and str(mem0.get("midboss", "")).strip_edges() != "0"
-				if tagged:
-					BehaviorScore.add("midboss") ## 逐次事件（上升沿每次可检——作者令）
-					BehaviorScore.set_level_flag("dochuhit") ## 关卡认定（幂等）
-				elif _ch_flow.is_final():
-					BehaviorScore.add("clear")
+				## 【m122 boss_data 归属】boss_data 含 名=角色名 → 指名成员；
+				## boss_data 空=兼容旧数据（任意 boss 归此章）；全不匹配=不认
+				## （该 boss 不属任何当前章节——不触发认定/流转）
+				var mem0: Dictionary = {}
+				var fallback: Dictionary = {}
+				for m9 in _ch_flow.run:
+					var bd := str(m9.get("boss_data", "")).strip_edges()
+					var named := ""
+					for seg9 in bd.split(";"):
+						var kv9 := seg9.split("=")
+						if kv9.size() == 2 and kv9[0].strip_edges() in ["名", "name", "名字"]:
+							named = kv9[1].strip_edges()
+							break
+					if named != "" and named == ent.chara_name():
+						mem0 = m9
+						break
+					if bd == "" and fallback.is_empty():
+						fallback = m9
+				if mem0.is_empty():
+					mem0 = fallback ## 空boss_data 成员兜底；全指名不匹配=保持空（不认——跳过认定/流转）
+				if mem0.is_empty():
+					pass ## 无归属（boss_data 全指名且无一匹配）——不认定不流转
 				else:
-					BehaviorScore.add("midboss") ## 未标签非关底（不认定 dochuhit）
-				var lp0 := str(mem0.get("loop", "")) if not mem0.is_empty() else ""
-				if lp0 == "slug" or lp0 == "trigged":
-					_chapter_trigged() ## boss 击破=外部唤起（scheme trigged/slug——道中boss击破即流转）
+					var tagged: bool = str(mem0.get("midboss", "")).strip_edges() != "" and str(mem0.get("midboss", "")).strip_edges() != "0"
+					if tagged:
+						BehaviorScore.add("midboss") ## 逐次事件（上升沿每次可检——作者令）
+						BehaviorScore.set_level_flag("dochuhit") ## 关卡认定（幂等）
+					elif _ch_flow.is_final():
+						BehaviorScore.add("clear")
+					else:
+						BehaviorScore.add("midboss") ## 未标签非关底（不认定 dochuhit）
+					var lp0 := str(mem0.get("loop", ""))
+					if lp0 == "slug" or lp0 == "trigged":
+						_chapter_trigged() ## boss 击破=外部唤起（scheme trigged/slug——道中boss击破即流转）
 
 ## 生成掉落拾取物（材质 pp/spell）
 ## 【批复 2026-10-13】散落：随机方向 1px/帧 初速，模长每帧 -0.05，20 帧后静止
