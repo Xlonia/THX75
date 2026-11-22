@@ -372,10 +372,12 @@ func _notification(what: int) -> void:
 
 func _build_world() -> void:
 	world = Node2D.new()
-	## 【m114 关卡背景】GameKit UI 背景槽（stage_bg.png 存在=覆盖场底；非方形按高适配）
+	## 【m114 关卡背景】GameKit UI 背景槽（stage_bg.png 存在=覆盖场底；非方形按高适配；
+	## 【m118】留存引用=章节背景画面恢复默认的基准）
 	var sbgp: String = THXKit.ui_stage_bg_path()
 	if FileAccess.file_exists(sbgp):
 		var sbgtex: Texture2D = load(sbgp)
+		_ch_bg_default = sbgtex
 		var sbg := Sprite2D.new()
 		sbg.texture = sbgtex
 		sbg.position = Vector2(200, 200)
@@ -383,6 +385,7 @@ func _build_world() -> void:
 		sbg.scale = Vector2(k, k)
 		sbg.z_index = -50
 		sbg.modulate = Color(1, 1, 1, 0.85)
+		_ch_bg_sprite = sbg
 		world.add_child(sbg)
 	world.name = "World"
 	_update_scale()
@@ -851,6 +854,10 @@ func _on_entity_destroyed(ent: BattleEntity) -> void:
 		ent.pp -= drop
 		if drop > 0:
 			_spawn_drop(ent.position, "pp", drop)
+		if ent.side == 1 and int(ent.db.get("is_boss", 0)) == 1:
+			## 【m118】michihit=道中boss被彻底击败/clear=关底boss被彻底击败
+			## （scheme 反馈事件；关底=当前成员块为总剪辑最后一块或 goto the_fin）
+			BehaviorScore.add("clear" if _chapter_is_final() else "michihit")
 
 ## 生成掉落拾取物（材质 pp/spell）
 ## 【批复 2026-10-13】散落：随机方向 1px/帧 初速，模长每帧 -0.05，20 帧后静止
@@ -1240,72 +1247,250 @@ func _vanguard_tick() -> void:
 			_vanguards.remove_at(i)
 
 ## =============================================================
-## 【m116 章节运行时最小版（0.2.0 第一批——scheme"关卡设置/总剪辑/章节"节）】
-## chapters.csv 装载→总剪辑流转：starter（进章）→flow（入场片段时长/30s 下限）
-## →finner（出章）→下一个；loop=重进当前；trigged=外部触发接口（后续批）。
-## 入场片段经 playclips 机制（锚=演出方领队）。触发器脚本执行随章节系统批。
+## 【m116 章节运行时 → m118 全量（scheme"关卡设置/总剪辑/章节"节）】
+## 顺序块流转：同 order=一个顺序块（并列章节组，ordered 注册序稳定）——
+## skip 过滤（id[|条件]）→ 组决：fix=并列混合（块内全上，同屏同进）/
+## select=按条件择一（空=兜底；均不满足=整块跳过）→ 成员运行
+## （starter→触发器/角色条目逐拍→finner）→ goto（章末条件跳转，目标=
+## 章节 id 或 the_fin）→ 下一块。loop=重进（chars 状态清+入场重放）；
+## trigged=外部唤起接口 _chapter_trigged()；slug=事件帧冻结（until 后）
+## 等待 trigged。音乐方案/背景画面逐章生效（并列组取首位成员）。
+## 全局触发器=globe_ 前缀（scheme"所有章节"生效——每拍全行并集）；
+## 关卡级：stage（总剪辑起始）/settle（完结）/next（next 转场时）。
 ## =============================================================
 var _chapters_active: Array = []
-var _chapter_idx := -1
-var _chapter_until := -1
+var _chapter_idx := -1            ## 上一顺序块末位（advance 从 idx+1 扫描）
+var _ch_done := false             ## 总剪辑完结门（防 the_fin 后每帧重入 advance——m118 补旧 _chapter_until=-1 的门）
+var _ch_run: Array = []           ## 当前并行成员（行副本+运行态 _start/_until/_loops）
+var _skip_plans: Array = []       ## 全部 skip 单元（{id,cond}）——advance 块过滤
+var _trig_memo: Dictionary = {}   ## 触发器单元格文本 → 解析结果（每拍并集扫描缓存）
 
 func _chapters_start() -> void:
 	ChapterData.clear()
 	ChapterData.load_csv(THXKit.kpath("res://addons/thx_gamekit/data/chapters.csv"))
 	_chapters_active = ChapterData.ordered()
+	_ch_run = []
+	_ch_done = false
+	_chapter_idx = -1
+	_ch_chars_state.clear()
+	_fb_seen.clear()
+	_trig_memo.clear()
+	_skip_plans = []
+	for r in _chapters_active:
+		for sk in ChapterData.parse_skip_cell(str(r.get("skip", ""))):
+			_skip_plans.append(sk)
+	_ch_music_nodes()
 	if _chapters_active.is_empty():
 		return
-	_chapter_idx = -1
+	_globe_level_exec("stage") ## 关卡起始触发器（scheme stage）
 	_chapter_advance()
 
+func _ch_order_of(row: Dictionary) -> int:
+	return ChapterData.order_of(row)
+
+func _ch_trig_parsed(cell: String) -> Array:
+	if not _trig_memo.has(cell):
+		_trig_memo[cell] = ChapterData.parse_triggers(cell)
+	return _trig_memo[cell]
+
+## 条件求值（goto/skip/select 与 threshold 共用语境；>> → > 转义同 threshold）
+func _ch_cond(expr: String, mem: Dictionary) -> bool:
+	var ex := DanmakuExpr.new()
+	var names := PackedStringArray(["time_frames", "chaptertime", "chapterloop", "graze", "hit",
+		"miss", "spell", "danmaku", "shoot", "privatehit", "michihit", "clear"])
+	if not ex.compile(expr.replace(">>", ">").replace("<<", "<"), names):
+		return false
+	var start_f := time_frames
+	var loops := 0.0
+	if not mem.is_empty():
+		start_f = int(mem.get("_start_frame", time_frames))
+		loops = float(mem.get("_loops", 0))
+	var vals := {
+		"time_frames": float(time_frames),
+		"chaptertime": float(time_frames - start_f),
+		"chapterloop": loops,
+		"graze": float(BehaviorScore.read("graze")),
+		"hit": float(BehaviorScore.read("hit")),
+		"miss": float(BehaviorScore.read("miss")),
+		"spell": float(BehaviorScore.read("spell")),
+		"danmaku": float(BehaviorScore.read("danmaku")),
+		"shoot": float(BehaviorScore.read("shoot")),
+		"privatehit": float(BehaviorScore.read("privatehit")),
+		"michihit": float(BehaviorScore.read("michihit")),
+		"clear": float(BehaviorScore.read("clear")),
+	}
+	return ex.execute_dict(vals, 0.0) > 0.5
+
+func _skip_hit(id: String) -> bool:
+	for sk in _skip_plans:
+		if str(sk.get("id", "")) == id:
+			if str(sk.get("cond", "")) == "" or _ch_cond(str(sk["cond"]), {}):
+				return true
+	return false
+
 func _chapter_advance() -> void:
-	_chapter_idx += 1
-	if _chapter_idx >= _chapters_active.size():
-		print("[章节] 总剪辑完结（the_fin）")
-		_chapter_until = -1
+	## 顺序块扫描（skip 过滤→fix/select 组决→成员装载）
+	while true:
+		if _chapter_idx + 1 >= _chapters_active.size():
+			_ch_run = []
+			_ch_done = true ## 完结门：_chapters_tick 不再重入（settle 只发一次）
+			_chapter_background_restore()
+			_globe_level_exec("settle") ## 关卡结算触发器（scheme settle）
+			print("[章节] 总剪辑完结（the_fin）")
+			return
+		_chapter_idx += 1
+		var order0 := _ch_order_of(_chapters_active[_chapter_idx])
+		var block: Array = [_chapters_active[_chapter_idx]]
+		var j := _chapter_idx + 1
+		while j < _chapters_active.size() and _ch_order_of(_chapters_active[j]) == order0:
+			block.append(_chapters_active[j])
+			j += 1
+		_chapter_idx = j - 1 ## 块消费完毕的扫描位置（goto 改写后同样从下一块起）
+		var live: Array = []
+		for r in block:
+			if not _skip_hit(str(r.get("id", ""))):
+				live.append(r)
+		if live.is_empty():
+			print("[章节] skip：顺序 %s 整块跳过" % str(order0))
+			continue
+		var members: Array = []
+		var any_fix := false
+		for r2 in live:
+			if str(r2.get("fix", "")).strip_edges() != "":
+				any_fix = true
+		if any_fix:
+			members = live ## 并列混合：同序章节一同进行（scheme fix）
+		elif live.size() > 1:
+			for r3 in live:
+				var sc := str(r3.get("select", "")).strip_edges()
+				if sc == "" or _ch_cond(sc, {}):
+					members = [r3]
+					break
+			if members.is_empty():
+				print("[章节] select 均不满足——跳过顺序 %s 全部章节" % str(order0))
+				continue
+		else:
+			members = [live[0]]
+		_ch_run = []
+		for m0 in members:
+			var mem: Dictionary = (m0 as Dictionary).duplicate()
+			mem["_start_frame"] = time_frames
+			mem["_loops"] = 0
+			mem["_until_frame"] = _ch_flow_until(mem)
+			_ch_run.append(mem)
+		for mem2 in _ch_run:
+			_chapter_begin(mem2)
+		_chapter_music(_ch_run[0], false) ## 并列组音乐取首位成员
+		_chapter_background(_ch_run[0])
 		return
-	var ch: Dictionary = _chapters_active[_chapter_idx]
-	print("[章节] 进入 %s（%s） starter 触发" % [str(ch.get("id")), str(ch.get("name"))])
+
+func _ch_flow_until(mem: Dictionary) -> int:
+	## flow=入场片段播完估算（30s 下限）；trigged=外部唤起（无时限）；
+	## slug=事件帧冻结点（until 后不再处理触发器/条目，等待 trigged）
+	if str(mem.get("loop", "flow")) == "trigged":
+		return -1
+	var total_ticks := 0
+	for cn2 in String(mem.get("entrance_clips", "")).split(";", false):
+		var cdx2: ClipData = THXKit.resolve_clip(cn2.strip_edges())
+		if cdx2 != null:
+			total_ticks += _clip_cycle_ticks(cdx2)
+	return time_frames + maxi(30 * 60, total_ticks * 6 + 60)
+
+func _chapter_begin(mem: Dictionary) -> void:
+	print("[章节] 进入 %s（%s） starter 触发%s" % [str(mem.get("id")), str(mem.get("name")),
+		"" if int(mem.get("_loops", 0)) == 0 else "（第 %d 次循环重进）" % int(mem["_loops"])])
+	_chapter_fire(mem, "starter")
+	for key in _ch_chars_state.keys():
+		if str(key).begins_with(str(mem.get("id", "")) + "|"):
+			_ch_chars_state.erase(key) ## 循环重进：条目状态清（从头再来——scheme）
 	## 入场片段：锚=演出方领队（敌方编排=敌方领队；无则我方）
 	var anchor = enemy_leader if enemy_leader != null and not enemy_leader.dead else player_leader
-	if anchor != null and str(ch.get("entrance_clips", "")) != "":
-		var run := {"ent": anchor, "tl": {"tl_name": "chapter_" + str(ch.get("id", "")), "ticks": {"0": []},
+	if anchor != null and str(mem.get("entrance_clips", "")) != "":
+		var run := {"ent": anchor, "tl": {"tl_name": "chapter_" + str(mem.get("id", "")), "ticks": {"0": []},
 			"flow_start": "", "flow_every": "", "steps_tick": []},
 			"start_frame": time_frames, "tick": -1, "svg": {}, "r": 80.0, "spell": null,
 			"steps_tick": [], "until_frame": time_frames + 36000} ## 章节级长驻（10 分钟上限）
 		_spell_runs.append(run)
-		for cn in String(ch.get("entrance_clips", "")).split(";", false):
+		for cn in String(mem.get("entrance_clips", "")).split(";", false):
 			var cdx: ClipData = THXKit.resolve_clip(cn.strip_edges())
 			if cdx != null:
 				_sched_clip_entries(run, cdx)
 			else:
 				print("[章节] 片段未解析：", cn)
-	## 流转：flow=入场片段播完（估算，30s 下限）；trigged=外部触发接口
-	var dur := 30 * 60
-	if str(ch.get("loop", "flow")) == "flow":
-		var total_ticks := 0
-		for cn2 in String(ch.get("entrance_clips", "")).split(";", false):
-			var cdx2: ClipData = THXKit.resolve_clip(cn2.strip_edges())
-			if cdx2 != null:
-				total_ticks += _clip_cycle_ticks(cdx2)
-		dur = maxi(30 * 60, total_ticks * 6 + 60)
-	_chapter_until = time_frames + dur
+
+func _chapter_fire(mem: Dictionary, ty: String) -> void:
+	## starter/finner：全局触发器（globe 前缀=scheme"所有章节"）+ 本章节 local
+	for r in _chapters_active:
+		for tr in _ch_trig_parsed(str(r.get("globe_triggers", ""))):
+			if str(tr["type"]) == ty:
+				_chapter_exec(str(tr["script"]), ty + ":globe")
+	for tr2 in _ch_trig_parsed(str(mem.get("local_triggers", ""))):
+		if str(tr2["type"]) == ty:
+			_chapter_exec(str(tr2["script"]), ty + ":local")
+
+func _globe_level_exec(ty: String) -> void:
+	## 关卡级触发器：stage（总剪辑起始）/settle（完结）/next（next 转场时）
+	## ——scheme 全局触发器前三类（声明于任意章节行的 globe_ 单元格）
+	for r in _chapters_active:
+		for tr in _ch_trig_parsed(str(r.get("globe_triggers", ""))):
+			if str(tr["type"]) == ty:
+				_chapter_exec(str(tr["script"]), ty)
+
+func _chapter_end(mem: Dictionary) -> void:
+	_chapter_fire(mem, "finner")
+	if str(mem.get("transition", "")) == "next":
+		_globe_level_exec("next") ## 剪辑触发器（Next）——进入 next 转场时（scheme）
+	## goto：章末条件跳转（目标=章节 id 或 the_fin；条件不满足=正常流转）
+	var g := ChapterData.parse_goto_cell(str(mem.get("goto", "")))
+	if str(g.get("target", "")) != "":
+		if str(g.get("cond", "")) == "" or _ch_cond(str(g["cond"]), mem):
+			var tgt := str(g["target"])
+			if tgt == "the_fin":
+				_chapter_idx = _chapters_active.size() - 1
+				print("[章节] goto the_fin——直接跳转至结束")
+			else:
+				var found := false
+				for i in _chapters_active.size():
+					if str(_chapters_active[i].get("id", "")) == tgt:
+						_chapter_idx = i - 1
+						found = true
+						break
+				if found:
+					print("[章节] goto → %s" % tgt)
+				else:
+					print("[章节] goto 目标未找到：%s（正常流转）" % tgt)
+	_ch_run.erase(mem)
+
+func _chapter_trigged() -> void:
+	## trigged 转场：外部唤起——跳过剩余部分运行下一个（scheme 触发(trigged)/
+	## 循环章节后必须使用触发转场）。boss 击破等外部事件后续批接线。
+	for mem in _ch_run.duplicate():
+		_chapter_end(mem)
+	if _ch_run.is_empty():
+		_chapter_advance()
 
 func _chapters_tick() -> void:
-	if _chapters_active.is_empty() or finished:
+	if _chapters_active.is_empty() or finished or _ch_done:
 		return
-	var ch: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
-	if not ch.is_empty():
-		_ch_triggers_tick(ch) ## 【m117】章节触发器（ticker/threshold/feedback）
-		_ch_chars_tick(ch) ## 【m117】章节角色出场条目
-	if _chapter_until >= 0 and time_frames >= _chapter_until:
-		var ch2: Dictionary = _chapters_active[_chapter_idx] if _chapter_idx >= 0 and _chapter_idx < _chapters_active.size() else {}
-		if str(ch2.get("loop", "flow")) == "loop":
-			_chapter_idx -= 1 ## 循环章节：重进当前（循环后须 trigged 转场——scheme）
-			_chapter_advance()
-		else:
-			print("[章节] %s finner 触发" % str(ch2.get("id", "?")))
-			_chapter_advance()
+	_ch_music_tick() ## 内循环区间守门（每拍轻量）
+	for mem in _ch_run.duplicate():
+		var lp := str(mem.get("loop", "flow"))
+		var slug := lp == "slug"
+		var frozen := slug and int(mem.get("_until_frame", -1)) >= 0 and time_frames >= int(mem["_until_frame"])
+		if not frozen:
+			_ch_triggers_tick(mem) ## 【m117→m118】触发器（globe 并集+local）
+			_ch_chars_tick(mem) ## 【m117→m118】角色条目+运动关键帧（章节局部帧）
+		if slug:
+			continue ## 迟滞：事件帧冻结后不自动流转，等待 _chapter_trigged()
+		if int(mem.get("_until_frame", -1)) >= 0 and time_frames >= int(mem["_until_frame"]):
+			if lp == "loop":
+				mem["_loops"] = int(mem.get("_loops", 0)) + 1
+				_chapter_begin(mem) ## 循环章节：从头再来（scheme）
+				mem["_until_frame"] = _ch_flow_until(mem)
+			else:
+				_chapter_end(mem) ## finner（+next 转场触发器+goto 跳转）
+	if _ch_run.is_empty():
+		_chapter_advance()
 
 ## 【m117 触发器执行器（基础集）】脚本文本最小操作集：
 ##   toast(文本)/print(文本)/playclips(片段名)/cancel()/——其余操作=响亮提示
@@ -1344,33 +1529,25 @@ func _chapter_exec(script: String, where: String) -> void:
 				return
 	print("[章节脚本·未实装] %s（%s）" % [t, where])
 
-## 【m117 章节触发器逐帧】ticker 每拍/threshold 上下沿（条件=行为检测+time_frames
-## 表达式）/feedback 注册事件（delta>0 且已注册才检——scheme"注册才启用"）
+## 【m117 触发器逐帧 → m118 语境扩展】ticker 每拍/threshold（条件=行为检测
+## +time_frames/chaptertime/chapterloop/michihit/clear 表达式）/feedback 注册
+## 事件 delta（注册才检——scheme"注册才启用"）。globe 前缀=scheme"所有章节"
+## 生效（全行并集，非仅本行）。
 var _fb_seen: Dictionary = {} ## 事件 → 上一拍累计（delta 检测）
 
-func _ch_triggers_tick(ch: Dictionary) -> void:
-	for tcell in [str(ch.get("globe_triggers", "")), str(ch.get("local_triggers", ""))]:
-		for tr in ChapterData.parse_triggers(tcell):
+func _ch_triggers_tick(mem: Dictionary) -> void:
+	var cells: Array = []
+	for r in _chapters_active:
+		cells.append(str(r.get("globe_triggers", "")))
+	cells.append(str(mem.get("local_triggers", "")))
+	for tcell in cells:
+		for tr in _ch_trig_parsed(tcell):
 			match str(tr["type"]):
 				"ticker":
 					_chapter_exec(str(tr["script"]), "ticker")
 				"threshold":
-					var cond := str(tr["cond"])
-					var ex := DanmakuExpr.new()
-					if ex.compile(cond.replace(">>", ">").replace("<<", "<"),
-							PackedStringArray(["time_frames", "graze", "hit", "miss", "spell", "danmaku", "shoot", "privatehit"])):
-						var v: float = ex.execute_dict({
-							"time_frames": float(time_frames),
-							"graze": float(BehaviorScore.read("graze")),
-							"hit": float(BehaviorScore.read("hit")),
-							"miss": float(BehaviorScore.read("miss")),
-							"spell": float(BehaviorScore.read("spell")),
-							"danmaku": float(BehaviorScore.read("danmaku")),
-							"shoot": float(BehaviorScore.read("shoot")),
-							"privatehit": float(BehaviorScore.read("privatehit")),
-						}, 0.0)
-						if v > 0.5:
-							_chapter_exec(str(tr["script"]), "threshold")
+					if _ch_cond(str(tr["cond"]), mem):
+						_chapter_exec(str(tr["script"]), "threshold")
 				"feedback":
 					var ev := str(tr["cond"])
 					var cur: int = BehaviorScore.display_score(ev)
@@ -1379,23 +1556,67 @@ func _ch_triggers_tick(ch: Dictionary) -> void:
 						_chapter_exec(str(tr["script"]), "feedback:" + ev)
 					_fb_seen[ev] = cur
 
-## 【m117 章节角色出场条目】名:进tick:出tick:x,y:运动——进=原位站起+摆位；
-## 出=满目疮痍（dead）；成员须已在敌我阵容（本批不产新角色）
+## 【m117→m118 章节角色出场条目】名:进:出:x,y:运动——tick=章节局部帧
+## （章开始=0；m117 曾用全局帧，m118 修正：循环重进条目可重放）；
+## 进=原位站起+摆位（钳场内）/出=满目疮痍（dead）；成员须已在敌我阵容。
 var _ch_chars_state: Dictionary = {} ## 章节id+名 → {entered:bool}
 
-func _ch_chars_tick(ch: Dictionary) -> void:
-	var ch_id := str(ch.get("id", ""))
-	for ce in ChapterData.parse_char_entries(str(ch.get("chars", ""))):
+func _ch_chars_tick(mem: Dictionary) -> void:
+	var ch_id := str(mem.get("id", ""))
+	var lt := time_frames - int(mem.get("_start_frame", time_frames))
+	for ce in ChapterData.parse_char_entries(str(mem.get("chars", ""))):
 		var key: String = ch_id + "|" + str(ce["name"])
 		var st: Dictionary = _ch_chars_state.get(key, {"entered": false})
-		if not bool(st["entered"]) and time_frames >= int(ce["enter"]):
+		if not bool(st["entered"]) and lt >= int(ce["enter"]):
 			_ch_char_enter(ce)
 			st["entered"] = true
 			_ch_chars_state[key] = st
-		elif bool(st["entered"]) and int(ce["exit"]) >= 0 and time_frames >= int(ce["exit"]):
+		elif bool(st["entered"]) and int(ce["exit"]) >= 0 and lt >= int(ce["exit"]):
 			_ch_char_exit(ce)
 			st["entered"] = false
 			_ch_chars_state[key] = st
+	_ch_moves_tick(mem, lt, ch_id)
+
+## 【m118 运动关键帧】moves="名@tick:x,y[|cx,cy];…"——段内二次贝塞尔
+## （弯曲点=进入该关键帧一段的弯曲点，缺省=直线）；首段前=停在出场位，
+## 末段后=停在末关键帧。编排在章内接管实体位置（作者数据决定编排对象）。
+## scheme"速度/停滞修饰→目标点与弯曲点变相对点"=后续批（本批=绝对点）。
+func _ch_moves_tick(mem: Dictionary, lt: int, ch_id: String) -> void:
+	var kfs: Dictionary = {}
+	for mv in ChapterData.parse_moves(str(mem.get("moves", ""))):
+		if not kfs.has(mv["name"]):
+			kfs[mv["name"]] = []
+		(kfs[mv["name"]] as Array).append(mv)
+	if kfs.is_empty():
+		return
+	var enter_pos := {}
+	for ce2 in ChapterData.parse_char_entries(str(mem.get("chars", ""))):
+		enter_pos[str(ce2["name"])] = ce2["pos"]
+	for e in entities:
+		if e is BattleEntity and kfs.has(e.chara_name()):
+			var st2: Dictionary = _ch_chars_state.get(ch_id + "|" + e.chara_name(), {"entered": false})
+			if not bool(st2["entered"]):
+				continue ## 未出场不编排
+			var list: Array = kfs[e.chara_name()]
+			list.sort_custom(func(a, b): return int(a["tick"]) < int(b["tick"]))
+			var p0: Vector2 = enter_pos.get(e.chara_name(), e.position)
+			var t0 := 0
+			var target := p0
+			for kf in list:
+				var kt := int(kf["tick"])
+				if lt < kt:
+					var denom := kt - t0
+					var u := 0.0 if denom <= 0 else clampf(float(lt - t0) / float(denom), 0.0, 1.0)
+					var p1: Vector2 = kf["pos"]
+					var ctrl: Vector2 = p0.lerp(p1, 0.5) if not bool(kf.get("has_ctrl", false)) else (kf["ctrl"] as Vector2)
+					var q0 := p0.lerp(ctrl, u)
+					var q1 := ctrl.lerp(p1, u)
+					target = q0.lerp(q1, u) ## 二次贝塞尔（de Casteljau）
+					break
+				p0 = kf["pos"]
+				t0 = kt
+				target = p0
+			e.position = target
 
 func _ch_char_enter(ce: Dictionary) -> void:
 	for e in entities:
@@ -1415,6 +1636,266 @@ func _ch_char_exit(ce: Dictionary) -> void:
 			e.dead = true
 			print("[章节] 角色离场：%s" % str(ce["name"]))
 			return
+
+## =============================================================
+## 【m118 章节音乐（scheme 背景音乐节）】轨=.ogg/.wav（data/music/ 按名解析
+## 或任意路径）；music_start=起始点秒。music_plan 方案：
+##   空/continue=不重复（同轨继续上一章播放进度；换轨=从起始点起）
+##   hard=硬起始（直接从起始点开始）/soft=软起始（等功率转场：旧轨 cos
+##   衰减+新轨 sin 起升，2 秒）/sfx=音效起始（旧轨渐弱→静音→[音效]→延迟后
+##   从起始点播放；参数 sfx:路径;fade:秒;delay:秒）/loop:A[,B]=内循环
+##   （B 缺=到结束——仅 slug 章节支持，否则响亮提示——scheme）
+## =============================================================
+var _music_a: AudioStreamPlayer = null ## 主播放器
+var _music_b: AudioStreamPlayer = null ## 副播放器（等功率转场/音效占位）
+var _sfx_player: AudioStreamPlayer = null ## 音效起始的音效
+var _music_track := ""
+var _music_loop_range := PackedFloat32Array() ## [a,b]（b<0=到结束——仅 slug）
+var _xfade_in: AudioStreamPlayer = null
+var _xfade_out: AudioStreamPlayer = null
+var _sfx_pending := {} ## {track,start,sfx}
+
+func _ch_music_nodes() -> void:
+	if _music_a != null:
+		return
+	_music_a = AudioStreamPlayer.new()
+	_music_b = AudioStreamPlayer.new()
+	_sfx_player = AudioStreamPlayer.new()
+	add_child(_music_a)
+	add_child(_music_b)
+	add_child(_sfx_player)
+
+func _ch_music_resolve(track: String) -> AudioStream:
+	var t := track.strip_edges()
+	if t == "":
+		return null
+	for p in [t, THXKit.kpath("res://addons/thx_gamekit/data/music/") + t,
+			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".ogg",
+			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".wav"]:
+		if ResourceLoader.exists(p):
+			return load(p)
+		if FileAccess.file_exists(p) and (p.ends_with(".wav") or p.ends_with(".ogg")):
+			var s: AudioStream = AudioStreamWAV.load_from_file(p) if p.ends_with(".wav") else AudioStreamOggVorbis.load_from_file(p)
+			if s != null:
+				return s
+	return null
+
+func _ch_music_play(track: String, start_s: float) -> void:
+	var st := _ch_music_resolve(track)
+	if st == null:
+		if track != "":
+			_toast("【章节音乐】轨未找到：%s（.ogg/.wav——data/music/ 下按名或全路径）" % track)
+		return
+	_music_loop_range = PackedFloat32Array()
+	_music_a.stream = st
+	_music_a.volume_db = 0.0
+	_music_a.play(start_s)
+	_music_track = track
+
+func _chapter_music(mem: Dictionary, _reentry := false) -> void:
+	var plan := str(mem.get("music_plan", "")).strip_edges()
+	var pl := plan.to_lower()
+	var track := str(mem.get("music_track", "")).strip_edges()
+	var start_s := float(str(mem.get("music_start", ""))) if str(mem.get("music_start", "")) != "" else 0.0
+	if pl == "" or pl == "continue":
+		## 不重复：同轨继续上一章播放进度（scheme）；换轨=从起始点起
+		if track != "" and _music_track != track:
+			_ch_music_play(track, start_s)
+		return
+	if pl.begins_with("loop"):
+		_ch_music_play(track, start_s)
+		var args := pl.substr(4).strip_edges().lstrip(":")
+		var pts := args.split(",")
+		if pts.size() >= 1 and pts[0].strip_edges().is_valid_float():
+			var a := float(pts[0])
+			var b := -1.0
+			if pts.size() >= 2 and pts[1].strip_edges().is_valid_float():
+				b = float(pts[1])
+			if b < 0.0:
+				if str(mem.get("loop", "")) != "slug":
+					_toast("【章节音乐】内循环缺终点仅支持迟滞（slug）章节")
+				else:
+					_music_loop_range = PackedFloat32Array([a, b])
+			else:
+				_music_loop_range = PackedFloat32Array([a, b])
+		return
+	if pl == "hard":
+		_ch_music_play(track, start_s) ## 硬起始：直接从起始点开始
+		return
+	if pl == "soft":
+		## 软起始：等功率转场（旧轨 cos 衰减/新轨 sin 起升，2 秒——scheme"前后若干秒"）
+		var st2 := _ch_music_resolve(track)
+		if st2 == null:
+			if track != "":
+				_toast("【章节音乐】轨未找到：%s（.ogg/.wav——data/music/ 下按名或全路径）" % track)
+			return
+		var np := _music_b
+		np.stream = st2
+		np.volume_db = linear_to_db(0.0001)
+		np.play(start_s)
+		_music_track = track
+		_music_loop_range = PackedFloat32Array()
+		_xfade_in = np
+		_xfade_out = _music_a
+		var tw := create_tween()
+		tw.tween_method(_xfade_step, 0.0, 1.0, 2.0)
+		tw.tween_callback(_xfade_done)
+		return
+	if pl.begins_with("sfx"):
+		_sfx_fade_and_play(track, start_s, plan, 0.0, 0.0)
+		return
+	_toast("【章节音乐】未知方案：%s（continue/hard/soft/sfx/loop:A[,B]）" % plan)
+
+func _xfade_step(p: float) -> void:
+	if _xfade_in != null:
+		_xfade_in.volume_db = linear_to_db(maxf(sin(p * PI / 2.0), 0.0001))
+	if _xfade_out != null:
+		_xfade_out.volume_db = linear_to_db(maxf(cos(p * PI / 2.0), 0.0001))
+
+func _xfade_done() -> void:
+	if _xfade_out != null:
+		_xfade_out.stop()
+		_xfade_out.volume_db = 0.0
+	if _xfade_in != null:
+		_xfade_in.volume_db = 0.0
+		var old_a := _music_a
+		_music_a = _xfade_in
+		_music_b = old_a
+	_xfade_in = null
+	_xfade_out = null
+
+func _sfx_fade_and_play(track: String, start_s: float, plan: String, _a := 0.0, _b := 0.0) -> void:
+	## 音效起始（scheme）：旧轨 fade 秒内渐弱→静音→[音效]→delay 秒后从起始点播放
+	var fade := 2.0
+	var delay := 1.0
+	var sfxp := ""
+	var argstr := plan.substr(3).strip_edges().lstrip(":")
+	for seg in argstr.split(";"):
+		var s := seg.strip_edges()
+		if s == "":
+			continue
+		var ci := s.find(":")
+		if ci > 0:
+			var k := s.substr(0, ci).to_lower()
+			var v := s.substr(ci + 1).strip_edges()
+			if k == "fade" and v.is_valid_float():
+				fade = float(v)
+			elif k == "delay" and v.is_valid_float():
+				delay = float(v)
+			elif k == "sfx":
+				sfxp = v
+		else:
+			sfxp = s
+	_sfx_pending = {"track": track, "start": start_s, "sfx": sfxp}
+	var tw := create_tween()
+	tw.tween_method(_sfx_fade_step, 0.0, 1.0, maxf(fade, 0.1))
+	tw.tween_callback(_sfx_silence)
+	tw.tween_interval(maxf(delay, 0.1))
+	tw.tween_callback(_sfx_then_play)
+
+func _sfx_fade_step(p: float) -> void:
+	if _music_a != null and _music_a.playing:
+		_music_a.volume_db = linear_to_db(maxf(cos(p * PI / 2.0), 0.0001))
+
+func _sfx_silence() -> void:
+	if _music_a != null:
+		_music_a.stop()
+		_music_a.volume_db = 0.0
+	var sfxp := str(_sfx_pending.get("sfx", ""))
+	if sfxp != "" and _sfx_player != null:
+		var st := _ch_music_resolve(sfxp)
+		if st != null:
+			_sfx_player.stream = st
+			_sfx_player.play()
+
+func _sfx_then_play() -> void:
+	if _sfx_player != null:
+		_sfx_player.stop()
+	_ch_music_play(str(_sfx_pending.get("track", "")), float(_sfx_pending.get("start", 0.0)))
+
+func _ch_music_tick() -> void:
+	## 内循环区间守门：播到 B 回 A（B<0=到结束仅 slug 语义，无 B 界）
+	if _music_loop_range.size() == 2 and _music_a != null and _music_a.playing:
+		var b := _music_loop_range[1]
+		if b >= 0.0 and _music_a.get_playback_position() >= b:
+			_music_a.seek(_music_loop_range[0])
+
+## =============================================================
+## 【m118 章节背景画面】background=文件名/路径——.png/.bmp 静态先行
+## （scheme 以 .avi/.mpg 为主，但 Godot 仅原生支持 .ogv——静态本批落地，
+## 视频转码管线待作者裁定）；解析=原路径→data/bg/<名>[.png/.bmp]→
+## Image.load_from_file 兜底（免导入直用）；空=恢复默认关卡背景（m114 槽）。
+## =============================================================
+var _ch_bg_sprite: Sprite2D = null
+var _ch_bg_default: Texture2D = null
+
+func _ch_bg_load(bg: String) -> Texture2D:
+	var t := bg.strip_edges()
+	if t == "":
+		return null
+	for p in [t, THXKit.kpath("res://addons/thx_gamekit/data/bg/") + t]:
+		if ResourceLoader.exists(p):
+			return load(p)
+	for ext in [".png", ".bmp"]:
+		var p2: String = THXKit.kpath("res://addons/thx_gamekit/data/bg/") + t + ext
+		if ResourceLoader.exists(p2):
+			return load(p2)
+	for p3 in [t, THXKit.kpath("res://addons/thx_gamekit/data/bg/") + t + ".png"]:
+		if FileAccess.file_exists(p3):
+			var img := Image.load_from_file(p3)
+			if img != null:
+				return ImageTexture.create_from_image(img)
+	return null
+
+func _ch_bg_apply(tex: Texture2D) -> void:
+	if tex == null:
+		_chapter_background_restore()
+		return
+	if _ch_bg_sprite == null:
+		_ch_bg_sprite = Sprite2D.new()
+		_ch_bg_sprite.position = Vector2(200, 200)
+		_ch_bg_sprite.z_index = -50
+		_ch_bg_sprite.modulate = Color(1, 1, 1, 0.85)
+		if world != null:
+			world.add_child(_ch_bg_sprite)
+	_ch_bg_sprite.texture = tex
+	_ch_bg_sprite.visible = true
+	var k: float = 400.0 / maxf(float(tex.get_height()), 1.0)
+	_ch_bg_sprite.scale = Vector2(k, k)
+
+func _chapter_background(mem: Dictionary) -> void:
+	var bg := str(mem.get("background", "")).strip_edges()
+	if bg == "":
+		_chapter_background_restore()
+		return
+	var tex := _ch_bg_load(bg)
+	if tex == null:
+		_toast("【章节背景】未找到：%s（.png/.bmp——data/bg/ 下按名或全路径）" % bg)
+		_chapter_background_restore()
+		return
+	_ch_bg_apply(tex)
+
+func _chapter_background_restore() -> void:
+	if _ch_bg_sprite == null:
+		return
+	_ch_bg_sprite.visible = _ch_bg_default != null
+	_ch_bg_sprite.texture = _ch_bg_default
+	if _ch_bg_default != null:
+		var k: float = 400.0 / maxf(float(_ch_bg_default.get_height()), 1.0)
+		_ch_bg_sprite.scale = Vector2(k, k)
+
+func _chapter_is_final() -> bool:
+	## 关底语境：当前成员块=总剪辑最后一块（或成员 goto=the_fin——直达终局）
+	for mem in _ch_run:
+		if str(mem.get("goto", "")).contains("the_fin"):
+			return true
+	if _ch_run.is_empty():
+		return false
+	var order0 := _ch_order_of(_ch_run[0])
+	for r in _chapters_active:
+		if _ch_order_of(r) > order0:
+			return false
+	return true
 
 ## 【m109 擦弹（scheme graze(距离)）】自机接近未标记弹幕=记一次擦弹+贴
 ## #grazed_标签（每弹至多一次；命中弹在被弹结算即消亡不进计数；池化重置
