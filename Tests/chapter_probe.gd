@@ -6,7 +6,7 @@ extends Node
 ## D. 入场片段：resolve_clip 命中→playclips 条目挂载（clip_sched 非空）
 ## E. 触发器执行器：ticker/threshold(chaptertime)/feedback + starter/finner/stage/settle/next
 ## F. 角色条目（章节局部帧）+ 运动关键帧（二次贝塞尔）
-## G. 跳转/并列：skip（无条件/条件）/goto（目标/the_fin/条件）/select（择一/全否跳块/空兜底）/fix（同屏独立）+ michihit/clear 语境
+## G. 跳转/并列：skip（无条件/条件）/goto（目标/the_fin/条件）/select（择一/全否跳块/空兜底）/fix（同屏独立）+ dochu/clear 语境
 ## H. 音乐方案（hard/continue/loop 区间）+ 背景画面（换/恢复）
 func _ready() -> void:
 	var arena = load("res://scenes/battle_arena.tscn").instantiate()
@@ -321,7 +321,7 @@ func _ready() -> void:
 			arena._ch_run[0]["_until_frame"] = arena.time_frames + 2
 			for fr15 in 4:
 				arena._physics_process(1.0 / 60.0)
-	## G5 michihit/clear 语境（道中=非末块/关底=末块或 goto the_fin）
+	## G5 dochu/clear 语境（道中=非末块/关底=末块或 goto the_fin——dochu=原 michihit，作者 20261122 改名）
 	install.call([mkrow.call("g5a", 1), mkrow.call("g5b", 2)])
 	arena._chapter_advance()
 	if arena._chapter_is_final():

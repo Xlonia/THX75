@@ -855,9 +855,10 @@ func _on_entity_destroyed(ent: BattleEntity) -> void:
 		if drop > 0:
 			_spawn_drop(ent.position, "pp", drop)
 		if ent.side == 1 and int(ent.db.get("is_boss", 0)) == 1:
-			## 【m118】michihit=道中boss被彻底击败/clear=关底boss被彻底击败
+			## 【m118→m119】dochu=道中boss被彻底击败（东方社区习惯，原 michihit——
+			## 作者 20261122 改名）/clear=关底boss被彻底击败
 			## （scheme 反馈事件；关底=当前成员块为总剪辑最后一块或 goto the_fin）
-			BehaviorScore.add("clear" if _chapter_is_final() else "michihit")
+			BehaviorScore.add("clear" if _chapter_is_final() else "dochu")
 
 ## 生成掉落拾取物（材质 pp/spell）
 ## 【批复 2026-10-13】散落：随机方向 1px/帧 初速，模长每帧 -0.05，20 帧后静止
@@ -1297,7 +1298,7 @@ func _ch_trig_parsed(cell: String) -> Array:
 func _ch_cond(expr: String, mem: Dictionary) -> bool:
 	var ex := DanmakuExpr.new()
 	var names := PackedStringArray(["time_frames", "chaptertime", "chapterloop", "graze", "hit",
-		"miss", "spell", "danmaku", "shoot", "privatehit", "michihit", "clear"])
+		"miss", "spell", "danmaku", "shoot", "privatehit", "dochu", "clear"])
 	if not ex.compile(expr.replace(">>", ">").replace("<<", "<"), names):
 		return false
 	var start_f := time_frames
@@ -1316,7 +1317,8 @@ func _ch_cond(expr: String, mem: Dictionary) -> bool:
 		"danmaku": float(BehaviorScore.read("danmaku")),
 		"shoot": float(BehaviorScore.read("shoot")),
 		"privatehit": float(BehaviorScore.read("privatehit")),
-		"michihit": float(BehaviorScore.read("michihit")),
+		"michihit": float(BehaviorScore.read("dochu")),
+		"dochu": float(BehaviorScore.read("dochu")),
 		"clear": float(BehaviorScore.read("clear")),
 	}
 	return ex.execute_dict(vals, 0.0) > 0.5
@@ -1473,6 +1475,7 @@ func _chapters_tick() -> void:
 	if _chapters_active.is_empty() or finished or _ch_done:
 		return
 	_ch_music_tick() ## 内循环区间守门（每拍轻量）
+	_ch_bg_video_tick() ## 视频背景首帧适配（m119）
 	for mem in _ch_run.duplicate():
 		var lp := str(mem.get("loop", "flow"))
 		var slug := lp == "slug"
@@ -1530,7 +1533,7 @@ func _chapter_exec(script: String, where: String) -> void:
 	print("[章节脚本·未实装] %s（%s）" % [t, where])
 
 ## 【m117 触发器逐帧 → m118 语境扩展】ticker 每拍/threshold（条件=行为检测
-## +time_frames/chaptertime/chapterloop/michihit/clear 表达式）/feedback 注册
+## +time_frames/chaptertime/chapterloop/dochu/clear 表达式）/feedback 注册
 ## 事件 delta（注册才检——scheme"注册才启用"）。globe 前缀=scheme"所有章节"
 ## 生效（全行并集，非仅本行）。
 var _fb_seen: Dictionary = {} ## 事件 → 上一拍累计（delta 检测）
@@ -1671,7 +1674,9 @@ func _ch_music_resolve(track: String) -> AudioStream:
 		return null
 	for p in [t, THXKit.kpath("res://addons/thx_gamekit/data/music/") + t,
 			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".ogg",
-			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".wav"]:
+			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".wav",
+			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".OGG",
+			THXKit.kpath("res://addons/thx_gamekit/data/music/") + t + ".WAV"]:
 		if ResourceLoader.exists(p):
 			return load(p)
 		if FileAccess.file_exists(p) and (p.ends_with(".wav") or p.ends_with(".ogg")):
@@ -1828,6 +1833,49 @@ func _ch_music_tick() -> void:
 ## =============================================================
 var _ch_bg_sprite: Sprite2D = null
 var _ch_bg_default: Texture2D = null
+var _ch_bg_video: VideoStreamPlayer = null ## 章节视频背景（①裁定 20261122：仅 .ogv/Theora）
+var _ch_bg_video_scaled := false
+
+func _ch_bg_video_replay() -> void:
+	if _ch_bg_video != null and _ch_bg_video.visible:
+		_ch_bg_video.play() ## 章节级循环（VideoStreamPlayer 无 loop 属性——finished 重播）
+
+func _ch_bg_video_tick() -> void:
+	## 视频首帧后按高适配 400 场高（Control 顶左锚→水平居中修正；一次到位）
+	if _ch_bg_video == null or not _ch_bg_video.visible or _ch_bg_video_scaled:
+		return
+	var tex := _ch_bg_video.get_video_texture()
+	if tex == null or tex.get_height() <= 0:
+		return
+	var k: float = 400.0 / float(tex.get_height())
+	_ch_bg_video.scale = Vector2(k, k)
+	_ch_bg_video.position = Vector2(200.0 - float(tex.get_width()) * k * 0.5, 0.0)
+	_ch_bg_video_scaled = true
+
+func _ch_bg_video_apply(path: String) -> void:
+	## 【①裁定 20261122】章节视频背景仅支持 .ogv（Theora=Godot 唯一原生视频
+	## 编解码）；导入时转换扩展=待办（作者策划文案已记）。
+	_chapter_background_restore() ## 先清图片/旧视频态
+	var st: VideoStream = null
+	var cands := [path, THXKit.kpath("res://addons/thx_gamekit/data/bg/") + path]
+	for p in cands:
+		if ResourceLoader.exists(p):
+			st = load(p)
+			break
+	if st == null:
+		_toast("【章节背景】视频未找到/未导入：%s（仅 .ogv——放项目内走导入管线）" % path)
+		return
+	if _ch_bg_video == null:
+		_ch_bg_video = VideoStreamPlayer.new()
+		_ch_bg_video.z_index = -50
+		_ch_bg_video.finished.connect(_ch_bg_video_replay)
+		if world != null:
+			world.add_child(_ch_bg_video)
+	_ch_bg_video.stream = st
+	_ch_bg_video.scale = Vector2.ONE
+	_ch_bg_video_scaled = false
+	_ch_bg_video.visible = true
+	_ch_bg_video.play()
 
 func _ch_bg_load(bg: String) -> Texture2D:
 	var t := bg.strip_edges()
@@ -1868,6 +1916,9 @@ func _chapter_background(mem: Dictionary) -> void:
 	if bg == "":
 		_chapter_background_restore()
 		return
+	if bg.to_lower().ends_with(".ogv"):
+		_ch_bg_video_apply(bg) ## 【①裁定】视频背景=仅 ogv
+		return
 	var tex := _ch_bg_load(bg)
 	if tex == null:
 		_toast("【章节背景】未找到：%s（.png/.bmp——data/bg/ 下按名或全路径）" % bg)
@@ -1876,6 +1927,9 @@ func _chapter_background(mem: Dictionary) -> void:
 	_ch_bg_apply(tex)
 
 func _chapter_background_restore() -> void:
+	if _ch_bg_video != null and _ch_bg_video.visible:
+		_ch_bg_video.stop() ## 视频恢复默认=停播+隐藏（m119）
+		_ch_bg_video.visible = false
 	if _ch_bg_sprite == null:
 		return
 	_ch_bg_sprite.visible = _ch_bg_default != null
