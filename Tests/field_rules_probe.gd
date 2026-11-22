@@ -133,6 +133,45 @@ func _ready() -> void:
 	FieldRules.unregister("t_over")
 	FieldRules.unregister("t_req")
 	FieldRules.unregister("t_smooth")
+	## M. multi/overwrite 倍乘关系（作者 20261123 定案：覆盖=数值先者/不覆盖=叠加/
+	## smooth=渐变交接/取整注册）
+	FieldRules.clear()
+	FieldRules.register({"id": "m_jia", "tag": "multi", "chara": false, "danmaku": true,
+		"box": [0, 0, 100, 400], "multi": 2.0}) ## 甲=×2 叠加（先注册）
+	FieldRules.register({"id": "m_yi", "tag": "multi", "chara": false, "danmaku": true,
+		"box": [50, 0, 150, 400], "multi": 3.0, "overwrite": true}) ## 乙=×3 覆盖（后注册）
+	FieldRules.register({"id": "m_bing", "tag": "multi", "chara": false, "danmaku": true,
+		"box": [60, 0, 140, 400], "multi": 5.0, "overwrite": true}) ## 丙=×5 覆盖（更后=让位先者）
+	if absf(FieldRules.multi_at(Vector2(25, 200), 1.0) - 2.0) > 0.001:
+		fails += 1
+		print("FRULE_FAIL: M 仅甲=叠加 ×2 不符（%s）" % str(FieldRules.multi_at(Vector2(25, 200), 1.0)))
+	if absf(FieldRules.multi_at(Vector2(75, 200), 1.0) - 3.0) > 0.001:
+		fails += 1
+		print("FRULE_FAIL: M 甲乙重叠=覆盖直接覆写（×3）不符（%s）" % str(FieldRules.multi_at(Vector2(75, 200), 1.0)))
+	if absf(FieldRules.multi_at(Vector2(75, 200), 4.0) - 3.0) > 0.001:
+		fails += 1
+		print("FRULE_FAIL: M 覆盖含实体标签覆写不符（%s）" % str(FieldRules.multi_at(Vector2(75, 200), 4.0)))
+	if FieldRules.multi_at(Vector2(200, 200), 1.0) != 1.0:
+		fails += 1
+		print("FRULE_FAIL: M 域外=基准不变不符")
+	var b = Bullet.new()
+	b.ev = DanmakuEventData.new()
+	b.ev.tag = DanmakuEventData.TAG_REGULAR
+	b.dmg_now = 10
+	b.pos = Vector2(75, 200)
+	b.update_mul()
+	if b.hit_damage() != 30:
+		fails += 1
+		print("FRULE_FAIL: M Bullet hit_damage 取整修饰不符（%d）" % b.hit_damage())
+	b.pos = Vector2(200, 200)
+	b.update_mul()
+	if b.hit_damage() != 10:
+		fails += 1
+		print("FRULE_FAIL: M Bullet 域外修饰不符（%d）" % b.hit_damage())
+	FieldRules.clear()
+	if FieldRules.multi_count() != 0:
+		fails += 1
+		print("FRULE_FAIL: M multi 计数未清（%d）" % FieldRules.multi_count())
 	if fails == 0:
-		print("FRULE_OK: 条带/sattle/mutual/require/smooth/itemget/支援框集成 全过")
+		print("FRULE_OK: 条带/sattle/mutual/require/smooth/itemget/multi-overwrite/支援框集成 全过")
 	get_tree().quit(1 if fails > 0 else 0)

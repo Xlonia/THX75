@@ -1468,11 +1468,19 @@ func _chapter_char_op(ent: BattleEntity, st: Dictionary, run_ctx: Dictionary) ->
 		## —— 修饰操作（解除条件 modifiremove(命题)）——
 		"stop", "setspeed", "banshoot", "itemget":
 			_chapter_mod(ent, op, params)
-		"setdamage", "setclip":
-			## 消费点待接（见 m119/m120 报告）：setdamage=按发射者的弹幕伤害倍乘
-			## （个体伤害来自弹幕参数——需"按发射者倍乘"结算钩子）；setclip=
-			## 火力点片段覆盖（结构待接）。登记不虚报。
-			_toast("【章节】%s 已登记，消费点接入待批：%s" % [op, params])
+		"setdamage":
+			## setdamage(角色选择器，数值)——倍乘角色伤害（实体倍乘标签：
+			## 弹幕出生捕获为基准，范围 multi/overwrite 逐拍在其上交接——
+			## 作者 20261123 定案"前者=出生捕获+实时改写"）
+			var sgd := params.split(",")
+			if sgd.size() >= 2 and sgd[1].strip_edges().is_valid_float():
+				for tgt4 in EntityOps.resolve(sgd[0].strip_edges(), ent, self):
+					if tgt4 is BattleEntity:
+						tgt4.dmg_mul_tag = maxf(0.0, float(sgd[1].strip_edges()))
+				print("[章节] setdamage %s → %s" % [params, ent.chara_name()])
+		"setclip":
+			## 消费点待接（见 m119/m120 报告）：火力点片段覆盖（结构待接）。
+			_toast("【章节】setclip 已登记，消费点接入待批：%s" % params)
 		_:
 			_toast("【章节】角色操作未实装：%s(%s)（scheme 角色流程词表扩展随批）" % [op, params])
 

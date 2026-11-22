@@ -369,6 +369,11 @@ func _ready() -> void:
 		if arena._ent_banned(pl6):
 			fails += 1
 			print("CHAP_FAIL: G6 modifiremove 未解除")
+		arena._chapter_let("letchara", "player(){setdamage(player(),2)}")
+		if absf(float(pl6.dmg_mul_tag) - 2.0) > 0.001:
+			fails += 1
+			print("CHAP_FAIL: G6 setdamage 实体标签未生效（%s）" % str(pl6.dmg_mul_tag))
+		pl6.dmg_mul_tag = 1.0 ## 复位（防串节）
 		arena._chapter_let("letchara", "player(){itemget(60)}")
 		if arena._ent_itemget_radius(pl6) < 60.0:
 			fails += 1
