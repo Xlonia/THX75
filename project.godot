@@ -24,15 +24,13 @@ config/icon="res://gameAssetBase/UIs/ico64.png"
 
 Dialogic="*uid://ds2q0uclmolvu"
 THXKit="*res://addons/thxgamekit/kit/addons/thx_gamekit/core/kit.gd"
-GameGlobals="*res://addons/thxgamekit/keshinozo/game_globals.gd"
+GameGlobals="*res://addons/thxgamekit/kit/addons/keshinozo/game_globals.gd"
 GawWorkbenchRuntimeProbe="*uid://b1gt47ammaqro"
 ProfilerSaver="*res://profilersaver.gd"
 
 [dialogic]
 
-directories/dch_directory={
-"unit_test_character": "res://Tests/Resources/unit_test_character.dch"
-}
+directories/dch_directory={}
 directories/dtl_directory={}
 layout/style_directory={}
 glossary/default_case_sensitive=true
@@ -78,7 +76,7 @@ project/assembly_name="TH75"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/godot_ai_workbench/plugin.cfg", "res://addons/thxgamekit/kit/addons/thx_gamekit/plugin.cfg")
+enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/godot_ai_workbench/plugin.cfg", "res://addons/thxgamekit/kit/addons/thx_gamekit/plugin.cfg", "res://addons/thxgamekit/kit/addons/keshinozo/plugin.cfg")
 
 [input]
 
