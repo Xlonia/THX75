@@ -1,47 +1,46 @@
-class_name StoryBridge
-extends RefCounted
+extends Node
 ## =============================================================
-## 【m126 剧情桥骨架（1122 目标书 C 项——剧情对接桥接层）】
-## Dialogic flag ↔ 游戏数据 三通道桥（作者"尽力"项——本文件=骨架+清单，
-## 细接等作者 Dialogic 侧约定（flag 命名/变量空间/触发时机）后填实现）。
-## 三通道（对应 20261126_剧情桥接清单.md）：
-##   A flag ↔ GameGlobals：故事进度开关（道具/元件=开关——作者批复 20261121
-##     "按序号+优先级组叠加/覆盖/免除"）
-##   B flag ↔ 场地规则：剧情场次开场时写 field_rules 快照（支援框等）
-##   C flag ↔ 对战配置：剧情→对决（阵容/难度/P 点/符卡数写 versus_* → 进场）
-## 【Dialogic 挂接点（待作者约定后实装）】
-##   - Dialogic 启动时注入本桥（autoload 或单一入口）
-##   - flag 变化事件 → set_flag（Dialogic variable changed 信号或轮询）
-##   - 战斗请求 → battle_request（Dialogic event 命令或剧情脚本调）
-## 本桥不依赖 Dialogic：纯静态 flag 存储 + 写穿函数（Dialogic 侧适配后接）。
+## 【m126 剧情桥（作者批复 20261126 四定案落地——autoload 形态）】
+## Dialogic flag ↔ 游戏数据 三通道桥：
+##   A flag ↔ GameGlobals：**独立变量表**（批复①——非 Dialogic 变量空间；
+##     能被 Dialogic 调用即可=autoload 名 StoryBridge 直调
+##     StoryBridge.set_flag(...) / get_flag(...)）
+##   变化感知：**真信号**（批复②）——flag_changed(group, idx, value)
+##   C 剧情→对战：**直接打开对战**（批复③——battle_request 写穿 versus_*
+##     后 change_scene 到 battle_arena）；测试走 .thxt 存档（剧情按钮为时尚早）
+##   难度（批复④）：**不同难度=弹幕表现不同的不同 thxe**——非古典档位；
+##     本桥不设难度字段，难度=选用哪个 thxe/角色配置由剧情侧决定
+## B 通道（场地规则快照）等 A 稳定后顺势接（清单 B 行）。
 ## =============================================================
 
-## —— A 通道：故事 flag 存储（序号+优先级组：组内后写覆盖先写；"免除"=组删除）——
-## flags 结构：组名 → {序号 → 值}（作者批复口径的"序号+优先级组叠加/覆盖/免除"）
-static var _flag_groups: Dictionary = {}
+signal flag_changed(group: String, idx: int, value: Variant) ## 批复②：变化感知信号
 
-static func set_flag(group: String, idx: int, value: Variant) -> void:
+## —— A 通道：独立变量表（组名 → {序号 → 值}；组内后写覆盖先写——批复口径）——
+var _flag_groups: Dictionary = {}
+
+func set_flag(group: String, idx: int, value: Variant) -> void:
 	if not _flag_groups.has(group):
 		_flag_groups[group] = {}
-	(_flag_groups[group] as Dictionary)[idx] = value ## 组内后写覆盖先写
+	(_flag_groups[group] as Dictionary)[idx] = value
+	flag_changed.emit(group, idx, value) ## 批复②：信号
 
-static func get_flag(group: String, idx: int, default: Variant = null) -> Variant:
+func get_flag(group: String, idx: int, default: Variant = null) -> Variant:
 	return (_flag_groups.get(group, {}) as Dictionary).get(idx, default)
 
-static func clear_group(group: String) -> void:
+func clear_group(group: String) -> void:
 	_flag_groups.erase(group) ## "免除"=整组撤销
 
-static func has_flag(group: String, idx: int) -> bool:
+func has_flag(group: String, idx: int) -> bool:
 	return (_flag_groups.get(group, {}) as Dictionary).has(idx)
 
-## —— C 通道：剧情→对决（写穿 GameGlobals versus_*；进场由宿主路由）——
+## —— C 通道：剧情→对决（批复③：直接打开对战）——
 ## cfg 形如 {"player_team": [...], "enemy_team": [...], "start_pp": 100,
-##   "start_spell": 1, "field_rules_csv": "user://story_3_rules.csv"}
-## 约定：cfg 缺省键不写穿（保留现行设定——叠加语义）
-static func battle_request(cfg: Dictionary) -> void:
-	var gg := _globals()
+##   "start_spell": 1}——缺省键不写穿（保留现行设定=叠加语义）；
+## 难度不设字段（批复④=不同 thxe 内容体现）
+func battle_request(cfg: Dictionary) -> void:
+	var gg := get_node_or_null("/root/GameGlobals")
 	if gg == null:
-		push_warning("[剧情桥] GameGlobals 不可用（非宿主环境）——请求记档不生效")
+		push_warning("[剧情桥] GameGlobals 不可用——请求记档不生效")
 		return
 	if cfg.has("player_team"):
 		gg.versus_player_team = cfg["player_team"]
@@ -51,8 +50,5 @@ static func battle_request(cfg: Dictionary) -> void:
 		gg.versus_start_pp = int(cfg["start_pp"])
 	if cfg.has("start_spell"):
 		gg.versus_start_spell = int(cfg["start_spell"])
-	print("[剧情桥] 对战请求写穿：%s" % str(cfg.keys()))
-
-static func _globals() -> Node:
-	var gg := Engine.get_main_loop() as SceneTree
-	return gg.root.get_node_or_null("/root/GameGlobals") if gg != null else null
+	print("[剧情桥] 对战请求写穿：%s → 进场" % str(cfg.keys()))
+	get_tree().change_scene_to_file("res://scenes/battle_arena.tscn") ## 批复③：直接打开对战
